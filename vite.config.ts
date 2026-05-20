@@ -1,12 +1,27 @@
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const skipPwa = process.env.SKIP_PWA === '1'
+const rootDir = path.dirname(fileURLToPath(import.meta.url))
+
 // https://vite.dev/config/
 export default defineConfig({
+  resolve: skipPwa
+    ? {
+        alias: {
+          'virtual:pwa-register': path.resolve(rootDir, 'src/pwa/register-stub.ts'),
+        },
+      }
+    : undefined,
   plugins: [
     react(),
-    VitePWA({
+    ...(skipPwa
+      ? []
+      : [
+          VitePWA({
       registerType: 'autoUpdate',
       workbox: {
         navigateFallback: '/index.html',
@@ -28,6 +43,7 @@ export default defineConfig({
           },
         ],
       },
-    }),
+          }),
+        ]),
   ],
 })

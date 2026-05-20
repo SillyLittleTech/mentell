@@ -1,10 +1,11 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getUnopenedPackages, iconLevelForPackages, markPackageOpened } from './packageService'
 import { TruckDrop } from './TruckDrop'
 import type { PackageRow } from '../../db/schema'
 import { getForcePackages, isDebugMode } from '../../shared/debug/debugFlags'
+import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 
 export function PackageAlert({
   onAward,
@@ -13,6 +14,7 @@ export function PackageAlert({
 }) {
   const [pkgs, setPkgs] = useState<PackageRow[]>([])
   const [truck, setTruck] = useState(false)
+  const prevLevelRef = useRef(0)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -20,13 +22,14 @@ export function PackageAlert({
     const tick = async () => {
       const unopened = await getUnopenedPackages()
       if (!mounted) return
-      const prevLevel = iconLevelForPackages(pkgs)
+      const prevLevel = prevLevelRef.current
       const nextLevel = iconLevelForPackages(unopened)
       setPkgs(unopened)
       if (nextLevel > prevLevel && nextLevel > 0) {
         setTruck(true)
         setTimeout(() => setTruck(false), 1200)
       }
+      prevLevelRef.current = nextLevel
     }
 
     tick()
@@ -35,7 +38,6 @@ export function PackageAlert({
       mounted = false
       window.clearInterval(id)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const level = useMemo(() => iconLevelForPackages(pkgs), [pkgs])
@@ -55,10 +57,11 @@ export function PackageAlert({
         <motion.button
           type="button"
           className="focus-ring paper flex items-center gap-3 rounded-3xl px-4 py-3"
-          initial={{ scale: 0.9, opacity: 0 }}
+          initial={shouldReduceMotion() ? false : { scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={shouldReduceMotion() ? undefined : { scale: 1.03 }}
+          whileTap={shouldReduceMotion() ? undefined : { scale: 0.98 }}
+          transition={{ duration: motionDuration(0.25) || 0 }}
           onClick={async () => {
             const first = pkgs[0]
             if (first) {
@@ -69,7 +72,7 @@ export function PackageAlert({
           }}
         >
           <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--paper-border)]">
-            <img alt="" src={icon} className="h-10 w-10 select-none" draggable={false} />
+            <img alt="" src={icon} className="h-10 w-10 select-none object-contain" draggable={false} />
           </div>
           <div className="text-left">
             <div className="font-medium">New package</div>

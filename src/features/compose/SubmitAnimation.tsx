@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
-import { getSlowMo } from '../../shared/debug/debugFlags'
+import { motionDuration } from '../../shared/motion/useMotionPrefs'
 
 export function SubmitAnimation({
   open,
@@ -13,10 +13,10 @@ export function SubmitAnimation({
 
   useEffect(() => {
     if (!open) return
-    const mult = getSlowMo()
-    const t1 = setTimeout(() => setPhase('rope'), 850 * mult)
-    const t2 = setTimeout(() => setPhase('mailbox'), 1650 * mult)
-    const t3 = setTimeout(() => onFinished(), 2450 * mult)
+    const d = (ms: number) => motionDuration(ms) || 50
+    const t1 = setTimeout(() => setPhase('rope'), d(850))
+    const t2 = setTimeout(() => setPhase('mailbox'), d(1650))
+    const t3 = setTimeout(() => onFinished(), d(2450))
     return () => {
       clearTimeout(t1)
       clearTimeout(t2)
@@ -38,7 +38,7 @@ export function SubmitAnimation({
             initial={{ scale: 0.96, y: 16 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.98, y: 8 }}
-            transition={{ duration: 0.35 * getSlowMo(), ease: [0.2, 0.8, 0.2, 1] }}
+            transition={{ duration: motionDuration(0.35) || 0.01, ease: [0.2, 0.8, 0.2, 1] }}
           >
             <motion.div
               className="paper relative rounded-[28px] p-8"
@@ -53,7 +53,7 @@ export function SubmitAnimation({
                     }
                   : { rotateX: 0, rotateZ: 0, y: 0, scale: 1, opacity: 1 }
               }
-              transition={{ duration: 0.7 * getSlowMo(), ease: [0.22, 0.9, 0.22, 1] }}
+              transition={{ duration: motionDuration(0.7) || 0.01, ease: [0.22, 0.9, 0.22, 1] }}
               style={{ transformPerspective: 900 }}
             >
               <div className="pointer-events-none absolute inset-x-10 top-10 h-[1px] bg-black/10" />
@@ -82,7 +82,7 @@ export function SubmitAnimation({
                           alt=""
                           src="/asset/rope.png"
                           draggable={false}
-                          className="absolute -inset-10 select-none opacity-90"
+                          className="absolute inset-0 h-full w-full select-none object-contain opacity-90"
                           style={{
                             filter: 'drop-shadow(0 16px 26px rgba(0,0,0,0.18))',
                           }}
@@ -99,12 +99,12 @@ export function SubmitAnimation({
                         initial={{ opacity: 0, y: -20, rotate: -20 }}
                         animate={{ opacity: 1, y: 0, rotate: -18 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.25 * getSlowMo() }}
+                        transition={{ duration: motionDuration(0.25) || 0.01 }}
                       >
                         <motion.div
                           animate={{ y: [0, 26, 0] }}
                           transition={{
-                            duration: 0.55 * getSlowMo(),
+                            duration: motionDuration(0.55) || 0.01,
                             ease: [0.2, 0.8, 0.2, 1],
                           }}
                         >
@@ -112,7 +112,7 @@ export function SubmitAnimation({
                             alt=""
                             src="/asset/stamp.png"
                             draggable={false}
-                            className="h-[260px] w-[260px] select-none"
+                            className="h-[220px] w-[220px] select-none object-contain"
                             style={{
                               filter: 'drop-shadow(0 18px 30px rgba(0,0,0,0.22))',
                             }}

@@ -1,9 +1,17 @@
-import { db, type EntryRow, type EntrySentiment, type WarningLevel } from '../../db/schema'
+import {
+  db,
+  type EntryEmotion,
+  type EntryRow,
+  type EntrySentiment,
+  type WarningLevel,
+} from '../../db/schema'
 import { makeId } from '../../shared/id'
 
 export type EntryDraft = {
   dateKey: string
   sentiment: EntrySentiment
+  emotion: EntryEmotion
+  emotionNote: string
   situation: string
   details: string
   flaggedTerms: string[]
@@ -13,14 +21,15 @@ export type EntryDraft = {
 }
 
 export async function upsertEntryFromDraft(draft: EntryDraft) {
-  const existing = await db.entries.where('dateKey').equals(draft.dateKey).first()
   const now = Date.now()
 
   const row: EntryRow = {
-    id: existing?.id ?? makeId('entry'),
-    createdAt: existing?.createdAt ?? now,
+    id: makeId('entry'),
+    createdAt: now,
     dateKey: draft.dateKey,
     sentiment: draft.sentiment,
+    emotion: draft.emotion,
+    emotionNote: draft.emotionNote,
     situation: draft.situation,
     details: draft.details,
     flaggedTerms: draft.flaggedTerms,

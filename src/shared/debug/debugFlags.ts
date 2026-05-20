@@ -1,5 +1,6 @@
 const SLOWMO_KEY = 'mentell.debug.slowmo'
 const FORCE_PACKAGES_KEY = 'mentell.debug.forcePackages'
+const SKIP_AI_CACHE_KEY = 'mentell.debug.skipAiCache'
 
 export function isDebugMode() {
   return import.meta.env.MODE === 'debug'
@@ -22,5 +23,13 @@ export function getForcePackages() {
 
 export function setForcePackages(v: boolean) {
   localStorage.setItem(FORCE_PACKAGES_KEY, v ? '1' : '0')
+}
+
+export function getSkipAiCache() {
+  return localStorage.getItem(SKIP_AI_CACHE_KEY) === '1'
+}
+
+export function setSkipAiCache(v: boolean) {
+  localStorage.setItem(SKIP_AI_CACHE_KEY, v ? '1' : '0')
 }
 

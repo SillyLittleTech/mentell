@@ -1,0 +1,5 @@
+# Copy to worker/.dev.vars (gitignored) for local wrangler dev
+# Quote tokens that contain # @ ! etc. (otherwise # starts a comment)
+WEEKLY_SUMMARY_TOKEN="your-token-here"
+# Optional extra CORS host suffixes (comma-separated), e.g. ".myotherdomain.com"
+# ALLOWED_HOST_SUFFIXES=".sillylittle.tech"

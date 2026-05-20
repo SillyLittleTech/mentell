@@ -1,8 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { db } from '../../db/schema'
 import { makeId } from '../../shared/id'
-import { getForcePackages, getSlowMo, isDebugMode, setForcePackages, setSlowMo } from '../../shared/debug/debugFlags'
+import {
+  getForcePackages,
+  getSkipAiCache,
+  getSlowMo,
+  isDebugMode,
+  setForcePackages,
+  setSkipAiCache,
+  setSlowMo,
+} from '../../shared/debug/debugFlags'
+import { clearWeeklyAiCache } from '../compilation/weeklyAiCache'
 import { ensurePackage } from '../packages/packageService'
+import { clearCatCollection } from '../shop/catCollection'
 import { requestNotificationsPermission } from '../../pwa/notifications'
 
 export function DebugPanel() {
@@ -11,6 +21,7 @@ export function DebugPanel() {
   const [busy, setBusy] = useState(false)
   const [slowMo, setSlowMoState] = useState(getSlowMo())
   const [forcePackages, setForcePackagesState] = useState(getForcePackages())
+  const [skipAiCache, setSkipAiCacheState] = useState(getSkipAiCache())
   const [inspector, setInspector] = useState<{
     entries: number
     notes: number
@@ -63,25 +74,56 @@ export function DebugPanel() {
     return () => window.clearTimeout(t)
   }, [enabled, open])
 
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
   if (!enabled) return null
 
   return (
-    <div className="fixed left-5 bottom-5 z-30">
+    <>
       {open ? (
-        <div className="paper w-[360px] rounded-3xl p-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="font-mono text-sm font-bold">debug</div>
-            <button
-              type="button"
-              className="focus-ring rounded-xl border border-[var(--paper-border)] px-2 py-1 text-xs"
-              onClick={() => setOpen(false)}
-            >
-              close
-            </button>
-          </div>
-          <div className="ink-muted mt-1 text-xs">Local-only helpers (not in production builds).</div>
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/25"
+          aria-label="Close debug panel"
+          onClick={() => setOpen(false)}
+        />
+      ) : null}
 
-          <div className="mt-4 grid gap-2">
+      <div className="fixed bottom-5 left-5 z-40 flex max-h-[min(85dvh,calc(100dvh-2.5rem))] flex-col items-start justify-end">
+        {open ? (
+          <div
+            className="paper flex max-h-full w-[min(360px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-3xl shadow-lg"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="debug-panel-title"
+          >
+            <div className="shrink-0 border-b border-[var(--paper-border)] p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div id="debug-panel-title" className="font-mono text-sm font-bold">
+                  debug
+                </div>
+                <button
+                  type="button"
+                  className="focus-ring rounded-xl border border-[var(--paper-border)] px-3 py-1.5 text-xs font-semibold"
+                  onClick={() => setOpen(false)}
+                >
+                  Close
+                </button>
+              </div>
+              <div className="ink-muted mt-1 text-xs">
+                Local-only helpers · Esc or backdrop to dismiss
+              </div>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+              <div className="grid gap-2">
             <div className="rounded-3xl border border-[var(--paper-border)] p-3">
               <div className="font-mono text-xs font-bold">ui toggles</div>
               <div className="mt-2 grid gap-2">
@@ -111,6 +153,18 @@ export function DebugPanel() {
                     onChange={(e) => {
                       setForcePackages(e.target.checked)
                       setForcePackagesState(e.target.checked)
+                    }}
+                  />
+                </label>
+
+                <label className="flex items-center justify-between gap-3 text-sm">
+                  <span>Skip AI summary cache</span>
+                  <input
+                    type="checkbox"
+                    checked={skipAiCache}
+                    onChange={(e) => {
+                      setSkipAiCache(e.target.checked)
+                      setSkipAiCacheState(e.target.checked)
                     }}
                   />
                 </label>
@@ -274,6 +328,30 @@ export function DebugPanel() {
               type="button"
               disabled={busy}
               className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+              onClick={() => {
+                clearWeeklyAiCache()
+              }}
+            >
+              Clear AI summary cache
+              <div className="ink-muted text-xs">Forces fresh Worker calls on next generate.</div>
+            </button>
+
+            <button
+              type="button"
+              disabled={busy}
+              className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+              onClick={() => {
+                clearCatCollection()
+              }}
+            >
+              Clear cat collection
+              <div className="ink-muted text-xs">Removes mentell.shop.cats from localStorage.</div>
+            </button>
+
+            <button
+              type="button"
+              disabled={busy}
+              className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
               onClick={async () => {
                 setBusy(true)
                 try {
@@ -322,6 +400,8 @@ export function DebugPanel() {
                     createdAt: now,
                     dateKey,
                     sentiment,
+                    emotion: 'calm' as const,
+                    emotionNote: '',
                     situation: `Seeded situation (${sentiment})`,
                     details: `Seeded details for ${dateKey}.\nA little stationery vibe.`,
                     flaggedTerms: [],
@@ -343,20 +423,20 @@ export function DebugPanel() {
               Seed sample week
               <div className="ink-muted text-xs">Adds 3 entries for quick projector testing.</div>
             </button>
+              </div>
+            </div>
           </div>
-        </div>
-      ) : null}
-
-      {!open ? (
-        <button
-          type="button"
-          className="focus-ring paper rounded-3xl px-4 py-3 font-mono text-sm font-bold"
-          onClick={() => setOpen(true)}
-        >
-          debug
-        </button>
-      ) : null}
-    </div>
+        ) : (
+          <button
+            type="button"
+            className="focus-ring paper shrink-0 rounded-3xl px-4 py-3 font-mono text-sm font-bold shadow-md"
+            onClick={() => setOpen(true)}
+          >
+            debug
+          </button>
+        )}
+      </div>
+    </>
   )
 }
 

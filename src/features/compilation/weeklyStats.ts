@@ -31,10 +31,9 @@ export async function getWeeklyStatsForDateKey(dateKey: string): Promise<WeeklyS
   const startKey = toDateKey(start)
   const endKey = toDateKey(end)
 
-  const entries = await db.entries
-    .where('dateKey')
-    .between(startKey, endKey, true, true)
-    .sortBy('dateKey')
+  const entries = (
+    await db.entries.where('dateKey').between(startKey, endKey, true, true).toArray()
+  ).sort((a, b) => b.createdAt - a.createdAt)
 
   let positives = 0
   let negatives = 0

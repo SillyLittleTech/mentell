@@ -2,12 +2,15 @@ import { z } from 'zod'
 
 export const EntrySentimentSchema = z.enum(['+', '-', '='])
 export const WarningLevelSchema = z.enum(['none', 'warn'])
+export const EntryEmotionSchema = z.enum(['happy', 'calm', 'anxious', 'sad', 'angry', 'other'])
 
 export const EntryRowSchema = z.object({
   id: z.string().min(1),
   createdAt: z.number().int().nonnegative(),
   dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   sentiment: EntrySentimentSchema,
+  emotion: EntryEmotionSchema,
+  emotionNote: z.string(),
   situation: z.string(),
   details: z.string(),
   flaggedTerms: z.array(z.string()),
