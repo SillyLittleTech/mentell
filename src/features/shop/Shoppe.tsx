@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { getScoreSnapshot, spendScore } from '../score/scoreService'
 
 const CAT_COST = 250
@@ -10,7 +10,7 @@ export function Shoppe({ onSpent }: { onSpent: () => void }) {
   const [error, setError] = useState<string | null>(null)
   const [catUrl, setCatUrl] = useState<string | null>(null)
   const [catId, setCatId] = useState<string | null>(null)
-  const balance = useMemo(() => getScoreSnapshot().total, [busy, catUrl])
+  const balance = getScoreSnapshot().total
 
   async function buyCatPhoto() {
     if (busy) return

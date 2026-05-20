@@ -13,7 +13,6 @@ export function SubmitAnimation({
 
   useEffect(() => {
     if (!open) return
-    setPhase('stamp')
     const mult = getSlowMo()
     const t1 = setTimeout(() => setPhase('rope'), 850 * mult)
     const t2 = setTimeout(() => setPhase('mailbox'), 1650 * mult)

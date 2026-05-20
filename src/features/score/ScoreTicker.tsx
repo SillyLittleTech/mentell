@@ -19,10 +19,6 @@ export function ScoreTicker({
   const hasAnimated = useRef(false)
 
   useEffect(() => {
-    setDisplayTotal(total)
-  }, [total])
-
-  useEffect(() => {
     if (incomingDelta === null || incomingDelta <= 0 || hasAnimated.current) return
     hasAnimated.current = true
     setAnimating(true)
@@ -61,7 +57,7 @@ export function ScoreTicker({
         transition={{ duration: 0.35 }}
       >
         <div className="font-mono text-[11px] uppercase opacity-70">score</div>
-        <div className="font-mono text-lg font-bold">{displayTotal}</div>
+        <div className="font-mono text-lg font-bold">{incomingDelta === null ? total : displayTotal}</div>
       </motion.div>
 
       <div className="rounded-2xl border border-[var(--paper-border)] px-3 py-2">

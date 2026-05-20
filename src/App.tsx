@@ -190,6 +190,7 @@ function HomePlaceholder({
       />
 
       <SubmitAnimation
+        key={submitting ? 'submit-open' : 'submit-closed'}
         open={submitting}
         onFinished={() => {
           setSubmitting(false)
