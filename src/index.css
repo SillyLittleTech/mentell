@@ -60,3 +60,49 @@ body {
   outline: 3px solid rgba(224, 178, 44, 0.5);
   outline-offset: 2px;
 }
+
+html[data-reduced-motion='true'] *,
+html[data-reduced-motion='true'] *::before,
+html[data-reduced-motion='true'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+.streak-chip {
+  position: relative;
+}
+
+.streak-chip--warm {
+  border-color: rgba(224, 178, 44, 0.55) !important;
+  box-shadow: 0 0 12px rgba(224, 140, 44, 0.35);
+}
+
+.streak-chip--fire {
+  border-color: rgba(255, 120, 40, 0.65) !important;
+  box-shadow: 0 0 16px rgba(255, 90, 30, 0.45);
+}
+
+.streak-flame {
+  position: absolute;
+  top: -6px;
+  right: 6px;
+  font-size: 0.85rem;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.streak-flame--animated {
+  animation: streak-flicker 0.85s ease-in-out infinite alternate;
+}
+
+@keyframes streak-flicker {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 0.85;
+  }
+  to {
+    transform: translateY(-2px) scale(1.08);
+    opacity: 1;
+  }
+}

@@ -5,6 +5,7 @@ import { getUnopenedPackages, iconLevelForPackages, markPackageOpened } from './
 import { TruckDrop } from './TruckDrop'
 import type { PackageRow } from '../../db/schema'
 import { getForcePackages, isDebugMode } from '../../shared/debug/debugFlags'
+import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 
 export function PackageAlert({
   onAward,
@@ -56,10 +57,11 @@ export function PackageAlert({
         <motion.button
           type="button"
           className="focus-ring paper flex items-center gap-3 rounded-3xl px-4 py-3"
-          initial={{ scale: 0.9, opacity: 0 }}
+          initial={shouldReduceMotion() ? false : { scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={shouldReduceMotion() ? undefined : { scale: 1.03 }}
+          whileTap={shouldReduceMotion() ? undefined : { scale: 0.98 }}
+          transition={{ duration: motionDuration(0.25) || 0 }}
           onClick={async () => {
             const first = pkgs[0]
             if (first) {

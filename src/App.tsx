@@ -13,6 +13,8 @@ import { DebugPanel } from './features/debug/DebugPanel'
 import { generateDuePackages } from './features/packages/packageGenerator'
 import { ScoreTicker } from './features/score/ScoreTicker'
 import { Shoppe } from './features/shop/Shoppe'
+import { SettingsPage } from './features/settings/SettingsPage'
+import { useAppSettings } from './shared/settings/useAppSettings'
 
 function App() {
   const [score, setScore] = useState(() => getScoreSnapshot())
@@ -58,6 +60,7 @@ function App() {
               />
             }
           />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="/archive" element={<ArchivePlaceholder />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
@@ -80,6 +83,7 @@ function TopBar({
   onScoreAnimationDone: () => void
 }) {
   const { mode, toggle } = useTheme()
+  const { settings } = useAppSettings()
   return (
     <header className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-3">
       <div className="flex items-baseline gap-3">
@@ -89,21 +93,24 @@ function TopBar({
         </div>
       </div>
 
-      <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
-        <ScoreTicker
-          total={score.total}
-          streak={score.streak}
-          incomingDelta={incomingDelta}
-          hint={incomingHint}
-          onDone={onScoreAnimationDone}
-        />
-      </div>
+      {!settings.disablePoints ? (
+        <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
+          <ScoreTicker
+            total={score.total}
+            streak={score.streak}
+            incomingDelta={incomingDelta}
+            hint={incomingHint}
+            onDone={onScoreAnimationDone}
+          />
+        </div>
+      ) : null}
 
       <nav className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
         <DeskLink to="/" label="Envelope" subtitle="Write" />
         <DeskLink to="/week" label="Projector" subtitle="Week" />
         <DeskLink to="/notes" label="Notepad" subtitle="Notes" />
         <DeskLink to="/shop" label="Shoppe" subtitle="Shop" />
+        <DeskLink to="/settings" label="Settings" subtitle="Prefs" />
         <button
           type="button"
           className="focus-ring ml-2 rounded-xl border border-[var(--paper-border)] px-3 py-2 text-sm"
@@ -176,7 +183,7 @@ function HomePlaceholder({
     >
       <LetterComposer
         onSubmit={async (draft) => {
-          const award = awardForSubmission(draft.dateKey)
+          const award = await awardForSubmission(draft.dateKey)
           await upsertEntryFromDraft({
             ...draft,
             scoreDelta: award.totalDelta,

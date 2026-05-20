@@ -39,8 +39,30 @@ VITE_WEEKLY_AI_TOKEN=dev-local-token
 
 ```bash
 wrangler secret put WEEKLY_SUMMARY_TOKEN
-wrangler secret put ALLOWED_ORIGIN   # e.g. https://YOUR_ORG.github.io
 npm run deploy
 ```
+
+### API
+
+`POST /weekly-summary` body:
+
+```json
+{
+  "mode": "reflection",
+  "profile": { "displayName": "", "ageRange": "prefer-not", "about": "" },
+  "entries": [{ "dateKey": "2026-05-20", "sentiment": "+", "situation": "…", "details": "…" }]
+}
+```
+
+- `mode`: `reflection` (default) or `overview` (third-person narrative per day)
+- `profile`: optional; sanitized server-side (untrusted user context only)
+
+CORS allows browser requests from:
+
+- Any host on `sillylittle.tech` (e.g. `mentell.sillylittle.tech`, `app.sillylittle.tech`)
+- Any `*.workers.dev` preview URL
+- `localhost` / `127.0.0.1` for local dev
+
+Optional: `wrangler secret put ALLOWED_HOST_SUFFIXES` with comma-separated suffixes like `.example.com`
 
 Set GitHub Actions variables/secrets for the frontend build (see root `AGENTS.md`).

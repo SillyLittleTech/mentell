@@ -1,10 +1,35 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { dateKeyForLocalDay } from '../../shared/dates'
 import { getWeeklyStatsForDateKey, type WeeklyStats } from './weeklyStats'
 import { getScoreSnapshot } from '../score/scoreService'
+import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import { hasDeliveredWeeklyPackage } from '../packages/packageService'
-import { requestWeeklyAiSummary, weeklyAiSummaryEnabled } from './weeklyAiSummary'
+import {
+  buildAiSummaryMarkdown,
+  downloadTextFile,
+  requestWeeklyAiSummary,
+  weeklyAiSummaryEnabled,
+  type AiSummaryMode,
+} from './weeklyAiSummary'
+import { loadAiProfile, profileFingerprint, type AiProfile } from './aiProfile'
+
+function profileActiveHint(profile: AiProfile) {
+  if (profile.about.trim()) {
+    const snippet = profile.about.trim().slice(0, 60)
+    return snippet.length < profile.about.trim().length ? `${snippet}…` : snippet
+  }
+  if (profile.displayName.trim()) return `Name: ${profile.displayName}`
+  return null
+}
+import { clearWeeklyAiCache, getCachedWeeklySummary } from './weeklyAiCache'
+import { WeeklyAiSettings, WeeklyAiSettingsButton } from './WeeklyAiSettings'
+import {
+  buildRawReportHtml,
+  downloadRawReportHtml,
+  fetchEntriesForRange,
+  type RawReportRange,
+} from './weeklyReportExport'
 
 export function WeeklyProjector() {
   const todayKey = useMemo(() => dateKeyForLocalDay(new Date()), [])
@@ -15,7 +40,31 @@ export function WeeklyProjector() {
   const [summary, setSummary] = useState<string | null>(null)
   const [summaryError, setSummaryError] = useState<string | null>(null)
   const [summaryBusy, setSummaryBusy] = useState(false)
+  const [fromCache, setFromCache] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [profile, setProfile] = useState<AiProfile>(() => loadAiProfile())
+  const [mode, setMode] = useState<AiSummaryMode>('reflection')
+  const [rawRange, setRawRange] = useState<RawReportRange>('week')
+  const [rawBusy, setRawBusy] = useState(false)
+  const [settingsStale, setSettingsStale] = useState(false)
   const aiEnabled = weeklyAiSummaryEnabled()
+
+  const restoreCachedSummary = useCallback(
+    (nextStats: WeeklyStats, nextProfile: AiProfile, nextMode: AiSummaryMode) => {
+      const cached = getCachedWeeklySummary({
+        weekKey: nextStats.weekKey,
+        mode: nextMode,
+        entries: nextStats.entries,
+        profile: nextProfile,
+      })
+      if (cached) {
+        setSummary(cached)
+        setFromCache(true)
+        setSettingsStale(false)
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     let active = true
@@ -29,6 +78,9 @@ export function WeeklyProjector() {
       setStats(nextStats)
       setDelivered(hasDelivery)
       setScore(getScoreSnapshot())
+      if (aiEnabled && hasDelivery && nextStats.entries.length > 0) {
+        restoreCachedSummary(nextStats, profile, mode)
+      }
     }
 
     refresh()
@@ -37,12 +89,51 @@ export function WeeklyProjector() {
       active = false
       window.clearInterval(id)
     }
-  }, [todayKey])
+  }, [todayKey, aiEnabled, profile, mode, restoreCachedSummary])
+
+  useEffect(() => {
+    if (!stats) return
+    restoreCachedSummary(stats, profile, mode)
+  }, [mode, stats, profile, restoreCachedSummary])
 
   const selected = useMemo(() => {
     if (!stats || !selectedId) return null
     return stats.entries.find((e) => e.id === selectedId) ?? null
   }, [selectedId, stats])
+
+  async function handleGenerate() {
+    if (!stats) return
+    setSummaryBusy(true)
+    setSummaryError(null)
+    setFromCache(false)
+    try {
+      const res = await requestWeeklyAiSummary(stats.entries, {
+        mode,
+        profile,
+        weekKey: stats.weekKey,
+      })
+      setSummary(res.summary)
+      setFromCache(res.fromCache)
+      setSettingsStale(false)
+    } catch (error) {
+      setSummaryError(error instanceof Error ? error.message : 'Failed to generate summary.')
+    } finally {
+      setSummaryBusy(false)
+    }
+  }
+
+  async function handleRawDownload() {
+    setRawBusy(true)
+    try {
+      const entries = await fetchEntriesForRange(rawRange, todayKey)
+      const html = buildRawReportHtml({ range: rawRange, anchorDateKey: todayKey, entries })
+      const suffix =
+        rawRange === 'week' ? stats?.weekKey ?? 'week' : rawRange === 'last4' ? 'last4w' : 'all'
+      downloadRawReportHtml(html, `mentell-raw-${suffix}.html`)
+    } finally {
+      setRawBusy(false)
+    }
+  }
 
   if (!stats || delivered === null) {
     return (
@@ -89,33 +180,95 @@ export function WeeklyProjector() {
         </div>
       ) : null}
 
+      {delivered ? (
+        <div className="paper rounded-3xl p-6">
+          <div className="font-paper text-xl">Export report</div>
+          <div className="ink-muted mt-1 text-sm">
+            Download a RAW chart of your journal data (no AI, no tokens).
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <select
+              className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 text-sm"
+              value={rawRange}
+              onChange={(e) => setRawRange(e.target.value as RawReportRange)}
+            >
+              <option value="week">This week</option>
+              <option value="last4">Last 4 weeks</option>
+              <option value="all">All time</option>
+            </select>
+            <button
+              type="button"
+              className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold"
+              disabled={rawBusy}
+              onClick={handleRawDownload}
+            >
+              {rawBusy ? 'Building…' : 'Download RAW report'}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {aiEnabled && delivered ? (
         <div className="paper rounded-3xl p-6">
           <div className="font-paper text-xl">AI summary</div>
           <div className="ink-muted mt-1 text-sm">
-            Generate a concise reflection of this week using your configured Worker endpoint.
+            Generate a reflection or narrative overview using your configured Worker endpoint.
+          </div>
+          {profileActiveHint(profile) ? (
+            <div className="ink-muted mt-2 text-xs">
+              Preferences active: {profileActiveHint(profile)} — save in ⚙ then regenerate after edits.
+            </div>
+          ) : null}
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <ModeToggle mode={mode} onChange={setMode} />
+            <WeeklyAiSettingsButton onClick={() => setSettingsOpen(true)} />
           </div>
 
-          <button
-            type="button"
-            className="focus-ring mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
-            style={{ background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }}
-            disabled={summaryBusy || stats.entries.length === 0}
-            onClick={async () => {
-              setSummaryBusy(true)
-              setSummaryError(null)
-              try {
-                const res = await requestWeeklyAiSummary(stats.entries)
-                setSummary(res.summary)
-              } catch (error) {
-                setSummaryError(error instanceof Error ? error.message : 'Failed to generate summary.')
-              } finally {
-                setSummaryBusy(false)
-              }
-            }}
-          >
-            {summaryBusy ? 'Generating…' : 'Generate weekly AI summary'}
-          </button>
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="focus-ring rounded-2xl px-4 py-3 text-sm font-semibold"
+              style={{ background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }}
+              disabled={summaryBusy || stats.entries.length === 0}
+              onClick={handleGenerate}
+            >
+              {summaryBusy ? 'Generating…' : 'Generate weekly AI summary'}
+            </button>
+            {summary ? (
+              <button
+                type="button"
+                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold"
+                onClick={() => {
+                  const md = buildAiSummaryMarkdown({
+                    weekKey: stats.weekKey,
+                    startDateKey: stats.startDateKey,
+                    endDateKey: stats.endDateKey,
+                    mode,
+                    profile,
+                    summary,
+                  })
+                  downloadTextFile(
+                    `mentell-ai-${stats.weekKey}-${mode}.md`,
+                    md,
+                    'text/markdown;charset=utf-8',
+                  )
+                }}
+              >
+                Download AI summary
+              </button>
+            ) : null}
+          </div>
+
+          {settingsStale ? (
+            <div className="ink-muted mt-3 text-sm">
+              Preferences changed — regenerate to refresh the summary.
+            </div>
+          ) : null}
+
+          {fromCache && summary ? (
+            <div className="ink-muted mt-3 text-xs">Loaded from cache (same week data & preferences).</div>
+          ) : null}
 
           {summaryError ? (
             <div className="mt-3 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm text-[var(--danger)]">
@@ -130,6 +283,22 @@ export function WeeklyProjector() {
           ) : null}
         </div>
       ) : null}
+
+      <WeeklyAiSettings
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        onSaved={(saved) => {
+          const prevFp = profileFingerprint(profile)
+          const nextFp = profileFingerprint(saved)
+          setProfile(saved)
+          if (prevFp !== nextFp) {
+            clearWeeklyAiCache()
+            setSettingsStale(true)
+            setSummary(null)
+            setFromCache(false)
+          }
+        }}
+      />
 
       <div className="paper rounded-3xl p-6">
         <div className="font-paper text-xl">Slides</div>
@@ -179,17 +348,17 @@ export function WeeklyProjector() {
         {selected && delivered ? (
           <motion.div
             className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-6"
-            initial={{ opacity: 0 }}
+            initial={shouldReduceMotion() ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            exit={shouldReduceMotion() ? undefined : { opacity: 0 }}
             onClick={() => setSelectedId(null)}
           >
             <motion.div
               className="paper w-full max-w-2xl rounded-3xl p-6"
-              initial={{ scale: 0.96, y: 18 }}
+              initial={shouldReduceMotion() ? false : { scale: 0.96, y: 18 }}
               animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.98, y: 10 }}
-              transition={{ duration: 0.25 }}
+              exit={shouldReduceMotion() ? undefined : { scale: 0.98, y: 10 }}
+              transition={{ duration: motionDuration(0.25) || 0 }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between gap-4">
@@ -248,6 +417,43 @@ export function WeeklyProjector() {
   )
 }
 
+function ModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: AiSummaryMode
+  onChange: (m: AiSummaryMode) => void
+}) {
+  return (
+    <div className="flex rounded-2xl border border-[var(--paper-border)] p-1">
+      <button
+        type="button"
+        className="focus-ring rounded-xl px-3 py-2 text-xs font-semibold"
+        style={
+          mode === 'reflection'
+            ? { background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }
+            : undefined
+        }
+        onClick={() => onChange('reflection')}
+      >
+        Reflection
+      </button>
+      <button
+        type="button"
+        className="focus-ring rounded-xl px-3 py-2 text-xs font-semibold"
+        style={
+          mode === 'overview'
+            ? { background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }
+            : undefined
+        }
+        onClick={() => onChange('overview')}
+      >
+        Narrative overview
+      </button>
+    </div>
+  )
+}
+
 function styleForSentiment(sentiment: '+' | '-' | '=') {
   if (sentiment === '+') {
     return {
@@ -293,4 +499,3 @@ function ProjectorCard({ title, value }: { title: string; value: number }) {
     </div>
   )
 }
-

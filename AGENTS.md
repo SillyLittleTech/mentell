@@ -31,17 +31,19 @@ All commands are defined in `package.json` scripts:
 1. `cd worker && npm install && cp .dev.vars.example .dev.vars`
 2. Create KV namespaces and update `worker/wrangler.jsonc` ids (`wrangler kv namespace create RATE_LIMIT_KV` + `--preview`)
 3. `npm run worker:dev`
-4. Root `.env.local`: `VITE_ENABLE_WEEKLY_AI_SUMMARY=1`, `VITE_WEEKLY_AI_ENDPOINT=http://127.0.0.1:8787/weekly-summary`, `VITE_WEEKLY_AI_TOKEN=dev-local-token`
+4. Root `.env.local`: `VITE_ENABLE_WEEKLY_AI_SUMMARY=1`, `VITE_WEEKLY_AI_ENDPOINT=http://127.0.0.1:8787/weekly-summary`, `VITE_WEEKLY_AI_TOKEN=dev-local-token` (must match `worker/.dev.vars`; **quote** tokens that contain `#`, e.g. `VITE_WEEKLY_AI_TOKEN="my#token"`)
 
 **Production**
 
-1. `wrangler secret put WEEKLY_SUMMARY_TOKEN` and `ALLOWED_ORIGIN` (GitHub Pages origin, e.g. `https://YOUR_ORG.github.io`)
+1. `wrangler secret put WEEKLY_SUMMARY_TOKEN` (CORS allows any `*.sillylittle.tech` and `*.workers.dev` by default)
 2. `npm run worker:deploy` — note the `*.workers.dev` URL
 3. GitHub repo → Settings → Actions:
    - Secret: `WEEKLY_AI_TOKEN` (same as `WEEKLY_SUMMARY_TOKEN`)
    - Variables: `VITE_ENABLE_WEEKLY_AI_SUMMARY=1`, `VITE_WEEKLY_AI_ENDPOINT=https://<worker>/weekly-summary`
 
-The AI card on `/week` only appears when env flags are set **and** a weekly package has been delivered.
+The AI card on `/week` only appears when env flags are set **and** a weekly package has been delivered. Users can set local AI preferences (name, age range, context), choose reflection vs narrative overview mode, cache summaries when data unchanged, and download RAW HTML reports (week / last 4 weeks / all time).
+
+Worker POST body also accepts optional `mode` (`reflection` | `overview`) and `profile` (`displayName`, `ageRange`, `about`).
 
 ### Non-obvious notes
 
