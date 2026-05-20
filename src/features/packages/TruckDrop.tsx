@@ -14,7 +14,7 @@ export function TruckDrop() {
         alt=""
         src="/asset/truck.png"
         draggable={false}
-        className="h-20 w-auto select-none"
+        className="h-20 w-auto select-none object-contain"
         animate={{ y: [0, -2, 0] }}
         transition={{ duration: 0.35 * getSlowMo(), repeat: 2 }}
         style={{ filter: 'drop-shadow(0 18px 26px rgba(0,0,0,0.22))' }}

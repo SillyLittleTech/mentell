@@ -19,6 +19,10 @@ export type PackageOpenResult = {
   hint: string
 }
 
+export type SpendScoreResult =
+  | { ok: true; spent: number; nextTotal: number }
+  | { ok: false; spent: number; nextTotal: number; reason: 'insufficient' | 'invalid' }
+
 function getInt(key: string, fallback: number) {
   const raw = localStorage.getItem(key)
   if (!raw) return fallback
@@ -74,6 +78,22 @@ export function getScoreSnapshot() {
     streak: getInt(STREAK_KEY, 0),
     lastDay: localStorage.getItem(LAST_DAY_KEY),
   }
+}
+
+export function spendScore(spent: number): SpendScoreResult {
+  const clean = Math.trunc(spent)
+  if (!Number.isFinite(clean) || clean <= 0) {
+    return { ok: false, spent: clean, nextTotal: getInt(SCORE_KEY, 0), reason: 'invalid' }
+  }
+
+  const total = getInt(SCORE_KEY, 0)
+  if (total < clean) {
+    return { ok: false, spent: clean, nextTotal: total, reason: 'insufficient' }
+  }
+
+  const nextTotal = total - clean
+  setInt(SCORE_KEY, nextTotal)
+  return { ok: true, spent: clean, nextTotal }
 }
 
 function packageDelta(kind: 'weekly' | 'monthly' | 'yearly') {

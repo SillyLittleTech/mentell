@@ -28,7 +28,7 @@ export function SentimentPills({
             key={it.value}
             type="button"
             className={[
-              'focus-ring select-none rounded-pill px-6 py-3',
+              'focus-ring inline-flex select-none items-center justify-center rounded-pill px-6 py-3',
               'border border-[var(--paper-border)]',
               'transition-[transform,filter,box-shadow] duration-150',
               'bg-[rgba(251,244,222,0.9)]',
@@ -45,7 +45,7 @@ export function SentimentPills({
               src={src}
               draggable={false}
               className={[
-                'h-10 w-10 select-none',
+                'h-10 w-10 select-none object-contain',
                 active ? 'opacity-100' : 'opacity-90',
               ].join(' ')}
             />

@@ -2,12 +2,15 @@ import Dexie, { type Table } from 'dexie'
 
 export type EntrySentiment = '+' | '-' | '='
 export type WarningLevel = 'none' | 'warn'
+export type EntryEmotion = 'happy' | 'calm' | 'anxious' | 'sad' | 'angry' | 'other'
 
 export type EntryRow = {
   id: string
   createdAt: number
   dateKey: string // YYYY-MM-DD in local time
   sentiment: EntrySentiment
+  emotion: EntryEmotion
+  emotionNote: string
   situation: string
   details: string
   flaggedTerms: string[]
@@ -61,6 +64,24 @@ export class MentellDB extends Dexie {
       stickies: '&id, createdAt, zIndex',
       packages: '&id, kind, periodKey, createdAt, openedAt',
     })
+
+    // v2: add emotion fields on entries
+    this.version(2)
+      .stores({
+        entries: '&id, dateKey, createdAt, sentiment, warningLevel',
+        notes: '&id, createdAt, tag',
+        stickies: '&id, createdAt, zIndex',
+        packages: '&id, kind, periodKey, createdAt, openedAt',
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table('entries')
+          .toCollection()
+          .modify((row: Partial<EntryRow>) => {
+            if (!row.emotion) row.emotion = 'other'
+            if (typeof row.emotionNote !== 'string') row.emotionNote = ''
+          })
+      })
   }
 }
 

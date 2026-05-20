@@ -30,6 +30,11 @@ export async function getUnopenedPackages() {
   return all.filter((p) => !p.openedAt).sort((a, b) => b.createdAt - a.createdAt)
 }
 
+export async function hasDeliveredWeeklyPackage() {
+  const count = await db.packages.where('kind').equals('weekly').count()
+  return count > 0
+}
+
 export function iconLevelForPackages(pkgs: { kind: PackageKind }[]) {
   const counts = { weekly: 0, monthly: 0, yearly: 0 }
   for (const p of pkgs) counts[p.kind]++

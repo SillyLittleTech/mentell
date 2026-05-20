@@ -2,74 +2,86 @@ import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import { useTheme } from './shared/theme/useTheme'
 import { LetterComposer } from './features/compose/LetterComposer'
 import { SubmitAnimation } from './features/compose/SubmitAnimation'
-import { awardForSubmission } from './features/score/scoreService'
-import { ScoreBurst } from './features/score/ScoreBurst'
+import { awardForSubmission, getScoreSnapshot } from './features/score/scoreService'
 import { upsertEntryFromDraft } from './features/entries/entryService'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { WeeklyProjector } from './features/compilation/WeeklyProjector'
 import { PackageAlert } from './features/packages/PackageAlert'
 import { Notepad } from './features/notes/Notepad'
 import { StickyBoard } from './features/stickies/StickyBoard'
 import { DebugPanel } from './features/debug/DebugPanel'
-import { useEffect } from 'react'
 import { generateDuePackages } from './features/packages/packageGenerator'
+import { ScoreTicker } from './features/score/ScoreTicker'
+import { Shoppe } from './features/shop/Shoppe'
 
 function App() {
-  const [overlayDelta, setOverlayDelta] = useState<number | null>(null)
-  const [overlayHint, setOverlayHint] = useState<string | null>(null)
+  const [score, setScore] = useState(() => getScoreSnapshot())
+  const [incomingDelta, setIncomingDelta] = useState<number | null>(null)
+  const [incomingHint, setIncomingHint] = useState<string | null>(null)
 
   useEffect(() => {
     generateDuePackages()
   }, [])
 
+  const handleAward = (delta: number, hint: string | null) => {
+    setScore(getScoreSnapshot())
+    setIncomingDelta(delta)
+    setIncomingHint(hint)
+  }
+
   return (
     <div className="desk px-4 py-6">
-      <TopBar />
+      <TopBar
+        score={score}
+        incomingDelta={incomingDelta}
+        incomingHint={incomingHint}
+        onScoreAnimationDone={() => {
+          setIncomingDelta(null)
+          setIncomingHint(null)
+        }}
+      />
       <main className="mx-auto mt-6 w-full max-w-4xl">
         <Routes>
           <Route
             path="/"
+            element={<HomePlaceholder onAward={handleAward} />}
+          />
+          <Route path="/week" element={<WeekPlaceholder />} />
+          <Route path="/notes" element={<NotesPlaceholder />} />
+          <Route
+            path="/shop"
             element={
-              <HomePlaceholder
-                onAward={(delta, hint) => {
-                  setOverlayDelta(delta)
-                  setOverlayHint(hint)
+              <ShopPlaceholder
+                onScoreChanged={() => {
+                  setScore(getScoreSnapshot())
                 }}
               />
             }
           />
-          <Route path="/week" element={<WeekPlaceholder />} />
-          <Route path="/notes" element={<NotesPlaceholder />} />
           <Route path="/archive" element={<ArchivePlaceholder />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <PackageAlert
-        onAward={(delta, hint) => {
-          setOverlayDelta(delta)
-          setOverlayHint(hint)
-        }}
-      />
+      <PackageAlert onAward={handleAward} />
       <DebugPanel />
-
-      {overlayDelta !== null ? (
-        <ScoreBurst
-          delta={overlayDelta}
-          hint={overlayHint}
-          onDone={() => {
-            setOverlayDelta(null)
-            setOverlayHint(null)
-          }}
-        />
-      ) : null}
     </div>
   )
 }
 
-function TopBar() {
+function TopBar({
+  score,
+  incomingDelta,
+  incomingHint,
+  onScoreAnimationDone,
+}: {
+  score: ReturnType<typeof getScoreSnapshot>
+  incomingDelta: number | null
+  incomingHint: string | null
+  onScoreAnimationDone: () => void
+}) {
   const { mode, toggle } = useTheme()
   return (
-    <header className="mx-auto flex w-full max-w-4xl items-center justify-between gap-3">
+    <header className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-3">
       <div className="flex items-baseline gap-3">
         <div className="paper rounded-2xl px-4 py-3">
           <div className="font-paper text-2xl tracking-tight">Mentell</div>
@@ -77,10 +89,21 @@ function TopBar() {
         </div>
       </div>
 
-      <nav className="paper flex items-center gap-2 rounded-2xl px-3 py-2">
+      <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
+        <ScoreTicker
+          total={score.total}
+          streak={score.streak}
+          incomingDelta={incomingDelta}
+          hint={incomingHint}
+          onDone={onScoreAnimationDone}
+        />
+      </div>
+
+      <nav className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
         <DeskLink to="/" label="Envelope" subtitle="Write" />
         <DeskLink to="/week" label="Projector" subtitle="Week" />
         <DeskLink to="/notes" label="Notepad" subtitle="Notes" />
+        <DeskLink to="/shop" label="Shoppe" subtitle="Shop" />
         <button
           type="button"
           className="focus-ring ml-2 rounded-xl border border-[var(--paper-border)] px-3 py-2 text-sm"
@@ -95,14 +118,23 @@ function TopBar() {
 }
 
 function DeskLink({ to, label, subtitle }: { to: string; label: string; subtitle: string }) {
-  const icon = label === 'Envelope' ? '/asset/envelope.png' : label === 'Projector' ? '/asset/projector.png' : null
+  const icon =
+    label === 'Envelope'
+      ? '/asset/envelope.png'
+      : label === 'Projector'
+        ? '/asset/projector.png'
+        : label === 'Shoppe'
+          ? '/asset/gift_small.png'
+          : null
   return (
     <Link
       className="focus-ring group rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left hover:-translate-y-[1px] hover:shadow-[0_12px_22px_rgba(0,0,0,0.12)]"
       to={to}
     >
       <div className="flex items-center gap-2">
-        {icon ? <img alt="" src={icon} draggable={false} className="h-8 w-8 select-none" /> : null}
+        {icon ? (
+          <img alt="" src={icon} draggable={false} className="h-8 w-8 shrink-0 select-none object-contain" />
+        ) : null}
         <div>
           <div className="font-mono text-xs opacity-70">{label}</div>
           <div className="text-sm font-medium">{subtitle}</div>
@@ -177,6 +209,16 @@ function NotesPlaceholder() {
       <Notepad />
       <StickyBoard />
     </div>
+  )
+}
+
+function ShopPlaceholder({ onScoreChanged }: { onScoreChanged: () => void }) {
+  return (
+    <Shoppe
+      onSpent={() => {
+        onScoreChanged()
+      }}
+    />
   )
 }
 

@@ -13,6 +13,7 @@ export function SubmitAnimation({
 
   useEffect(() => {
     if (!open) return
+    setPhase('stamp')
     const mult = getSlowMo()
     const t1 = setTimeout(() => setPhase('rope'), 850 * mult)
     const t2 = setTimeout(() => setPhase('mailbox'), 1650 * mult)
@@ -82,7 +83,7 @@ export function SubmitAnimation({
                           alt=""
                           src="/asset/rope.png"
                           draggable={false}
-                          className="absolute -inset-10 select-none opacity-90"
+                          className="absolute inset-0 h-full w-full select-none object-contain opacity-90"
                           style={{
                             filter: 'drop-shadow(0 16px 26px rgba(0,0,0,0.18))',
                           }}
@@ -112,7 +113,7 @@ export function SubmitAnimation({
                             alt=""
                             src="/asset/stamp.png"
                             draggable={false}
-                            className="h-[260px] w-[260px] select-none"
+                            className="h-[220px] w-[220px] select-none object-contain"
                             style={{
                               filter: 'drop-shadow(0 18px 30px rgba(0,0,0,0.22))',
                             }}

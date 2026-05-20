@@ -3,15 +3,27 @@ import { ProgressLight, type ProgressState } from '../../components/ProgressLigh
 import { SentimentPills, type SentimentValue } from '../../components/SentimentPills'
 import { dateKeyForLocalDay } from '../../shared/dates'
 import { flagConcerningLanguage } from '../safety/flagTerms'
+import type { EntryEmotion } from '../../db/schema'
 
 type Draft = {
   dateKey: string
   sentiment: SentimentValue
+  emotion: EntryEmotion
+  emotionNote: string
   situation: string
   details: string
   flaggedTerms: string[]
   warningLevel: 'none' | 'warn'
 }
+
+const EMOTION_OPTIONS: Array<{ value: EntryEmotion; label: string }> = [
+  { value: 'happy', label: '🙂 Happy' },
+  { value: 'calm', label: '😌 Calm' },
+  { value: 'anxious', label: '😟 Anxious' },
+  { value: 'sad', label: '😔 Sad' },
+  { value: 'angry', label: '😠 Angry' },
+  { value: 'other', label: '🤔 None of these fit' },
+]
 
 export function LetterComposer({
   onSubmit,
@@ -20,14 +32,50 @@ export function LetterComposer({
 }) {
   const [step, setStep] = useState<'write' | 'review'>('write')
   const [sentiment, setSentiment] = useState<SentimentValue>('+')
+  const [emotion, setEmotion] = useState<EntryEmotion>('happy')
+  const [emotionNote, setEmotionNote] = useState('')
   const [situation, setSituation] = useState('')
   const [details, setDetails] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitState, setSubmitState] = useState<'idle' | 'done' | 'error'>('idle')
   const dateKey = useMemo(() => dateKeyForLocalDay(new Date()), [])
 
   const flag = useMemo(() => flagConcerningLanguage(`${situation}\n${details}`), [details, situation])
 
   const progressState: ProgressState =
     flag.warningLevel === 'warn' ? 'warn' : step === 'review' ? 'review' : 'write'
+
+  async function handleSubmit() {
+    if (isSubmitting) return
+    setIsSubmitting(true)
+    setSubmitState('idle')
+    try {
+      await onSubmit({
+        dateKey,
+        sentiment,
+        emotion,
+        emotionNote: emotion === 'other' ? emotionNote.trim() : '',
+        situation: situation.trim(),
+        details: details.trim(),
+        flaggedTerms: flag.flaggedTerms,
+        warningLevel: flag.warningLevel,
+      })
+
+      // Clear inputs after successful submit to make completion obvious.
+      setStep('write')
+      setSentiment('+')
+      setEmotion('happy')
+      setEmotionNote('')
+      setSituation('')
+      setDetails('')
+      setSubmitState('done')
+      window.setTimeout(() => setSubmitState('idle'), 2200)
+    } catch {
+      setSubmitState('error')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -60,11 +108,43 @@ export function LetterComposer({
               placeholder="Write it like a letter you’re drafting…"
             />
           </Field>
+
+          <Field label="Emotion check‑in">
+            <div className="grid gap-3">
+              <select
+                className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 text-sm"
+                value={emotion}
+                onChange={(e) => setEmotion(e.target.value as EntryEmotion)}
+              >
+                {EMOTION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {emotion === 'other' ? (
+                <input
+                  className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-lg"
+                  value={emotionNote}
+                  onChange={(e) => setEmotionNote(e.target.value)}
+                  placeholder="What emotion would you call this?"
+                />
+              ) : null}
+            </div>
+          </Field>
         </div>
 
         <footer className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <div className="ink-muted text-sm">
-            {flag.warningLevel === 'warn' ? (
+            {submitState === 'done' ? (
+              <div className="font-medium" style={{ color: 'var(--success)' }}>
+                Submitted and cleared. Ready for your next entry.
+              </div>
+            ) : submitState === 'error' ? (
+              <div className="font-medium" style={{ color: 'var(--danger)' }}>
+                Submit failed. Please try again.
+              </div>
+            ) : flag.warningLevel === 'warn' ? (
               <div className="space-y-1">
                 <div className="font-medium" style={{ color: 'var(--danger)' }}>
                   I noticed some heavy words — please take care.
@@ -103,18 +183,10 @@ export function LetterComposer({
                 type="button"
                 className="focus-ring rounded-2xl px-4 py-3 text-sm font-medium"
                 style={{ background: 'var(--success)', color: 'rgba(0,0,0,0.92)' }}
-                onClick={() =>
-                  onSubmit({
-                    dateKey,
-                    sentiment,
-                    situation: situation.trim(),
-                    details: details.trim(),
-                    flaggedTerms: flag.flaggedTerms,
-                    warningLevel: flag.warningLevel,
-                  })
-                }
+                disabled={isSubmitting}
+                onClick={handleSubmit}
               >
-                Submit
+                {isSubmitting ? 'Submitting…' : 'Submit'}
               </button>
             )}
           </div>

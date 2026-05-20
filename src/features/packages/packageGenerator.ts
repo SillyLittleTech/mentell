@@ -1,4 +1,4 @@
-import { eachWeekOfInterval, endOfWeek, parseISO, startOfWeek, subWeeks } from 'date-fns'
+import { eachWeekOfInterval, endOfWeek, format, parseISO, startOfWeek, subWeeks } from 'date-fns'
 import { db } from '../../db/schema'
 import { ensurePackage } from './packageService'
 import { weekKeyForDateKey } from '../compilation/weeklyStats'
@@ -22,8 +22,8 @@ export async function generateDuePackages(now: Date = new Date()) {
 
   for (const wStart of weeks) {
     const wEnd = endOfWeek(wStart, { weekStartsOn: 1 })
-    const startKey = wStart.toISOString().slice(0, 10)
-    const endKey = wEnd.toISOString().slice(0, 10)
+    const startKey = format(wStart, 'yyyy-MM-dd')
+    const endKey = format(wEnd, 'yyyy-MM-dd')
 
     const count = await db.entries.where('dateKey').between(startKey, endKey, true, true).count()
     if (count <= 0) continue

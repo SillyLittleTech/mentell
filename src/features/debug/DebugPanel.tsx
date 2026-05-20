@@ -322,6 +322,8 @@ export function DebugPanel() {
                     createdAt: now,
                     dateKey,
                     sentiment,
+                    emotion: 'calm' as const,
+                    emotionNote: '',
                     situation: `Seeded situation (${sentiment})`,
                     details: `Seeded details for ${dateKey}.\nA little stationery vibe.`,
                     flaggedTerms: [],

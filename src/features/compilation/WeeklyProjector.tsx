@@ -2,14 +2,41 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import { dateKeyForLocalDay } from '../../shared/dates'
 import { getWeeklyStatsForDateKey, type WeeklyStats } from './weeklyStats'
+import { getScoreSnapshot } from '../score/scoreService'
+import { hasDeliveredWeeklyPackage } from '../packages/packageService'
+import { requestWeeklyAiSummary, weeklyAiSummaryEnabled } from './weeklyAiSummary'
 
 export function WeeklyProjector() {
   const todayKey = useMemo(() => dateKeyForLocalDay(new Date()), [])
   const [stats, setStats] = useState<WeeklyStats | null>(null)
+  const [delivered, setDelivered] = useState<boolean | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [score, setScore] = useState(() => getScoreSnapshot())
+  const [summary, setSummary] = useState<string | null>(null)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [summaryBusy, setSummaryBusy] = useState(false)
+  const aiEnabled = weeklyAiSummaryEnabled()
 
   useEffect(() => {
-    getWeeklyStatsForDateKey(todayKey).then(setStats)
+    let active = true
+
+    const refresh = async () => {
+      const [nextStats, hasDelivery] = await Promise.all([
+        getWeeklyStatsForDateKey(todayKey),
+        hasDeliveredWeeklyPackage(),
+      ])
+      if (!active) return
+      setStats(nextStats)
+      setDelivered(hasDelivery)
+      setScore(getScoreSnapshot())
+    }
+
+    refresh()
+    const id = window.setInterval(refresh, 2000)
+    return () => {
+      active = false
+      window.clearInterval(id)
+    }
   }, [todayKey])
 
   const selected = useMemo(() => {
@@ -17,11 +44,11 @@ export function WeeklyProjector() {
     return stats.entries.find((e) => e.id === selectedId) ?? null
   }, [selectedId, stats])
 
-  if (!stats) {
+  if (!stats || delivered === null) {
     return (
       <div className="paper rounded-3xl p-6">
         <div className="font-paper text-2xl">Projector warming up…</div>
-        <div className="ink-muted mt-2 text-sm">Loading your week.</div>
+        <div className="ink-muted mt-2 text-sm">Loading your week and package status.</div>
       </div>
     )
   }
@@ -45,11 +72,64 @@ export function WeeklyProjector() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3 md:grid-cols-2">
+        <div className="mt-6 grid gap-3 md:grid-cols-4">
           <ProjectorCard title="Entries logged" value={stats.total} />
           <ProjectorCard title="Warnings flagged" value={stats.warnings} />
+          <ProjectorCard title="Current score" value={score.total} />
+          <ProjectorCard title="Current streak" value={score.streak} />
         </div>
       </div>
+
+      {!delivered ? (
+        <div className="paper rounded-3xl p-6">
+          <div className="font-paper text-xl">Report locked</div>
+          <div className="ink-muted mt-1 text-sm">
+            The weekly report appears only after the truck delivers a weekly package.
+          </div>
+        </div>
+      ) : null}
+
+      {aiEnabled && delivered ? (
+        <div className="paper rounded-3xl p-6">
+          <div className="font-paper text-xl">AI summary</div>
+          <div className="ink-muted mt-1 text-sm">
+            Generate a concise reflection of this week using your configured Worker endpoint.
+          </div>
+
+          <button
+            type="button"
+            className="focus-ring mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
+            style={{ background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }}
+            disabled={summaryBusy || stats.entries.length === 0}
+            onClick={async () => {
+              setSummaryBusy(true)
+              setSummaryError(null)
+              try {
+                const res = await requestWeeklyAiSummary(stats.entries)
+                setSummary(res.summary)
+              } catch (error) {
+                setSummaryError(error instanceof Error ? error.message : 'Failed to generate summary.')
+              } finally {
+                setSummaryBusy(false)
+              }
+            }}
+          >
+            {summaryBusy ? 'Generating…' : 'Generate weekly AI summary'}
+          </button>
+
+          {summaryError ? (
+            <div className="mt-3 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm text-[var(--danger)]">
+              {summaryError}
+            </div>
+          ) : null}
+
+          {summary ? (
+            <div className="mt-4 whitespace-pre-wrap rounded-2xl border border-[var(--paper-border)] p-4 font-paper text-lg leading-relaxed">
+              {summary}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="paper rounded-3xl p-6">
         <div className="font-paper text-xl">Slides</div>
@@ -58,7 +138,11 @@ export function WeeklyProjector() {
         </div>
 
         <div className="mt-4 grid gap-3">
-          {stats.entries.length === 0 ? (
+          {!delivered ? (
+            <div className="ink-muted rounded-2xl border border-[var(--paper-border)] p-4">
+              No delivered weekly report yet.
+            </div>
+          ) : stats.entries.length === 0 ? (
             <div className="ink-muted rounded-2xl border border-[var(--paper-border)] p-4">
               No entries yet this week — submit a letter to start your reel.
             </div>
@@ -67,7 +151,8 @@ export function WeeklyProjector() {
               <button
                 key={e.id}
                 type="button"
-                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-left hover:opacity-95"
+                className="focus-ring rounded-2xl border px-4 py-3 text-left hover:opacity-95"
+                style={styleForSentiment(e.sentiment)}
                 onClick={() => setSelectedId(e.id)}
               >
                 <div className="flex items-center justify-between gap-3">
@@ -81,6 +166,9 @@ export function WeeklyProjector() {
                   ) : null}
                 </div>
                 <div className="ink-muted mt-1 line-clamp-1 text-sm">{e.situation || '—'}</div>
+                <div className="ink-muted mt-1 text-xs">
+                  Emotion: {e.emotionNote ? e.emotionNote : labelForEmotion(e.emotion)}
+                </div>
               </button>
             ))
           )}
@@ -88,7 +176,7 @@ export function WeeklyProjector() {
       </div>
 
       <AnimatePresence>
-        {selected ? (
+        {selected && delivered ? (
           <motion.div
             className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-6"
             initial={{ opacity: 0 }}
@@ -140,6 +228,12 @@ export function WeeklyProjector() {
                   </div>
                 </div>
                 <div>
+                  <div className="ink-muted text-sm font-medium">Emotion</div>
+                  <div className="mt-2 rounded-2xl border border-[var(--paper-border)] p-4">
+                    {selected.emotionNote ? selected.emotionNote : labelForEmotion(selected.emotion)}
+                  </div>
+                </div>
+                <div>
                   <div className="ink-muted text-sm font-medium">Details</div>
                   <div className="mt-2 whitespace-pre-wrap rounded-2xl border border-[var(--paper-border)] p-4 font-paper text-lg leading-relaxed">
                     {selected.details || '—'}
@@ -152,6 +246,34 @@ export function WeeklyProjector() {
       </AnimatePresence>
     </div>
   )
+}
+
+function styleForSentiment(sentiment: '+' | '-' | '=') {
+  if (sentiment === '+') {
+    return {
+      borderColor: 'rgba(42,155,88,0.35)',
+      background: 'rgba(42,155,88,0.1)',
+    }
+  }
+  if (sentiment === '-') {
+    return {
+      borderColor: 'rgba(198,29,29,0.35)',
+      background: 'rgba(198,29,29,0.1)',
+    }
+  }
+  return {
+    borderColor: 'rgba(224,178,44,0.35)',
+    background: 'rgba(224,178,44,0.12)',
+  }
+}
+
+function labelForEmotion(emotion: string) {
+  if (emotion === 'happy') return 'Happy'
+  if (emotion === 'calm') return 'Calm'
+  if (emotion === 'anxious') return 'Anxious'
+  if (emotion === 'sad') return 'Sad'
+  if (emotion === 'angry') return 'Angry'
+  return 'Other'
 }
 
 function StatChip({ label, children }: { label: string; children: React.ReactNode }) {

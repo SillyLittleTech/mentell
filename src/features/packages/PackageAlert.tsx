@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getUnopenedPackages, iconLevelForPackages, markPackageOpened } from './packageService'
 import { TruckDrop } from './TruckDrop'
@@ -13,6 +13,7 @@ export function PackageAlert({
 }) {
   const [pkgs, setPkgs] = useState<PackageRow[]>([])
   const [truck, setTruck] = useState(false)
+  const prevLevelRef = useRef(0)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -20,13 +21,14 @@ export function PackageAlert({
     const tick = async () => {
       const unopened = await getUnopenedPackages()
       if (!mounted) return
-      const prevLevel = iconLevelForPackages(pkgs)
+      const prevLevel = prevLevelRef.current
       const nextLevel = iconLevelForPackages(unopened)
       setPkgs(unopened)
       if (nextLevel > prevLevel && nextLevel > 0) {
         setTruck(true)
         setTimeout(() => setTruck(false), 1200)
       }
+      prevLevelRef.current = nextLevel
     }
 
     tick()
@@ -35,7 +37,6 @@ export function PackageAlert({
       mounted = false
       window.clearInterval(id)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const level = useMemo(() => iconLevelForPackages(pkgs), [pkgs])
@@ -69,7 +70,7 @@ export function PackageAlert({
           }}
         >
           <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--paper-border)]">
-            <img alt="" src={icon} className="h-10 w-10 select-none" draggable={false} />
+            <img alt="" src={icon} className="h-10 w-10 select-none object-contain" draggable={false} />
           </div>
           <div className="text-left">
             <div className="font-medium">New package</div>
