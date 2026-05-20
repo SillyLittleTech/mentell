@@ -9,8 +9,8 @@
   "kv_namespaces": [
     {
       "binding": "RATE_LIMIT_KV",
-      "id": "REPLACE_WITH_PRODUCTION_KV_ID",
-      "preview_id": "REPLACE_WITH_PREVIEW_KV_ID"
+      "id": "f6aa33d72731426787415a8c94415dd9",
+      "preview_id": "15c059bac7174625a93906b3096d8b26"
     }
   ]
 }
