@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect x="32" y="56" width="448" height="400" rx="42" fill="#fbf4de" stroke="rgba(25,24,31,0.2)" stroke-width="12"/>
+  <rect x="90" y="130" width="332" height="20" rx="10" fill="rgba(25,24,31,0.18)"/>
+  <rect x="90" y="180" width="280" height="18" rx="9" fill="rgba(25,24,31,0.14)"/>
+  <rect x="90" y="224" width="312" height="18" rx="9" fill="rgba(25,24,31,0.14)"/>
+  <rect x="90" y="268" width="248" height="18" rx="9" fill="rgba(25,24,31,0.14)"/>
+  <g transform="translate(336 314) rotate(-18)">
+    <rect x="-70" y="-46" width="168" height="96" rx="18" fill="none" stroke="#d12a2a" stroke-width="12"/>
+    <text x="14" y="16" text-anchor="middle" font-size="44" font-family="ui-monospace, Menlo, monospace" font-weight="800" fill="#d12a2a">GOTCHA</text>
+  </g>
+</svg>
+
