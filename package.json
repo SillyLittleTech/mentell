@@ -7,9 +7,12 @@
     "dev": "vite",
     "dev:debug": "vite --mode debug",
     "build": "tsc -b && vite build",
+    "build:check": "tsc -b && SKIP_PWA=1 vite build",
     "build:debug": "tsc -b && vite build --mode debug",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "worker:dev": "cd worker && npm run dev",
+    "worker:deploy": "cd worker && npm run deploy"
   },
   "dependencies": {
     "date-fns": "^4.2.1",

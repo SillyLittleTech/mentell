@@ -1,0 +1,3 @@
+# Copy to worker/.dev.vars (gitignored) for local wrangler dev
+WEEKLY_SUMMARY_TOKEN=dev-local-token
+ALLOWED_ORIGIN=http://localhost:5173
