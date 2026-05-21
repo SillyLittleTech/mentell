@@ -40,9 +40,10 @@ export default defineConfig({
         start_url: base,
         icons: [
           {
-            src: '/pwa.svg',
-            sizes: '512x512',
-            type: 'image/svg+xml',
+            src: 'asset/mentell-icon.png',
+            sizes: '1024x1024',
+            type: 'image/png',
+            purpose: 'any',
           },
         ],
       },

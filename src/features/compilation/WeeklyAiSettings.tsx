@@ -5,6 +5,7 @@ import {
   type AiAgeRange,
   type AiProfile,
 } from './aiProfile'
+import { publicUrl } from '../../shared/publicUrl'
 
 const AGE_OPTIONS: { value: AiAgeRange; label: string }[] = [
   { value: 'prefer-not', label: 'Prefer not to say' },
@@ -129,12 +130,17 @@ export function WeeklyAiSettingsButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
-      className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-3 text-sm"
+      className="focus-ring rounded-2xl border border-[var(--paper-border)] p-2"
       aria-label="AI preferences"
       title="AI preferences"
       onClick={onClick}
     >
-      ⚙
+      <img
+        alt=""
+        src={publicUrl('/asset/setting.png')}
+        className="h-8 w-8 select-none object-contain"
+        draggable={false}
+      />
     </button>
   )
 }

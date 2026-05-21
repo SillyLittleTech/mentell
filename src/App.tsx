@@ -1,4 +1,5 @@
 import { Link, Navigate, Route, Routes } from 'react-router-dom'
+import { AnimatePresence } from 'framer-motion'
 import { useTheme } from './shared/theme/useTheme'
 import { LetterComposer } from './features/compose/LetterComposer'
 import { SubmitAnimation } from './features/compose/SubmitAnimation'
@@ -12,61 +13,98 @@ import { StickyBoard } from './features/stickies/StickyBoard'
 import { DebugPanel } from './features/debug/DebugPanel'
 import { generateDuePackages } from './features/packages/packageGenerator'
 import { ScoreTicker } from './features/score/ScoreTicker'
+import { ScoreBurst } from './features/score/ScoreBurst'
 import { Shoppe } from './features/shop/Shoppe'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { useAppSettings } from './shared/settings/useAppSettings'
 import { publicUrl } from './shared/publicUrl'
+import { SCORE_CHANGED_EVENT } from './features/score/scoreEvents'
+
+type ScoreChangeOptions = { deferOverlay?: boolean }
 
 function App() {
   const [score, setScore] = useState(() => getScoreSnapshot())
   const [incomingDelta, setIncomingDelta] = useState<number | null>(null)
   const [incomingHint, setIncomingHint] = useState<string | null>(null)
+  const [pendingOverlay, setPendingOverlay] = useState<{
+    delta: number
+    hint: string | null
+  } | null>(null)
 
   useEffect(() => {
     generateDuePackages()
   }, [])
 
-  const handleAward = (delta: number, hint: string | null) => {
+  useEffect(() => {
+    const refresh = () => setScore(getScoreSnapshot())
+    window.addEventListener(SCORE_CHANGED_EVENT, refresh)
+    return () => window.removeEventListener(SCORE_CHANGED_EVENT, refresh)
+  }, [])
+
+  const handleScoreChange = (
+    delta: number,
+    hint: string | null,
+    options?: ScoreChangeOptions,
+  ) => {
     setScore(getScoreSnapshot())
+    if (delta === 0) return
+    if (options?.deferOverlay) {
+      setPendingOverlay({ delta, hint })
+      return
+    }
     setIncomingDelta(delta)
     setIncomingHint(hint)
   }
 
+  const showPendingScoreOverlay = () => {
+    if (!pendingOverlay) return
+    setIncomingDelta(pendingOverlay.delta)
+    setIncomingHint(pendingOverlay.hint)
+    setPendingOverlay(null)
+  }
+
+  const clearScoreOverlay = () => {
+    setIncomingDelta(null)
+    setIncomingHint(null)
+  }
+
   return (
     <div className="desk px-4 py-6">
-      <TopBar
-        score={score}
-        incomingDelta={incomingDelta}
-        incomingHint={incomingHint}
-        onScoreAnimationDone={() => {
-          setIncomingDelta(null)
-          setIncomingHint(null)
-        }}
-      />
+      <TopBar score={score} incomingHint={incomingHint} />
       <main className="mx-auto mt-6 w-full max-w-4xl">
         <Routes>
           <Route
             path="/"
-            element={<HomePlaceholder onAward={handleAward} />}
+            element={
+              <HomePlaceholder
+                onScoreChange={handleScoreChange}
+                onSubmitAnimationDone={showPendingScoreOverlay}
+              />
+            }
           />
           <Route path="/week" element={<WeekPlaceholder />} />
           <Route path="/notes" element={<NotesPlaceholder />} />
           <Route
             path="/shop"
-            element={
-              <ShopPlaceholder
-                onScoreChanged={() => {
-                  setScore(getScoreSnapshot())
-                }}
-              />
-            }
+            element={<ShopPlaceholder onScoreChange={handleScoreChange} />}
           />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/archive" element={<ArchivePlaceholder />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <PackageAlert onAward={handleAward} />
+      <PackageAlert onAward={handleScoreChange} />
+      <AnimatePresence>
+        {incomingDelta !== null ? (
+          <ScoreBurst
+            key={`${incomingDelta}-${incomingHint ?? ''}`}
+            delta={incomingDelta}
+            totalAfter={score.total}
+            hint={incomingHint}
+            onDone={clearScoreOverlay}
+          />
+        ) : null}
+      </AnimatePresence>
       <DebugPanel />
     </div>
   )
@@ -74,35 +112,33 @@ function App() {
 
 function TopBar({
   score,
-  incomingDelta,
   incomingHint,
-  onScoreAnimationDone,
 }: {
   score: ReturnType<typeof getScoreSnapshot>
-  incomingDelta: number | null
   incomingHint: string | null
-  onScoreAnimationDone: () => void
 }) {
   const { mode, toggle } = useTheme()
   const { settings } = useAppSettings()
   return (
     <header className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-3">
-      <div className="flex items-baseline gap-3">
-        <div className="paper rounded-2xl px-4 py-3">
-          <div className="font-paper text-2xl tracking-tight">Mentell</div>
-          <div className="ink-muted text-sm">local-first stationery journal</div>
+      <div className="flex items-center gap-3">
+        <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3">
+          <img
+            alt=""
+            src={publicUrl('/asset/mentell-icon.png')}
+            className="h-10 w-10 shrink-0 select-none object-contain"
+            draggable={false}
+          />
+          <div>
+            <div className="font-paper text-2xl tracking-tight">Mentell</div>
+            <div className="ink-muted text-sm">local-first stationery journal</div>
+          </div>
         </div>
       </div>
 
       {!settings.disablePoints ? (
         <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
-          <ScoreTicker
-            total={score.total}
-            streak={score.streak}
-            incomingDelta={incomingDelta}
-            hint={incomingHint}
-            onDone={onScoreAnimationDone}
-          />
+          <ScoreTicker total={score.total} streak={score.streak} hint={incomingHint} />
         </div>
       ) : null}
 
@@ -114,26 +150,38 @@ function TopBar({
         <DeskLink to="/settings" label="Settings" subtitle="Prefs" />
         <button
           type="button"
-          className="focus-ring ml-2 rounded-xl border border-[var(--paper-border)] px-3 py-2 text-sm"
+          className="focus-ring ml-2 rounded-xl border border-[var(--paper-border)] p-2"
           onClick={toggle}
-          aria-label="Toggle theme"
+          aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
         >
-          {mode === 'dark' ? 'Light' : 'Dark'}
+          <img
+            alt=""
+            src={publicUrl(mode === 'dark' ? '/asset/light.png' : '/asset/dark.png')}
+            className="h-8 w-8 select-none object-contain"
+            draggable={false}
+          />
         </button>
       </nav>
     </header>
   )
 }
 
+const NAV_ICONS: Record<string, string> = {
+  Envelope: '/asset/envelope.png',
+  Projector: '/asset/projector.png',
+  Notepad: '/asset/notepad.png',
+  Shoppe: '/asset/shoppe.png',
+  Settings: '/asset/setting.png',
+}
+
+function navIconFor(label: string) {
+  const path = NAV_ICONS[label]
+  return path ? publicUrl(path) : null
+}
+
 function DeskLink({ to, label, subtitle }: { to: string; label: string; subtitle: string }) {
-  const icon =
-    label === 'Envelope'
-      ? publicUrl('/asset/envelope.png')
-      : label === 'Projector'
-        ? publicUrl('/asset/projector.png')
-        : label === 'Shoppe'
-          ? publicUrl('/asset/gift_small.png')
-          : null
+  const icon = navIconFor(label)
   return (
     <Link
       className="focus-ring group rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left hover:-translate-y-[1px] hover:shadow-[0_12px_22px_rgba(0,0,0,0.12)]"
@@ -171,9 +219,11 @@ function PaperSection({
 }
 
 function HomePlaceholder({
-  onAward,
+  onScoreChange,
+  onSubmitAnimationDone,
 }: {
-  onAward: (delta: number, hint: string | null) => void
+  onScoreChange: (delta: number, hint: string | null, options?: ScoreChangeOptions) => void
+  onSubmitAnimationDone: () => void
 }) {
   const [submitting, setSubmitting] = useState(false)
 
@@ -192,7 +242,7 @@ function HomePlaceholder({
           })
 
           await generateDuePackages()
-          onAward(award.totalDelta, award.hint)
+          onScoreChange(award.totalDelta, award.hint, { deferOverlay: true })
           setSubmitting(true)
         }}
       />
@@ -202,6 +252,7 @@ function HomePlaceholder({
         open={submitting}
         onFinished={() => {
           setSubmitting(false)
+          onSubmitAnimationDone()
         }}
       />
     </PaperSection>
@@ -221,11 +272,15 @@ function NotesPlaceholder() {
   )
 }
 
-function ShopPlaceholder({ onScoreChanged }: { onScoreChanged: () => void }) {
+function ShopPlaceholder({
+  onScoreChange,
+}: {
+  onScoreChange: (delta: number, hint: string | null) => void
+}) {
   return (
     <Shoppe
-      onSpent={() => {
-        onScoreChanged()
+      onScoreChange={(delta, hint) => {
+        onScoreChange(delta, hint)
       }}
     />
   )

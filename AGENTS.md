@@ -10,6 +10,8 @@ An **optional** Cloudflare Worker (`worker/`) provides weekly AI summaries via W
 
 **GitHub Pages base path:** Production URL is `https://projects.sillylittle.tech/mentell/`. CI sets `VITE_BASE=/mentell/` in `.github/workflows/gh-pages.yml`. Local dev uses `base: /`. Use `publicUrl()` for static assets under `public/`.
 
+**UI assets:** Edit PNGs in [`asset/`](asset/) (source), then run `npm run sync:assets` to copy into `public/asset/`. Production builds run sync automatically. Reference assets in React via `publicUrl('/asset/…')`.
+
 ### Development commands
 
 All commands are defined in `package.json` scripts:
@@ -17,6 +19,7 @@ All commands are defined in `package.json` scripts:
 | Task | Command |
 |---|---|
 | Install deps | `npm install` |
+| Sync UI assets | `npm run sync:assets` (`asset/` → `public/asset/`) |
 | Dev server | `npm run dev` (Vite on port 5173) |
 | Lint | `npm run lint` (ESLint) |
 | Type check | `npx tsc -b` |

@@ -3,6 +3,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { dateKeyForLocalDay } from '../../shared/dates'
 import { getWeeklyStatsForDateKey, type WeeklyStats } from './weeklyStats'
 import { getScoreSnapshot } from '../score/scoreService'
+import { StreakDisplay } from '../score/StreakDisplay'
+import { SCORE_CHANGED_EVENT } from '../score/scoreEvents'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import { hasDeliveredWeeklyPackage } from '../packages/packageService'
 import {
@@ -96,6 +98,12 @@ export function WeeklyProjector() {
     restoreCachedSummary(stats, profile, mode)
   }, [mode, stats, profile, restoreCachedSummary])
 
+  useEffect(() => {
+    const onScore = () => setScore(getScoreSnapshot())
+    window.addEventListener(SCORE_CHANGED_EVENT, onScore)
+    return () => window.removeEventListener(SCORE_CHANGED_EVENT, onScore)
+  }, [])
+
   const selected = useMemo(() => {
     if (!stats || !selectedId) return null
     return stats.entries.find((e) => e.id === selectedId) ?? null
@@ -167,7 +175,11 @@ export function WeeklyProjector() {
           <ProjectorCard title="Entries logged" value={stats.total} />
           <ProjectorCard title="Warnings flagged" value={stats.warnings} />
           <ProjectorCard title="Current score" value={score.total} />
-          <ProjectorCard title="Current streak" value={score.streak} />
+          <StreakDisplay
+            streak={score.streak}
+            variant="card"
+            reducedMotion={shouldReduceMotion()}
+          />
         </div>
       </div>
 
@@ -216,7 +228,7 @@ export function WeeklyProjector() {
           </div>
           {profileActiveHint(profile) ? (
             <div className="ink-muted mt-2 text-xs">
-              Preferences active: {profileActiveHint(profile)} — save in ⚙ then regenerate after edits.
+              Preferences active: {profileActiveHint(profile)} — open settings (gear) then regenerate after edits.
             </div>
           ) : null}
 
