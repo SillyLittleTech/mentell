@@ -4,10 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "sync:assets": "node scripts/sync-assets.mjs",
     "dev": "vite",
     "dev:debug": "vite --mode debug",
-    "build": "tsc -b && vite build",
-    "build:check": "tsc -b && SKIP_PWA=1 vite build",
+    "build": "npm run sync:assets && tsc -b && vite build",
+    "build:check": "npm run sync:assets && tsc -b && SKIP_PWA=1 vite build",
     "build:debug": "tsc -b && vite build --mode debug",
     "lint": "eslint .",
     "preview": "vite preview",

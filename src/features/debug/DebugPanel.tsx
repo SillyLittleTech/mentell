@@ -14,6 +14,7 @@ import { clearWeeklyAiCache } from '../compilation/weeklyAiCache'
 import { ensurePackage } from '../packages/packageService'
 import { clearCatCollection } from '../shop/catCollection'
 import { requestNotificationsPermission } from '../../pwa/notifications'
+import { notifyScoreChanged } from '../score/scoreEvents'
 
 export function DebugPanel() {
   const enabled = useMemo(() => isDebugMode(), [])
@@ -22,6 +23,8 @@ export function DebugPanel() {
   const [slowMo, setSlowMoState] = useState(getSlowMo())
   const [forcePackages, setForcePackagesState] = useState(getForcePackages())
   const [skipAiCache, setSkipAiCacheState] = useState(getSkipAiCache())
+  const [debugScore, setDebugScore] = useState('')
+  const [debugStreak, setDebugStreak] = useState('')
   const [inspector, setInspector] = useState<{
     entries: number
     notes: number
@@ -255,6 +258,59 @@ export function DebugPanel() {
                 >
                   Drop a batch (W/M/Y)
                   <div className="ink-muted text-xs">Triggers alert escalation + truck.</div>
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[var(--paper-border)] p-3">
+              <div className="font-mono text-xs font-bold">score / streak</div>
+              <div className="mt-2 grid gap-2">
+                <label className="grid gap-1 text-xs">
+                  <span className="ink-muted">Total score</span>
+                  <input
+                    type="number"
+                    min={0}
+                    className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-3 py-2 font-mono"
+                    value={debugScore}
+                    placeholder={inspector?.scoreTotal ?? '0'}
+                    onChange={(e) => setDebugScore(e.target.value)}
+                  />
+                </label>
+                <label className="grid gap-1 text-xs">
+                  <span className="ink-muted">Streak</span>
+                  <input
+                    type="number"
+                    min={0}
+                    className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-3 py-2 font-mono"
+                    value={debugStreak}
+                    placeholder={inspector?.scoreStreak ?? '0'}
+                    onChange={(e) => setDebugStreak(e.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={async () => {
+                    setBusy(true)
+                    try {
+                      const totalRaw = debugScore.trim() || inspector?.scoreTotal || '0'
+                      const streakRaw = debugStreak.trim() || inspector?.scoreStreak || '0'
+                      const total = Math.max(0, Math.trunc(Number(totalRaw)) || 0)
+                      const streak = Math.max(0, Math.trunc(Number(streakRaw)) || 0)
+                      localStorage.setItem('mentell.score.total', String(total))
+                      localStorage.setItem('mentell.score.streak', String(streak))
+                      notifyScoreChanged()
+                      setDebugScore('')
+                      setDebugStreak('')
+                      await refreshInspector()
+                    } finally {
+                      setBusy(false)
+                    }
+                  }}
+                >
+                  Apply score &amp; streak
+                  <div className="ink-muted text-xs">Updates localStorage and refreshes the top bar.</div>
                 </button>
               </div>
             </div>

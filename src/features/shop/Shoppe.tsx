@@ -13,7 +13,11 @@ const CAT_COST = 250
 
 type CatApiRow = { id?: string; url?: string }
 
-export function Shoppe({ onSpent }: { onSpent: () => void }) {
+export function Shoppe({
+  onScoreChange,
+}: {
+  onScoreChange: (delta: number, hint: string | null) => void
+}) {
   const { settings } = useAppSettings()
   const pointsOn = !settings.disablePoints
   const [busy, setBusy] = useState(false)
@@ -68,7 +72,7 @@ export function Shoppe({ onSpent }: { onSpent: () => void }) {
       setCatId(first.id ?? null)
       setCollection(addCollectedCat({ id: first.id, url: first.url }))
       setBalance(getScoreSnapshot().total)
-      onSpent()
+      onScoreChange(-CAT_COST, 'Cat photo collected')
     } catch {
       setError('Failed to reach cat photo service.')
     } finally {
