@@ -6,9 +6,12 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 const skipPwa = process.env.SKIP_PWA === '1'
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
+/** Production: https://projects.sillylittle.tech/mentell/ — set via VITE_BASE in CI */
+const base = process.env.VITE_BASE ?? '/'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base,
   resolve: skipPwa
     ? {
         alias: {
@@ -24,7 +27,7 @@ export default defineConfig({
           VitePWA({
       registerType: 'autoUpdate',
       workbox: {
-        navigateFallback: '/index.html',
+        navigateFallback: `${base}index.html`,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
       },
       manifest: {
@@ -34,7 +37,7 @@ export default defineConfig({
         theme_color: '#505153',
         background_color: '#505153',
         display: 'standalone',
-        start_url: '/',
+        start_url: base,
         icons: [
           {
             src: '/pwa.svg',

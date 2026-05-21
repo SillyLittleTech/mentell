@@ -8,6 +8,8 @@ Mentell is a local-first stationery-themed mental health / journaling PWA. It is
 
 An **optional** Cloudflare Worker (`worker/`) provides weekly AI summaries via Workers AI. The static app is deployed on **GitHub Pages**; the worker is deployed separately with Wrangler.
 
+**GitHub Pages base path:** Production URL is `https://projects.sillylittle.tech/mentell/`. CI sets `VITE_BASE=/mentell/` in `.github/workflows/gh-pages.yml`. Local dev uses `base: /`. Use `publicUrl()` for static assets under `public/`.
+
 ### Development commands
 
 All commands are defined in `package.json` scripts:
