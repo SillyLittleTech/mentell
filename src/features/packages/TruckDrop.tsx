@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
+import { publicUrl } from '../../shared/publicUrl'
 
 export function TruckDrop() {
   return (
@@ -12,7 +13,7 @@ export function TruckDrop() {
     >
       <motion.img
         alt=""
-        src="/asset/truck.png"
+        src={publicUrl('/asset/truck.png')}
         draggable={false}
         className="h-20 w-auto select-none object-contain"
         animate={{ y: [0, -2, 0] }}

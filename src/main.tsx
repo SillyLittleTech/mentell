@@ -9,11 +9,13 @@ import { registerSW } from 'virtual:pwa-register'
 
 registerSW({ immediate: true })
 
+const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, '') || undefined
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <SettingsProvider>
-        <BrowserRouter>
+        <BrowserRouter basename={routerBasename}>
           <App />
         </BrowserRouter>
       </SettingsProvider>

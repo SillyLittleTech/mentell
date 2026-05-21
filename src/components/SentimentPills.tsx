@@ -1,3 +1,5 @@
+import { publicUrl } from '../shared/publicUrl'
+
 export type SentimentValue = '+' | '-' | '='
 
 const ITEMS: Array<{ value: SentimentValue; label: string }> = [
@@ -19,10 +21,10 @@ export function SentimentPills({
         const active = it.value === value
         const src =
           it.value === '+'
-            ? '/asset/pill_positive.png'
+            ? publicUrl('/asset/pill_positive.png')
             : it.value === '-'
-              ? '/asset/pill_negative.png'
-              : '/asset/pill_mixed.png'
+              ? publicUrl('/asset/pill_negative.png')
+              : publicUrl('/asset/pill_mixed.png')
         return (
           <button
             key={it.value}

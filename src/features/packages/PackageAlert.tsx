@@ -6,6 +6,7 @@ import { TruckDrop } from './TruckDrop'
 import type { PackageRow } from '../../db/schema'
 import { getForcePackages, isDebugMode } from '../../shared/debug/debugFlags'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
+import { publicUrl } from '../../shared/publicUrl'
 
 export function PackageAlert({
   onAward,
@@ -47,7 +48,11 @@ export function PackageAlert({
   if (level === 0 && !forced) return null
 
   const icon =
-    level >= 3 ? '/asset/gift_large.png' : level === 2 ? '/asset/gift_med.png' : '/asset/gift_small.png'
+    level >= 3
+      ? publicUrl('/asset/gift_large.png')
+      : level === 2
+        ? publicUrl('/asset/gift_med.png')
+        : publicUrl('/asset/gift_small.png')
 
   return (
     <div className="fixed bottom-5 right-5 z-30">

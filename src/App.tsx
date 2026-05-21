@@ -15,6 +15,7 @@ import { ScoreTicker } from './features/score/ScoreTicker'
 import { Shoppe } from './features/shop/Shoppe'
 import { SettingsPage } from './features/settings/SettingsPage'
 import { useAppSettings } from './shared/settings/useAppSettings'
+import { publicUrl } from './shared/publicUrl'
 
 function App() {
   const [score, setScore] = useState(() => getScoreSnapshot())
@@ -127,11 +128,11 @@ function TopBar({
 function DeskLink({ to, label, subtitle }: { to: string; label: string; subtitle: string }) {
   const icon =
     label === 'Envelope'
-      ? '/asset/envelope.png'
+      ? publicUrl('/asset/envelope.png')
       : label === 'Projector'
-        ? '/asset/projector.png'
+        ? publicUrl('/asset/projector.png')
         : label === 'Shoppe'
-          ? '/asset/gift_small.png'
+          ? publicUrl('/asset/gift_small.png')
           : null
   return (
     <Link

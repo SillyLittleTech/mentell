@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { motionDuration } from '../../shared/motion/useMotionPrefs'
+import { publicUrl } from '../../shared/publicUrl'
 
 export function SubmitAnimation({
   open,
@@ -80,7 +81,7 @@ export function SubmitAnimation({
                       >
                         <img
                           alt=""
-                          src="/asset/rope.png"
+                          src={publicUrl('/asset/rope.png')}
                           draggable={false}
                           className="absolute inset-0 h-full w-full select-none object-contain opacity-90"
                           style={{
@@ -110,7 +111,7 @@ export function SubmitAnimation({
                         >
                           <img
                             alt=""
-                            src="/asset/stamp.png"
+                            src={publicUrl('/asset/stamp.png')}
                             draggable={false}
                             className="h-[220px] w-[220px] select-none object-contain"
                             style={{
