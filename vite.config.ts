@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
@@ -8,10 +9,14 @@ const skipPwa = process.env.SKIP_PWA === '1'
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 /** Production: https://projects.sillylittle.tech/mentell/ — set via VITE_BASE in CI */
 const base = process.env.VITE_BASE ?? '/'
+const appVersion = readFileSync(path.join(rootDir, 'VERSION'), 'utf8').trim()
 
 // https://vite.dev/config/
 export default defineConfig({
   base,
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+  },
   resolve: skipPwa
     ? {
         alias: {

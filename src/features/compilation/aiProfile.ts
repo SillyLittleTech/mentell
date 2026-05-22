@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
 const PROFILE_KEY = 'mentell.ai.profile'
 
@@ -84,6 +85,7 @@ export function loadAiProfile(): AiProfile {
 export function saveAiProfile(input: Partial<AiProfile>): AiProfile {
   const profile = sanitizeAiProfile(input)
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile))
+  notifyLocalDataChanged()
   return profile
 }
 

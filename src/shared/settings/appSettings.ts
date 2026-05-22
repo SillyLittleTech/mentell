@@ -1,3 +1,5 @@
+import { notifyLocalDataChanged } from '../sync/localDataEvents'
+
 const SETTINGS_KEY = 'mentell.settings'
 const SETTINGS_EVENT = 'mentell:settings-changed'
 
@@ -6,6 +8,9 @@ export type AppSettings = {
   disableAi: boolean
   disablePoints: boolean
   globalName: string
+  /** When true, RAW reports use only `globalName` (no AI display name fallback). */
+  globalNameManuallySet: boolean
+  syncPromptDismissed: boolean
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -13,6 +18,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   disableAi: false,
   disablePoints: false,
   globalName: '',
+  globalNameManuallySet: false,
+  syncPromptDismissed: false,
 }
 
 function sanitizeGlobalName(raw: string) {
@@ -25,11 +32,16 @@ function sanitizeGlobalName(raw: string) {
 }
 
 export function sanitizeAppSettings(input: Partial<AppSettings>): AppSettings {
+  const globalName = sanitizeGlobalName(input.globalName ?? '')
+  const globalNameManuallySet =
+    Boolean(input.globalNameManuallySet) || globalName.length > 0
   return {
     reducedMotion: Boolean(input.reducedMotion),
     disableAi: Boolean(input.disableAi),
     disablePoints: Boolean(input.disablePoints),
-    globalName: sanitizeGlobalName(input.globalName ?? ''),
+    globalName,
+    globalNameManuallySet,
+    syncPromptDismissed: Boolean(input.syncPromptDismissed),
   }
 }
 
@@ -48,6 +60,7 @@ export function saveAppSettings(input: Partial<AppSettings>): AppSettings {
   const next = sanitizeAppSettings({ ...loadAppSettings(), ...input })
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(next))
   window.dispatchEvent(new CustomEvent(SETTINGS_EVENT, { detail: next }))
+  notifyLocalDataChanged()
   return next
 }
 

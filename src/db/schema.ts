@@ -7,6 +7,7 @@ export type EntryEmotion = 'happy' | 'calm' | 'anxious' | 'sad' | 'angry' | 'oth
 export type EntryRow = {
   id: string
   createdAt: number
+  updatedAt: number
   dateKey: string // YYYY-MM-DD in local time
   sentiment: EntrySentiment
   emotion: EntryEmotion
@@ -23,6 +24,7 @@ export type NoteTag = 'self' | 'therapist' | 'other'
 export type NoteRow = {
   id: string
   createdAt: number
+  updatedAt: number
   title: string
   body: string
   tag: NoteTag
@@ -31,6 +33,7 @@ export type NoteRow = {
 export type StickyRow = {
   id: string
   createdAt: number
+  updatedAt: number
   text: string
   x: number
   y: number
@@ -44,6 +47,7 @@ export type PackageRow = {
   kind: PackageKind
   periodKey: string // e.g. 2026-W21, 2026-05, 2026
   createdAt: number
+  updatedAt: number
   openedAt?: number
   openedScoreDelta?: number
 }
@@ -81,6 +85,26 @@ export class MentellDB extends Dexie {
             if (!row.emotion) row.emotion = 'other'
             if (typeof row.emotionNote !== 'string') row.emotionNote = ''
           })
+      })
+
+    this.version(3)
+      .stores({
+        entries: '&id, dateKey, createdAt, updatedAt, sentiment, warningLevel',
+        notes: '&id, createdAt, updatedAt, tag',
+        stickies: '&id, createdAt, updatedAt, zIndex',
+        packages: '&id, kind, periodKey, createdAt, updatedAt, openedAt',
+      })
+      .upgrade(async (tx) => {
+        const backfill = <T extends { createdAt: number; updatedAt?: number }>(
+          table: string,
+        ) =>
+          tx.table(table).toCollection().modify((row: T) => {
+            if (typeof row.updatedAt !== 'number') row.updatedAt = row.createdAt
+          })
+        await backfill<EntryRow>('entries')
+        await backfill<NoteRow>('notes')
+        await backfill<StickyRow>('stickies')
+        await backfill<PackageRow>('packages')
       })
   }
 }

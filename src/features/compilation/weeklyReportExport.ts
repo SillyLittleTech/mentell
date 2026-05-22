@@ -1,6 +1,6 @@
 import { endOfWeek, format, parseISO, startOfWeek, subWeeks } from 'date-fns'
 import { db, type EntryRow } from '../../db/schema'
-import { loadAppSettings } from '../../shared/settings/appSettings'
+import { getEffectiveGlobalName } from '../../shared/settings/effectiveGlobalName'
 import { weekKeyForDateKey } from './weeklyStats'
 
 export type RawReportRange = 'week' | 'last4' | 'all'
@@ -72,7 +72,7 @@ export function buildRawReportHtml(input: {
   anchorDateKey: string
   entries: EntryRow[]
 }) {
-  const globalName = loadAppSettings().globalName
+  const globalName = getEffectiveGlobalName()
   const sorted = [...input.entries].sort((a, b) => a.dateKey.localeCompare(b.dateKey))
   const counts = countSentiments(sorted)
   const maxBar = Math.max(counts.positives, counts.negatives, counts.mixed, 1)

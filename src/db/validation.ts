@@ -7,6 +7,7 @@ export const EntryEmotionSchema = z.enum(['happy', 'calm', 'anxious', 'sad', 'an
 export const EntryRowSchema = z.object({
   id: z.string().min(1),
   createdAt: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative(),
   dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   sentiment: EntrySentimentSchema,
   emotion: EntryEmotionSchema,
@@ -24,6 +25,7 @@ export const NoteTagSchema = z.enum(['self', 'therapist', 'other'])
 export const NoteRowSchema = z.object({
   id: z.string().min(1),
   createdAt: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative(),
   title: z.string(),
   body: z.string(),
   tag: NoteTagSchema,
@@ -32,6 +34,7 @@ export const NoteRowSchema = z.object({
 export const StickyRowSchema = z.object({
   id: z.string().min(1),
   createdAt: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative(),
   text: z.string(),
   x: z.number(),
   y: z.number(),
@@ -46,6 +49,7 @@ export const PackageRowSchema = z.object({
   kind: PackageKindSchema,
   periodKey: z.string().min(1),
   createdAt: z.number().int().nonnegative(),
+  updatedAt: z.number().int().nonnegative(),
   openedAt: z.number().int().nonnegative().optional(),
 })
 

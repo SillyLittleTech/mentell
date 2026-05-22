@@ -6,6 +6,7 @@ import {
   type WarningLevel,
 } from '../../db/schema'
 import { makeId } from '../../shared/id'
+import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
 export type EntryDraft = {
   dateKey: string
@@ -26,6 +27,7 @@ export async function upsertEntryFromDraft(draft: EntryDraft) {
   const row: EntryRow = {
     id: makeId('entry'),
     createdAt: now,
+    updatedAt: now,
     dateKey: draft.dateKey,
     sentiment: draft.sentiment,
     emotion: draft.emotion,
@@ -39,6 +41,7 @@ export async function upsertEntryFromDraft(draft: EntryDraft) {
   }
 
   await db.entries.put(row)
+  notifyLocalDataChanged()
 
   return row
 }

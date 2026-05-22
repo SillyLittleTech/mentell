@@ -1,4 +1,5 @@
-import { Link, Navigate, Route, Routes } from 'react-router-dom'
+import { Link, Navigate, Route } from 'react-router-dom'
+import { AnimatedRoutes } from './shared/motion/AnimatedRoutes'
 import { AnimatePresence } from 'framer-motion'
 import { useTheme } from './shared/theme/useTheme'
 import { LetterComposer } from './features/compose/LetterComposer'
@@ -19,6 +20,12 @@ import { SettingsPage } from './features/settings/SettingsPage'
 import { useAppSettings } from './shared/settings/useAppSettings'
 import { publicUrl } from './shared/publicUrl'
 import { SCORE_CHANGED_EVENT } from './features/score/scoreEvents'
+import { ShareDashboardPage } from './features/share/ShareDashboardPage'
+import { SyncOnboardingBanner } from './features/settings/SyncOnboardingBanner'
+import { AppLegalFooter } from './components/AppLegalFooter'
+import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage'
+import { isFirebaseSyncEnabled, isShareLinksEnabled } from './shared/features/featureFlags'
+import { useAuthOptional } from './shared/firebase/AuthProvider'
 
 type ScoreChangeOptions = { deferOverlay?: boolean }
 
@@ -72,7 +79,7 @@ function App() {
     <div className="desk px-4 py-6">
       <TopBar score={score} incomingHint={incomingHint} />
       <main className="mx-auto mt-6 w-full max-w-4xl">
-        <Routes>
+        <AnimatedRoutes>
           <Route
             path="/"
             element={
@@ -89,10 +96,15 @@ function App() {
             element={<ShopPlaceholder onScoreChange={handleScoreChange} />}
           />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          {isShareLinksEnabled() ? (
+            <Route path="/share/:code" element={<ShareDashboardPage />} />
+          ) : null}
           <Route path="/archive" element={<ArchivePlaceholder />} />
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        </AnimatedRoutes>
       </main>
+      <AppLegalFooter />
       <PackageAlert onAward={handleScoreChange} />
       <AnimatePresence>
         {incomingDelta !== null ? (
@@ -226,14 +238,39 @@ function HomePlaceholder({
   onSubmitAnimationDone: () => void
 }) {
   const [submitting, setSubmitting] = useState(false)
+  const [shakeBanner, setShakeBanner] = useState(0)
+  const { settings } = useAppSettings()
+  const auth = useAuthOptional()
+  const composerLocked =
+    isFirebaseSyncEnabled() &&
+    !auth?.loading &&
+    !auth?.user &&
+    !settings.syncPromptDismissed
+
+  function onBlockedComposerInteraction() {
+    if (composerLocked) setShakeBanner((k) => k + 1)
+  }
 
   return (
     <PaperSection
       title="Draft today’s letter"
       subtitle="Draft it like stationery — then review and submit."
     >
-      <LetterComposer
-        onSubmit={async (draft) => {
+      <SyncOnboardingBanner shakeKey={shakeBanner} />
+      <div
+        className="relative"
+        onPointerDownCapture={composerLocked ? onBlockedComposerInteraction : undefined}
+      >
+        {composerLocked ? (
+          <div
+            className="absolute inset-0 z-10 cursor-not-allowed"
+            aria-hidden
+            onFocus={onBlockedComposerInteraction}
+          />
+        ) : null}
+        <LetterComposer
+          disabled={composerLocked}
+          onSubmit={async (draft) => {
           const award = await awardForSubmission(draft.dateKey)
           await upsertEntryFromDraft({
             ...draft,
@@ -245,7 +282,8 @@ function HomePlaceholder({
           onScoreChange(award.totalDelta, award.hint, { deferOverlay: true })
           setSubmitting(true)
         }}
-      />
+        />
+      </div>
 
       <SubmitAnimation
         key={submitting ? 'submit-open' : 'submit-closed'}

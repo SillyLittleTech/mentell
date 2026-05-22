@@ -1,5 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { loadAiProfile } from '../compilation/aiProfile'
 import { useAppSettings } from '../../shared/settings/useAppSettings'
+import { AccountSyncSection } from './AccountSyncSection'
+import { SettingsAccountFeatures } from './SettingsAccountFeatures'
 
 export function SettingsPage() {
   const { settings, updateSettings } = useAppSettings()
@@ -8,6 +11,11 @@ export function SettingsPage() {
   useEffect(() => {
     setNameDraft(settings.globalName)
   }, [settings.globalName])
+
+  const aiNameFallback = useMemo(() => {
+    if (settings.globalNameManuallySet || settings.globalName.trim()) return ''
+    return loadAiProfile().displayName.trim()
+  }, [settings.globalName, settings.globalNameManuallySet])
 
   return (
     <div className="space-y-4">
@@ -58,8 +66,11 @@ export function SettingsPage() {
               onChange={(e) => updateSettings({ disablePoints: e.target.checked })}
             />
           </label>
+          <SettingsAccountFeatures />
         </div>
       </section>
+
+      <AccountSyncSection />
 
       <section className="paper rounded-3xl p-6">
         <div className="font-paper text-xl">Profile</div>
@@ -68,14 +79,18 @@ export function SettingsPage() {
           <input
             type="text"
             className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
-            placeholder="e.g. Kiya"
+            placeholder={aiNameFallback || 'e.g. Kiya'}
             maxLength={40}
             value={nameDraft}
             onChange={(e) => setNameDraft(e.target.value)}
-            onBlur={() => updateSettings({ globalName: nameDraft })}
+            onBlur={() =>
+              updateSettings({ globalName: nameDraft, globalNameManuallySet: true })
+            }
           />
           <div className="ink-muted text-xs">
-            Used in RAW export reports only. AI weekly preferences use a separate display name on the Week tab.
+            {aiNameFallback
+              ? `RAW reports use your AI display name (“${aiNameFallback}”) until you set a name here.`
+              : 'Used in RAW export reports only. AI weekly preferences use a separate display name on the Week tab.'}
           </div>
         </label>
       </section>

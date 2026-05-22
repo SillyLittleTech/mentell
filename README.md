@@ -1,4 +1,16 @@
-# React + TypeScript + Vite!
+# Mentell
+
+Personal journaling PWA (React + Vite + Dexie). See [`AGENTS.md`](AGENTS.md) for architecture and dev commands.
+
+**License:** BSD-2-Clause — see [`LICENSE`](LICENSE). A [SillyLittleTech](https://sillylittle.tech) project.
+
+## Optional: Firebase sync + share links
+
+Off by default. Enable with flags in [`.env.example`](.env.example) and full operator steps in [`docs/FIREBASE.md`](docs/FIREBASE.md).
+
+---
+
+# React + TypeScript + Vite (template notes)
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
