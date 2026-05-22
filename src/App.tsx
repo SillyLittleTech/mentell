@@ -133,83 +133,142 @@ function TopBar({
   const { settings } = useAppSettings()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  useEffect(() => {
+    if (!mobileMenuOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false)
+    }
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [mobileMenuOpen])
 
   return (
-    <header className="mx-auto w-full max-w-4xl space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex flex-wrap items-start gap-3">
-          <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3">
-            <img
-              alt=""
-              src={publicUrl('/asset/mentell-icon.png')}
-              className="h-10 w-10 shrink-0 select-none object-contain"
-              draggable={false}
-            />
-            <div>
-              <div className="font-paper text-2xl tracking-tight">Mentell</div>
-              <div className="ink-muted text-sm">local-first stationery journal</div>
+    <>
+      <header className="mx-auto w-full max-w-4xl space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-wrap items-start gap-3">
+            <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3">
+              <img
+                alt=""
+                src={publicUrl('/asset/mentell-icon.png')}
+                className="h-10 w-10 shrink-0 select-none object-contain"
+                draggable={false}
+              />
+              <div>
+                <div className="font-paper text-2xl tracking-tight">Mentell</div>
+                <div className="ink-muted text-sm">local-first stationery journal</div>
+              </div>
             </div>
+
+            {!settings.disablePoints ? (
+              <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
+                <ScoreTicker total={score.total} streak={score.streak} hint={incomingHint} />
+              </div>
+            ) : null}
           </div>
 
-          {!settings.disablePoints ? (
-            <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
-              <ScoreTicker total={score.total} streak={score.streak} hint={incomingHint} />
-            </div>
-          ) : null}
+          <div className="flex items-center gap-2 md:hidden">
+            <ThemeToggleButton mode={mode} onToggle={toggle} />
+            <button
+              type="button"
+              className="focus-ring rounded-xl border border-[var(--paper-border)] bg-[var(--paper-bg)] p-2 text-lg leading-none"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-controls="mobile-nav-drawer"
+              aria-expanded={mobileMenuOpen}
+              aria-label="Open navigation menu"
+            >
+              ☰
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 md:hidden">
-          <ThemeToggleButton mode={mode} onToggle={toggle} />
+        <nav className="paper hidden flex-wrap items-center gap-2 rounded-2xl px-3 py-2 md:flex">
+          <DeskLink to="/" label="Envelope" subtitle="Write" />
+          <DeskLink to="/week" label="Projector" subtitle="Week" />
+          <DeskLink to="/notes" label="Notepad" subtitle="Notes" />
+          <DeskLink to="/shop" label="Shoppe" subtitle="Shop" />
+          <DeskLink to="/settings" label="Settings" subtitle="Prefs" />
+          <ThemeToggleButton mode={mode} onToggle={toggle} className="ml-2" />
+        </nav>
+      </header>
+
+      {mobileMenuOpen ? (
+        <div
+          className="fixed inset-0 z-50 md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+        >
           <button
             type="button"
-            className="focus-ring rounded-xl border border-[var(--paper-border)] bg-[var(--paper-bg)] p-2 text-sm font-semibold"
-            onClick={() => setMobileMenuOpen((open) => !open)}
-            aria-controls="primary-nav"
-            aria-expanded={mobileMenuOpen}
-            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
-          >
-            {mobileMenuOpen ? '✕' : '☰'}
-          </button>
-        </div>
-      </div>
+            className="absolute inset-0 bg-black/45"
+            aria-label="Close navigation menu"
+            onClick={() => setMobileMenuOpen(false)}
+          />
 
-      <nav
-        id="primary-nav"
-        className={`paper w-full rounded-2xl px-3 py-2 ${mobileMenuOpen ? 'flex' : 'hidden'} flex-col gap-2 md:flex md:flex-row md:flex-wrap md:items-center`}
-      >
-        <DeskLink
-          to="/"
-          label="Envelope"
-          subtitle="Write"
-          onNavigate={() => setMobileMenuOpen(false)}
-        />
-        <DeskLink
-          to="/week"
-          label="Projector"
-          subtitle="Week"
-          onNavigate={() => setMobileMenuOpen(false)}
-        />
-        <DeskLink
-          to="/notes"
-          label="Notepad"
-          subtitle="Notes"
-          onNavigate={() => setMobileMenuOpen(false)}
-        />
-        <DeskLink
-          to="/shop"
-          label="Shoppe"
-          subtitle="Shop"
-          onNavigate={() => setMobileMenuOpen(false)}
-        />
-        <DeskLink
-          to="/settings"
-          label="Settings"
-          subtitle="Prefs"
-          onNavigate={() => setMobileMenuOpen(false)}
-        />
-        <ThemeToggleButton mode={mode} onToggle={toggle} className="hidden md:block md:ml-2" />
-      </nav>
-    </header>
+          <div
+            id="mobile-nav-drawer"
+            className="paper absolute right-3 top-3 bottom-3 flex w-[min(20rem,calc(100vw-1.5rem))] flex-col rounded-3xl p-4 shadow-[0_20px_60px_rgba(0,0,0,0.38)]"
+          >
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="font-paper text-xl">Menu</div>
+              <button
+                type="button"
+                className="focus-ring rounded-xl border border-[var(--paper-border)] px-3 py-2 text-sm font-semibold"
+                aria-label="Close navigation menu"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="grid gap-2 overflow-y-auto pr-1">
+              <DeskLink
+                to="/"
+                label="Envelope"
+                subtitle="Write"
+                onNavigate={() => setMobileMenuOpen(false)}
+                className="w-full"
+              />
+              <DeskLink
+                to="/week"
+                label="Projector"
+                subtitle="Week"
+                onNavigate={() => setMobileMenuOpen(false)}
+                className="w-full"
+              />
+              <DeskLink
+                to="/notes"
+                label="Notepad"
+                subtitle="Notes"
+                onNavigate={() => setMobileMenuOpen(false)}
+                className="w-full"
+              />
+              <DeskLink
+                to="/shop"
+                label="Shoppe"
+                subtitle="Shop"
+                onNavigate={() => setMobileMenuOpen(false)}
+                className="w-full"
+              />
+              <DeskLink
+                to="/settings"
+                label="Settings"
+                subtitle="Prefs"
+                onNavigate={() => setMobileMenuOpen(false)}
+                className="w-full"
+              />
+              <ThemeToggleButton mode={mode} onToggle={toggle} className="mt-2 w-full" />
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   )
 }
 
@@ -258,16 +317,18 @@ function DeskLink({
   label,
   subtitle,
   onNavigate,
+  className,
 }: {
   to: string
   label: string
   subtitle: string
   onNavigate?: () => void
+  className?: string
 }) {
   const icon = navIconFor(label)
   return (
     <Link
-      className="focus-ring group w-full rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left hover:-translate-y-[1px] hover:shadow-[0_12px_22px_rgba(0,0,0,0.12)] md:w-auto"
+      className={`focus-ring group rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left hover:-translate-y-[1px] hover:shadow-[0_12px_22px_rgba(0,0,0,0.12)] ${className ?? 'w-full md:w-auto'}`}
       to={to}
       onClick={onNavigate}
     >

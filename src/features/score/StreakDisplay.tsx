@@ -30,7 +30,7 @@ export function StreakDisplay({
   const chipClass = [
     'streak-chip',
     variant === 'chip' ? 'rounded-2xl border border-[var(--paper-border)] px-3 py-2' : '',
-    variant === 'card' ? 'rounded-3xl border border-[var(--paper-border)] p-5' : '',
+    variant === 'card' ? 'rounded-3xl border border-[var(--paper-border)] p-4 sm:p-5' : '',
     pulse && !reducedMotion ? 'streak-chip--pulse' : '',
   ]
     .filter(Boolean)
@@ -39,7 +39,7 @@ export function StreakDisplay({
   const numberClass = [
     'streak-number',
     `streak-number--level-${displayLevel}`,
-    variant === 'chip' ? 'font-mono text-lg font-bold' : 'font-mono text-4xl font-black',
+    variant === 'chip' ? 'font-mono text-lg font-bold' : 'font-mono text-2xl font-black sm:text-3xl md:text-4xl',
   ].join(' ')
 
   return (
@@ -53,7 +53,7 @@ export function StreakDisplay({
       }
     >
       {variant === 'card' ? (
-        <div className="ink-muted text-sm">Current streak</div>
+        <div className="ink-muted text-xs sm:text-sm">Current streak</div>
       ) : (
         <div className="font-mono text-[11px] uppercase opacity-70">streak</div>
       )}

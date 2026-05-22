@@ -7,6 +7,8 @@ const STICKY_WIDTH = 220
 const STICKY_HEIGHT = 220
 const DRAG_MARGIN = 140
 const STICKY_TEXT_COLOR = '#1f1b17'
+const CONTROL_BUTTON_CLASS =
+  'focus-ring rounded-xl border border-black/20 bg-white/35 px-2 py-1 text-sm leading-none'
 
 type DragState = {
   id: string
@@ -64,6 +66,7 @@ export function StickyBoard() {
   }, [drag, stickies])
 
   const beginDrag = (e: React.PointerEvent<HTMLElement>, sticky: StickyRow) => {
+    e.preventDefault()
     const card = (e.target as HTMLElement).closest('[data-sticky-card="true"]') as HTMLDivElement | null
     if (!card) return
     const rect = card.getBoundingClientRect()
@@ -91,7 +94,9 @@ export function StickyBoard() {
         </div>
         <button
           type="button"
-          className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-medium"
+          className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-xl leading-none"
+          aria-label="Add sticky"
+          title="Add sticky"
           onClick={async () => {
             const board = boardRef.current
             const rect = board?.getBoundingClientRect()
@@ -102,7 +107,7 @@ export function StickyBoard() {
             setStickies((all) => [...all, row])
           }}
         >
-          Add sticky
+          📝➕
         </button>
       </div>
 
@@ -117,7 +122,8 @@ export function StickyBoard() {
             style={{ left: s.x, top: s.y, zIndex: s.zIndex }}
           >
             <div
-              className="w-[220px] cursor-grab rounded-3xl border border-black/20 p-4 shadow-[0_10px_30px_rgba(0,0,0,0.18)] active:cursor-grabbing"
+              className="w-[220px] cursor-grab select-none rounded-3xl border border-black/20 p-4 shadow-[0_10px_30px_rgba(0,0,0,0.18)] active:cursor-grabbing"
+              onDragStart={(e) => e.preventDefault()}
               style={{ background: s.color, color: STICKY_TEXT_COLOR, touchAction: 'none' }}
               data-sticky-card="true"
               onPointerDown={(e) => {
@@ -130,28 +136,32 @@ export function StickyBoard() {
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    className="focus-ring rounded-xl border border-black/20 bg-white/35 px-2 py-1 text-xs"
+                    className={CONTROL_BUTTON_CLASS}
+                    aria-label="Change sticky color"
+                    title="Change sticky color"
                     onClick={() => {
                       void cycleColor(s)
                     }}
                   >
-                    Color
+                    🎨
                   </button>
                   <button
                     type="button"
-                    className="focus-ring rounded-xl border border-black/20 bg-white/35 px-2 py-1 text-xs"
+                    className={CONTROL_BUTTON_CLASS}
+                    aria-label="Delete sticky"
+                    title="Delete sticky"
                     onClick={async () => {
                       await deleteSticky(s.id)
                       setStickies((all) => all.filter((x) => x.id !== s.id))
                     }}
                   >
-                    Delete
+                    🗑️
                   </button>
                 </div>
               </div>
 
               <textarea
-                className="mt-3 min-h-[110px] w-full resize-none rounded-2xl bg-white/25 p-1 font-paper text-lg leading-relaxed text-[#1f1b17] outline-none placeholder:text-black/40"
+                className="mt-3 min-h-[110px] w-full resize-none select-text rounded-2xl bg-white/25 p-1 font-paper text-lg leading-relaxed text-[#1f1b17] outline-none placeholder:text-black/40"
                 value={s.text}
                 onChange={(e) => {
                   const v = e.target.value
@@ -164,12 +174,14 @@ export function StickyBoard() {
 
               <button
                 type="button"
-                className="focus-ring mt-2 w-full cursor-grab rounded-2xl border border-black/20 bg-white/35 px-3 py-2 text-xs font-medium active:cursor-grabbing"
+                className="focus-ring mt-2 w-full cursor-grab rounded-2xl border border-black/20 bg-white/35 px-3 py-2 text-sm leading-none active:cursor-grabbing"
+                aria-label="Drag sticky"
+                title="Drag sticky"
                 onPointerDown={(e) => {
                   beginDrag(e, s)
                 }}
               >
-                Drag
+                ✥
               </button>
             </div>
           </div>
