@@ -1,11 +1,11 @@
 import { eachWeekOfInterval, endOfWeek, format, parseISO, startOfWeek, subWeeks } from 'date-fns'
-import { db } from '../../db/schema'
+import { getDb } from '../../db/schema'
 import { ensurePackage } from './packageService'
 import { weekKeyForDateKey } from '../compilation/weeklyStats'
 
 export async function generateDuePackages(now: Date = new Date()) {
-  const first = await db.entries.orderBy('dateKey').first()
-  const last = await db.entries.orderBy('dateKey').last()
+  const first = await getDb().entries.orderBy('dateKey').first()
+  const last = await getDb().entries.orderBy('dateKey').last()
   if (!first || !last) return
 
   // Only generate *completed* weeks (previous week and earlier).
@@ -25,7 +25,7 @@ export async function generateDuePackages(now: Date = new Date()) {
     const startKey = format(wStart, 'yyyy-MM-dd')
     const endKey = format(wEnd, 'yyyy-MM-dd')
 
-    const count = await db.entries.where('dateKey').between(startKey, endKey, true, true).count()
+    const count = await getDb().entries.where('dateKey').between(startKey, endKey, true, true).count()
     if (count <= 0) continue
     await ensurePackage('weekly', weekKeyForDateKey(startKey))
   }

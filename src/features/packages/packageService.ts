@@ -1,10 +1,10 @@
-import { db, type PackageKind, type PackageRow } from '../../db/schema'
+import { getDb, type PackageKind, type PackageRow } from '../../db/schema'
 import { makeId } from '../../shared/id'
 import { awardForPackageOpen } from '../score/scoreService'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
 export async function ensurePackage(kind: PackageKind, periodKey: string) {
-  const existing = await db.packages.where({ kind, periodKey }).first()
+  const existing = await getDb().packages.where({ kind, periodKey }).first()
   if (existing) return existing
   const now = Date.now()
   const row: PackageRow = {
@@ -14,19 +14,19 @@ export async function ensurePackage(kind: PackageKind, periodKey: string) {
     createdAt: now,
     updatedAt: now,
   }
-  await db.packages.put(row)
+  await getDb().packages.put(row)
   notifyLocalDataChanged()
   return row
 }
 
 export async function markPackageOpened(id: string) {
-  const pkg = await db.packages.get(id)
+  const pkg = await getDb().packages.get(id)
   if (!pkg) return { awarded: false as const, delta: 0, hint: null as string | null }
   if (pkg.openedAt) return { awarded: false as const, delta: 0, hint: null as string | null }
 
   const award = awardForPackageOpen(pkg.kind)
   const now = Date.now()
-  await db.packages.update(id, {
+  await getDb().packages.update(id, {
     openedAt: now,
     openedScoreDelta: award.delta,
     updatedAt: now,
@@ -36,12 +36,12 @@ export async function markPackageOpened(id: string) {
 }
 
 export async function getUnopenedPackages() {
-  const all = await db.packages.toArray()
+  const all = await getDb().packages.toArray()
   return all.filter((p) => !p.openedAt).sort((a, b) => b.createdAt - a.createdAt)
 }
 
 export async function hasDeliveredWeeklyPackage() {
-  const count = await db.packages.where('kind').equals('weekly').count()
+  const count = await getDb().packages.where('kind').equals('weekly').count()
   return count > 0
 }
 

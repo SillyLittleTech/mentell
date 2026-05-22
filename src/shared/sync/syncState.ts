@@ -1,4 +1,6 @@
-const SYNC_STATE_KEY = 'mentell.sync'
+import { scopedStorageKey } from '../storage/storageScope'
+
+const SYNC_STATE_KEY = scopedStorageKey('mentell.sync')
 
 export type SyncState = {
   enabled: boolean

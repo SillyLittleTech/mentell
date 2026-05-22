@@ -1,0 +1,189 @@
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { StickyRow } from '../../db/schema'
+import { LOCAL_DATA_CHANGED_EVENT } from '../../shared/sync/localDataEvents'
+import {
+  clampStickyPosition,
+  stickyDisplayPosition,
+} from './stickyCoords'
+import { deleteSticky, listStickies, updateSticky } from './stickiesService'
+
+const STICKY_TEXT_COLOR = '#1f1b17'
+const CONTROL_BUTTON_CLASS =
+  'focus-ring rounded-xl border border-black/20 bg-white/35 px-2 py-1 text-sm leading-none'
+
+type DragState = {
+  id: string
+  offsetX: number
+  offsetY: number
+}
+
+export function StickyLayer() {
+  const [stickies, setStickies] = useState<StickyRow[]>([])
+  const [drag, setDrag] = useState<DragState | null>(null)
+
+  const refresh = useCallback(() => {
+    void listStickies().then(setStickies)
+  }, [])
+
+  useEffect(() => {
+    refresh()
+    const onData = () => refresh()
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, onData)
+    return () => window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, onData)
+  }, [refresh])
+
+  const maxZ = useMemo(() => Math.max(0, ...stickies.map((s) => s.zIndex)), [stickies])
+
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
+      if (!drag) return
+      const rawX = e.clientX - drag.offsetX
+      const rawY = e.clientY - drag.offsetY
+      const { x, y } = clampStickyPosition(rawX, rawY)
+
+      setStickies((all) =>
+        all.map((s) =>
+          s.id === drag.id
+            ? {
+                ...s,
+                x,
+                y,
+                coordSpace: 'viewport' as const,
+              }
+            : s,
+        ),
+      )
+    }
+
+    const onUp = async () => {
+      if (!drag) return
+      const s = stickies.find((x) => x.id === drag.id)
+      setDrag(null)
+      if (!s) return
+      await updateSticky(s.id, { x: s.x, y: s.y, coordSpace: 'viewport' })
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+  }, [drag, stickies])
+
+  const beginDrag = (e: React.PointerEvent<HTMLElement>, sticky: StickyRow) => {
+    e.preventDefault()
+    const card = (e.target as HTMLElement).closest('[data-sticky-card="true"]') as HTMLDivElement | null
+    if (!card) return
+    const rect = card.getBoundingClientRect()
+    const offsetX = e.clientX - rect.left
+    const offsetY = e.clientY - rect.top
+    const nextZ = maxZ + 1
+    const pos = stickyDisplayPosition(sticky)
+    setStickies((all) =>
+      all.map((x) =>
+        x.id === sticky.id
+          ? { ...x, x: pos.x, y: pos.y, zIndex: nextZ, coordSpace: 'viewport' as const }
+          : x,
+      ),
+    )
+    setDrag({ id: sticky.id, offsetX, offsetY })
+    void updateSticky(sticky.id, { zIndex: nextZ, coordSpace: 'viewport' })
+  }
+
+  const cycleColor = async (sticky: StickyRow) => {
+    const COLORS = ['#fbf4de', '#ffe2e2', '#e6fff0', '#e9f1ff', '#fff0c8']
+    const index = COLORS.indexOf(sticky.color)
+    const color = COLORS[(index + 1 + COLORS.length) % COLORS.length] ?? COLORS[0]!
+    setStickies((all) => all.map((x) => (x.id === sticky.id ? { ...x, color } : x)))
+    await updateSticky(sticky.id, { color })
+  }
+
+  if (stickies.length === 0) return null
+
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 z-20"
+      aria-hidden={false}
+    >
+      {stickies.map((s) => {
+        const pos = stickyDisplayPosition(s)
+        const display =
+          drag?.id === s.id
+            ? { x: s.x, y: s.y }
+            : pos
+        return (
+          <div
+            key={s.id}
+            className="pointer-events-auto absolute"
+            style={{ left: display.x, top: display.y, zIndex: s.zIndex }}
+          >
+            <div
+              className="w-[220px] cursor-grab select-none rounded-3xl border border-black/20 p-4 shadow-[0_10px_30px_rgba(0,0,0,0.18)] active:cursor-grabbing"
+              onDragStart={(e) => e.preventDefault()}
+              style={{ background: s.color, color: STICKY_TEXT_COLOR, touchAction: 'none' }}
+              data-sticky-card="true"
+              onPointerDown={(e) => {
+                if ((e.target as HTMLElement).closest('textarea,button')) return
+                beginDrag(e, s)
+              }}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-mono text-xs opacity-70">sticky</div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    className={CONTROL_BUTTON_CLASS}
+                    aria-label="Change sticky color"
+                    title="Change sticky color"
+                    onClick={() => {
+                      void cycleColor(s)
+                    }}
+                  >
+                    🎨
+                  </button>
+                  <button
+                    type="button"
+                    className={CONTROL_BUTTON_CLASS}
+                    aria-label="Delete sticky"
+                    title="Delete sticky"
+                    onClick={async () => {
+                      await deleteSticky(s.id)
+                      setStickies((all) => all.filter((x) => x.id !== s.id))
+                    }}
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+
+              <textarea
+                className="mt-3 min-h-[110px] w-full resize-none select-text rounded-2xl bg-white/25 p-1 font-paper text-lg leading-relaxed text-[#1f1b17] outline-none placeholder:text-black/40"
+                value={s.text}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setStickies((all) => all.map((x) => (x.id === s.id ? { ...x, text: v } : x)))
+                }}
+                onBlur={async () => {
+                  await updateSticky(s.id, { text: s.text })
+                }}
+              />
+
+              <button
+                type="button"
+                className="focus-ring mt-2 w-full cursor-grab rounded-2xl border border-black/20 bg-white/35 px-3 py-2 text-sm leading-none active:cursor-grabbing"
+                aria-label="Drag sticky"
+                title="Drag sticky"
+                onPointerDown={(e) => {
+                  beginDrag(e, s)
+                }}
+              >
+                ✥
+              </button>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}

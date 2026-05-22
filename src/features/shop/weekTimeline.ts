@@ -1,5 +1,5 @@
 import { addDays, format, parseISO, startOfWeek } from 'date-fns'
-import { db } from '../../db/schema'
+import { getDb } from '../../db/schema'
 import { dateKeyForLocalDay } from '../../shared/dates'
 
 export type WeekDayStatus = 'completed' | 'missed' | 'noData'
@@ -22,14 +22,14 @@ export async function getWeekTimelineDays(
   const todayKey = dateKeyForLocalDay(new Date())
 
   const weekEndKey = toDateKey(addDays(weekStart, 6))
-  const entries = await db.entries
+  const entries = await getDb().entries
     .where('dateKey')
     .between(toDateKey(weekStart), weekEndKey, true, true)
     .toArray()
 
   const completedKeys = new Set(entries.map((e) => e.dateKey))
 
-  const firstRow = await db.entries.orderBy('dateKey').first()
+  const firstRow = await getDb().entries.orderBy('dateKey').first()
   const firstEntryDate = firstRow?.dateKey ?? null
 
   const days: WeekTimelineDay[] = []

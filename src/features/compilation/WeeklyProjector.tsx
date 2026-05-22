@@ -93,12 +93,6 @@ export function WeeklyProjector() {
       window.clearInterval(id)
     }
   }, [todayKey, aiEnabled, profile, mode, restoreCachedSummary])
-
-  useEffect(() => {
-    if (!stats) return
-    restoreCachedSummary(stats, profile, mode)
-  }, [mode, stats, profile, restoreCachedSummary])
-
   useEffect(() => {
     const onScore = () => setScore(getScoreSnapshot())
     window.addEventListener(SCORE_CHANGED_EVENT, onScore)
@@ -164,7 +158,7 @@ export function WeeklyProjector() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <StatChip label="+">{stats.positives}</StatChip>
             <StatChip label="=">{stats.mixed}</StatChip>
             <StatChip label="-">{stats.negatives}</StatChip>
@@ -172,7 +166,7 @@ export function WeeklyProjector() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-3 md:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
           <ProjectorCard title="Entries logged" value={stats.total} />
           <ProjectorCard title="Warnings flagged" value={stats.warnings} />
           <ProjectorCard title="Current score" value={score.total} />
@@ -499,18 +493,18 @@ function labelForEmotion(emotion: string) {
 
 function StatChip({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-3 py-2">
-      <div className="font-mono text-xl">{label}</div>
-      <div className="text-sm font-medium">{children}</div>
+    <div className="flex min-w-[3.5rem] items-center gap-1.5 rounded-2xl border border-[var(--paper-border)] px-2 py-1.5 sm:px-3 sm:py-2">
+      <div className="font-mono text-base sm:text-lg">{label}</div>
+      <div className="text-xs font-medium sm:text-sm">{children}</div>
     </div>
   )
 }
 
 function ProjectorCard({ title, value }: { title: string; value: number }) {
   return (
-    <div className="rounded-3xl border border-[var(--paper-border)] p-5">
-      <div className="ink-muted text-sm">{title}</div>
-      <div className="mt-2 font-mono text-4xl font-black">{value}</div>
+    <div className="rounded-3xl border border-[var(--paper-border)] p-4 sm:p-5">
+      <div className="ink-muted text-xs sm:text-sm">{title}</div>
+      <div className="mt-2 font-mono text-2xl font-black leading-none sm:text-3xl md:text-4xl">{value}</div>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { endOfWeek, format, parseISO, startOfWeek } from 'date-fns'
-import { db, type EntryRow } from '../../db/schema'
+import { getDb, type EntryRow } from '../../db/schema'
 
 export type WeeklyStats = {
   weekKey: string
@@ -32,7 +32,7 @@ export async function getWeeklyStatsForDateKey(dateKey: string): Promise<WeeklyS
   const endKey = toDateKey(end)
 
   const entries = (
-    await db.entries.where('dateKey').between(startKey, endKey, true, true).toArray()
+    await getDb().entries.where('dateKey').between(startKey, endKey, true, true).toArray()
   ).sort((a, b) => b.createdAt - a.createdAt)
 
   let positives = 0

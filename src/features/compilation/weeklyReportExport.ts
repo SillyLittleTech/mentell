@@ -1,5 +1,5 @@
 import { endOfWeek, format, parseISO, startOfWeek, subWeeks } from 'date-fns'
-import { db, type EntryRow } from '../../db/schema'
+import { getDb, type EntryRow } from '../../db/schema'
 import { getEffectiveGlobalName } from '../../shared/settings/effectiveGlobalName'
 import { weekKeyForDateKey } from './weeklyStats'
 
@@ -14,7 +14,7 @@ export async function fetchEntriesForRange(
   anchorDateKey: string,
 ): Promise<EntryRow[]> {
   if (range === 'all') {
-    return db.entries.orderBy('dateKey').toArray()
+    return getDb().entries.orderBy('dateKey').toArray()
   }
 
   const anchor = parseISO(anchorDateKey)
@@ -23,14 +23,14 @@ export async function fetchEntriesForRange(
 
   if (range === 'week') {
     const weekStart = startOfWeek(anchor, { weekStartsOn: 1 })
-    return db.entries
+    return getDb().entries
       .where('dateKey')
       .between(toDateKey(weekStart), endKey, true, true)
       .toArray()
   }
 
   const startKey = toDateKey(startOfWeek(subWeeks(anchor, 4), { weekStartsOn: 1 }))
-  return db.entries.where('dateKey').between(startKey, endKey, true, true).toArray()
+  return getDb().entries.where('dateKey').between(startKey, endKey, true, true).toArray()
 }
 
 function countSentiments(entries: EntryRow[]) {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { db } from '../../db/schema'
+import { getDb } from '../../db/schema'
 import { makeId } from '../../shared/id'
 import {
   getForcePackages,
@@ -15,6 +15,7 @@ import { ensurePackage } from '../packages/packageService'
 import { clearCatCollection } from '../shop/catCollection'
 import { requestNotificationsPermission } from '../../pwa/notifications'
 import { notifyScoreChanged } from '../score/scoreEvents'
+import { dexieDatabaseName, scopedStorageKey } from '../../shared/storage/storageScope'
 
 export function DebugPanel() {
   const enabled = useMemo(() => isDebugMode(), [])
@@ -38,24 +39,25 @@ export function DebugPanel() {
   } | null>(null)
 
   async function refreshInspector() {
+    const database = getDb()
     const [entries, notes, stickies, packages] = await Promise.all([
-      db.entries.count(),
-      db.notes.count(),
-      db.stickies.count(),
-      db.packages.count(),
+      database.entries.count(),
+      database.notes.count(),
+      database.stickies.count(),
+      database.packages.count(),
     ])
 
-    const recentEntriesRows = await db.entries.orderBy('createdAt').reverse().limit(6).toArray()
-    const recentPackagesRows = await db.packages.orderBy('createdAt').reverse().limit(6).toArray()
+    const recentEntriesRows = await database.entries.orderBy('createdAt').reverse().limit(6).toArray()
+    const recentPackagesRows = await database.packages.orderBy('createdAt').reverse().limit(6).toArray()
 
     setInspector({
       entries,
       notes,
       stickies,
       packages,
-      scoreTotal: localStorage.getItem('mentell.score.total'),
-      scoreStreak: localStorage.getItem('mentell.score.streak'),
-      lastDay: localStorage.getItem('mentell.score.lastDay'),
+      scoreTotal: localStorage.getItem(scopedStorageKey('mentell.score.total')),
+      scoreStreak: localStorage.getItem(scopedStorageKey('mentell.score.streak')),
+      lastDay: localStorage.getItem(scopedStorageKey('mentell.score.lastDay')),
       recentEntries: recentEntriesRows.map((e) => ({
         dateKey: e.dateKey,
         sentiment: e.sentiment,
@@ -121,7 +123,7 @@ export function DebugPanel() {
                 </button>
               </div>
               <div className="ink-muted mt-1 text-xs">
-                Local-only helpers · Esc or backdrop to dismiss
+                Isolated debug storage ({dexieDatabaseName()}) · Esc or backdrop to dismiss
               </div>
             </div>
 
@@ -298,8 +300,8 @@ export function DebugPanel() {
                       const streakRaw = debugStreak.trim() || inspector?.scoreStreak || '0'
                       const total = Math.max(0, Math.trunc(Number(totalRaw)) || 0)
                       const streak = Math.max(0, Math.trunc(Number(streakRaw)) || 0)
-                      localStorage.setItem('mentell.score.total', String(total))
-                      localStorage.setItem('mentell.score.streak', String(streak))
+                      localStorage.setItem(scopedStorageKey('mentell.score.total'), String(total))
+                      localStorage.setItem(scopedStorageKey('mentell.score.streak'), String(streak))
                       notifyScoreChanged()
                       setDebugScore('')
                       setDebugStreak('')
@@ -411,13 +413,14 @@ export function DebugPanel() {
               onClick={async () => {
                 setBusy(true)
                 try {
-                  await db.entries.clear()
-                  await db.notes.clear()
-                  await db.stickies.clear()
-                  await db.packages.clear()
-                  localStorage.removeItem('mentell.score.total')
-                  localStorage.removeItem('mentell.score.streak')
-                  localStorage.removeItem('mentell.score.lastDay')
+                  const database = getDb()
+                  await database.entries.clear()
+                  await database.notes.clear()
+                  await database.stickies.clear()
+                  await database.packages.clear()
+                  localStorage.removeItem(scopedStorageKey('mentell.score.total'))
+                  localStorage.removeItem(scopedStorageKey('mentell.score.streak'))
+                  localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))
                   window.location.reload()
                 } finally {
                   setBusy(false)
@@ -433,9 +436,9 @@ export function DebugPanel() {
               disabled={busy}
               className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
               onClick={async () => {
-                localStorage.removeItem('mentell.score.total')
-                localStorage.removeItem('mentell.score.streak')
-                localStorage.removeItem('mentell.score.lastDay')
+                localStorage.removeItem(scopedStorageKey('mentell.score.total'))
+                localStorage.removeItem(scopedStorageKey('mentell.score.streak'))
+                localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))
                 await refreshInspector()
               }}
             >
@@ -466,7 +469,7 @@ export function DebugPanel() {
                     scoreDelta: 100,
                     streakAtSubmit: 1,
                   })
-                  await db.entries.bulkPut([
+                  await getDb().entries.bulkPut([
                     mk('2026-05-18', '+'),
                     mk('2026-05-19', '='),
                     mk('2026-05-20', '-'),

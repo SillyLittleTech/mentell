@@ -1,5 +1,6 @@
 import type { EntryRow } from '../../db/schema'
 import { isAiEnabledLocally } from '../../shared/settings/appSettings'
+import { scopedStorageKey } from '../../shared/storage/storageScope'
 import type { AiProfile } from './aiProfile'
 import { sanitizeAiProfile } from './aiProfile'
 import {
@@ -10,7 +11,7 @@ import { weekKeyForDateKey } from './weeklyStats'
 
 const HOUR_LIMIT = 24
 const DAY_LIMIT = 80
-const RATE_KEY = 'mentell.ai.weekly.rate'
+const RATE_KEY = scopedStorageKey('mentell.ai.weekly.rate')
 
 export type AiSummaryMode = 'reflection' | 'overview'
 

@@ -84,6 +84,12 @@ npm run dev
 
 Add `localhost` under **Authorized domains** if you test email links locally.
 
+## Debug builds (`npm run dev:debug`)
+
+- Uses [`DebugAuthProvider`](../src/shared/firebase/DebugAuthProvider.tsx): **no** Google/email sign-in UI; Firebase Auth uses **in-memory** persistence so sessions do not leak into `npm run dev`.
+- On load: signs out any existing user, then `signInAnonymously()` with display name `DEBUGGER` (Firestore path `users/{anonymousUid}/`), or `signInWithCustomToken` when `VITE_DEBUG_FIREBASE_CUSTOM_TOKEN` is set.
+- **Fixed uid `DEBUGGER`:** mint a custom token with the Firebase Admin SDK (`uid: 'DEBUGGER'`), add to `.env.local` as `VITE_DEBUG_FIREBASE_CUSTOM_TOKEN=…`. Firestore rules already allow `request.auth.uid == userId`.
+
 ## GitHub Pages CI
 
 Add **Repository variables** (Settings → Actions → Variables) matching `.env.local` when enabling cloud features in production builds. Update [`.github/workflows/gh-pages.yml`](../.github/workflows/gh-pages.yml) — already wired for optional vars.

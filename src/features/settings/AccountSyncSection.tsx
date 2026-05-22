@@ -1,10 +1,12 @@
 import { format } from 'date-fns'
 import { useState } from 'react'
+import { isDebugMode } from '../../shared/debug/debugFlags'
 import { isFirebaseEnabled, isFirebaseSyncEnabled } from '../../shared/features/featureFlags'
 import { useAuthOptional } from '../../shared/firebase/AuthProvider'
 import { AccountSignInPanel } from './AccountSignInPanel'
 
 export function AccountSyncSection() {
+  if (isDebugMode()) return null
   if (!isFirebaseEnabled()) return null
 
   const auth = useAuthOptional()

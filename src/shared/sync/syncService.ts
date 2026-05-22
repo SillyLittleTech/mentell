@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -8,7 +9,15 @@ import {
   type DocumentData,
   type Unsubscribe,
 } from 'firebase/firestore'
-import { db, type EntryRow, type NoteRow, type PackageRow, type StickyRow } from '../../db/schema'
+import {
+  getDb,
+  type EntryRow,
+  type MentellDB,
+  type NoteRow,
+  type PackageRow,
+  type StickyRow,
+} from '../../db/schema'
+import { scopedStorageKey } from '../storage/storageScope'
 import { getFirebaseFirestore } from '../firebase/firebaseApp'
 import { isFirebaseSyncEnabled } from '../features/featureFlags'
 import { loadSyncState, saveSyncState } from './syncState'
@@ -49,28 +58,28 @@ function pickNewer<T extends { id: string; updatedAt?: number; createdAt: number
 
 async function mergeEntry(local: EntryRow | undefined, remote: EntryRow) {
   const chosen = pickNewer(local, remote)
-  await db.entries.put(chosen)
+  await getDb().entries.put(chosen)
 }
 
 async function mergeNote(local: NoteRow | undefined, remote: NoteRow) {
   const chosen = pickNewer(local, remote)
-  await db.notes.put(chosen)
+  await getDb().notes.put(chosen)
 }
 
 async function mergeSticky(local: StickyRow | undefined, remote: StickyRow) {
   const chosen = pickNewer(local, remote)
-  await db.stickies.put(chosen)
+  await getDb().stickies.put(chosen)
 }
 
 async function mergePackage(local: PackageRow | undefined, remote: PackageRow) {
   const chosen = pickNewer(local, remote)
-  await db.packages.put(chosen)
+  await getDb().packages.put(chosen)
 }
 
 async function pullCollection<T extends { id: string; updatedAt?: number; createdAt: number }>(
   uid: string,
   name: 'entries' | 'notes' | 'stickies' | 'packages',
-  table: typeof db.entries | typeof db.notes | typeof db.stickies | typeof db.packages,
+  table: MentellDB['entries'] | MentellDB['notes'] | MentellDB['stickies'] | MentellDB['packages'],
   merge: (local: T | undefined, remote: T) => Promise<void>,
 ) {
   const snap = await getDocs(collection(fs(), 'users', uid, name))
@@ -90,14 +99,14 @@ async function pullMeta(uid: string) {
       lastDay?: string | null
     }
     if (typeof data.total === 'number') {
-      localStorage.setItem('mentell.score.total', String(Math.trunc(data.total)))
+      localStorage.setItem(scopedStorageKey('mentell.score.total'), String(Math.trunc(data.total)))
     }
     if (typeof data.streak === 'number') {
-      localStorage.setItem('mentell.score.streak', String(Math.trunc(data.streak)))
+      localStorage.setItem(scopedStorageKey('mentell.score.streak'), String(Math.trunc(data.streak)))
     }
     if (data.lastDay === null || typeof data.lastDay === 'string') {
-      if (data.lastDay) localStorage.setItem('mentell.score.lastDay', data.lastDay)
-      else localStorage.removeItem('mentell.score.lastDay')
+      if (data.lastDay) localStorage.setItem(scopedStorageKey('mentell.score.lastDay'), data.lastDay)
+      else localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))
     }
   }
 
@@ -105,7 +114,7 @@ async function pullMeta(uid: string) {
   if (settingsSnap.exists()) {
     const data = settingsSnap.data() as { settings?: AppSettings }
     if (data.settings) {
-      localStorage.setItem('mentell.settings', JSON.stringify(data.settings))
+      localStorage.setItem(scopedStorageKey('mentell.settings'), JSON.stringify(data.settings))
       window.dispatchEvent(
         new CustomEvent('mentell:settings-changed', { detail: data.settings }),
       )
@@ -116,7 +125,7 @@ async function pullMeta(uid: string) {
   if (profileSnap.exists()) {
     const data = profileSnap.data() as { profile?: AiProfile }
     if (data.profile) {
-      localStorage.setItem('mentell.ai.profile', JSON.stringify(data.profile))
+      localStorage.setItem(scopedStorageKey('mentell.ai.profile'), JSON.stringify(data.profile))
     }
   }
 
@@ -124,7 +133,7 @@ async function pullMeta(uid: string) {
   if (catsSnap.exists()) {
     const data = catsSnap.data() as { cats?: unknown }
     if (data.cats) {
-      localStorage.setItem('mentell.shop.cats', JSON.stringify(data.cats))
+      localStorage.setItem(scopedStorageKey('mentell.shop.cats'), JSON.stringify(data.cats))
     }
   }
 }
@@ -133,12 +142,22 @@ async function pushCollection<T extends { id: string; updatedAt?: number; create
   uid: string,
   name: 'entries' | 'notes' | 'stickies' | 'packages',
   rows: T[],
+  options?: { deleteRemoteMissing?: boolean },
 ) {
-  await Promise.all(
-    rows.map((row) =>
-      setDoc(userRef(uid, name, row.id), row as DocumentData, { merge: true }),
-    ),
+  const writes = rows.map((row) =>
+    setDoc(userRef(uid, name, row.id), row as DocumentData, { merge: true }),
   )
+  if (!options?.deleteRemoteMissing) {
+    await Promise.all(writes)
+    return
+  }
+
+  const localIds = new Set(rows.map((row) => row.id))
+  const remoteSnap = await getDocs(collection(fs(), 'users', uid, name))
+  const deletes = remoteSnap.docs
+    .filter((docSnap) => !localIds.has(docSnap.id))
+    .map((docSnap) => deleteDoc(docSnap.ref))
+  await Promise.all([...writes, ...deletes])
 }
 
 async function pushMeta(uid: string) {
@@ -176,15 +195,15 @@ async function pushMeta(uid: string) {
 
 export async function pushLocalToCloud(uid: string) {
   const [entries, notes, stickies, packages] = await Promise.all([
-    db.entries.toArray(),
-    db.notes.toArray(),
-    db.stickies.toArray(),
-    db.packages.toArray(),
+    getDb().entries.toArray(),
+    getDb().notes.toArray(),
+    getDb().stickies.toArray(),
+    getDb().packages.toArray(),
   ])
   await Promise.all([
     pushCollection(uid, 'entries', entries),
-    pushCollection(uid, 'notes', notes),
-    pushCollection(uid, 'stickies', stickies),
+    pushCollection(uid, 'notes', notes, { deleteRemoteMissing: true }),
+    pushCollection(uid, 'stickies', stickies, { deleteRemoteMissing: true }),
     pushCollection(uid, 'packages', packages),
     pushMeta(uid),
   ])
@@ -192,10 +211,10 @@ export async function pushLocalToCloud(uid: string) {
 
 export async function pullAndMerge(uid: string) {
   await Promise.all([
-    pullCollection(uid, 'entries', db.entries, mergeEntry),
-    pullCollection(uid, 'notes', db.notes, mergeNote),
-    pullCollection(uid, 'stickies', db.stickies, mergeSticky),
-    pullCollection(uid, 'packages', db.packages, mergePackage),
+    pullCollection(uid, 'entries', getDb().entries, mergeEntry),
+    pullCollection(uid, 'notes', getDb().notes, mergeNote),
+    pullCollection(uid, 'stickies', getDb().stickies, mergeSticky),
+    pullCollection(uid, 'packages', getDb().packages, mergePackage),
   ])
   await pullMeta(uid)
   window.dispatchEvent(new CustomEvent('mentell:score-changed'))
@@ -204,7 +223,7 @@ export async function pullAndMerge(uid: string) {
 function watchCollection<T extends { id: string }>(
   uid: string,
   name: 'entries' | 'notes' | 'stickies' | 'packages',
-  table: typeof db.entries | typeof db.notes | typeof db.stickies | typeof db.packages,
+  table: MentellDB['entries'] | MentellDB['notes'] | MentellDB['stickies'] | MentellDB['packages'],
   merge: (local: T | undefined, remote: T) => Promise<void>,
 ) {
   return onSnapshot(collection(fs(), 'users', uid, name), (snap) => {
@@ -227,10 +246,10 @@ function watchCollection<T extends { id: string }>(
 function startListeners(uid: string) {
   stopListeners()
   unsubs = [
-    watchCollection(uid, 'entries', db.entries, mergeEntry),
-    watchCollection(uid, 'notes', db.notes, mergeNote),
-    watchCollection(uid, 'stickies', db.stickies, mergeSticky),
-    watchCollection(uid, 'packages', db.packages, mergePackage),
+    watchCollection(uid, 'entries', getDb().entries, mergeEntry),
+    watchCollection(uid, 'notes', getDb().notes, mergeNote),
+    watchCollection(uid, 'stickies', getDb().stickies, mergeSticky),
+    watchCollection(uid, 'packages', getDb().packages, mergePackage),
   ]
 }
 
@@ -247,7 +266,7 @@ export async function enableSync(uid: string, opts?: { forcePush?: boolean }) {
     if (opts?.forcePush) {
       await pushLocalToCloud(uid)
     } else {
-      const localEntries = await db.entries.count()
+      const localEntries = await getDb().entries.count()
       const remoteEntries = (await getDocs(collection(fs(), 'users', uid, 'entries'))).size
       if (localEntries > 0 && remoteEntries === 0) {
         await pushLocalToCloud(uid)

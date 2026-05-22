@@ -1,10 +1,11 @@
 import type { EntryRow } from '../../db/schema'
 import { getSkipAiCache, isDebugMode } from '../../shared/debug/debugFlags'
+import { scopedStorageKey } from '../../shared/storage/storageScope'
 import type { AiProfile } from './aiProfile'
 import { profileFingerprint } from './aiProfile'
 import type { AiSummaryMode } from './weeklyAiSummary'
 
-const CACHE_KEY = 'mentell.ai.weekly.cache'
+const CACHE_KEY = scopedStorageKey('mentell.ai.weekly.cache')
 
 export type WeeklyAiCacheEntry = {
   weekKey: string

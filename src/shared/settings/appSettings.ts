@@ -1,6 +1,7 @@
 import { notifyLocalDataChanged } from '../sync/localDataEvents'
+import { scopedStorageKey } from '../storage/storageScope'
 
-const SETTINGS_KEY = 'mentell.settings'
+const SETTINGS_KEY = scopedStorageKey('mentell.settings')
 const SETTINGS_EVENT = 'mentell:settings-changed'
 
 export type AppSettings = {
