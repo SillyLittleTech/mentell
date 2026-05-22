@@ -21,6 +21,7 @@ All commands are defined in `package.json` scripts:
 | Install deps | `npm install` |
 | Sync UI assets | `npm run sync:assets` (`asset/` → `public/asset/`) |
 | Dev server | `npm run dev` (Vite on port 5173) |
+| Debug dev server | `npm run dev:debug` (isolated `mentell-debug` IndexedDB + scoped localStorage) |
 | Lint | `npm run lint` (ESLint) |
 | Type check | `npx tsc -b` |
 | Build (production, includes PWA) | `npm run build` (tsc + vite build; **~30s after** `✓ built` while PWA generates — looks hung) |
@@ -81,6 +82,22 @@ Source is **BSD-2-Clause** — see [`LICENSE`](LICENSE). Footer legal copy match
 
 In-app page: [`src/features/legal/PrivacyPolicyPage.tsx`](src/features/legal/PrivacyPolicyPage.tsx) at `/privacy`. Links to [SillyLittleTech Privacy Policy](https://sillylittle.tech/policy). Mentell-specific sections cover individual-use (not HIPAA for providers), optional Firebase Auth/sync/share, and optional Cloudflare Workers AI. Update this page when cloud feature flags or data flows change.
 
+### Stickies
+
+- Global overlay: [`StickyLayer`](src/features/stickies/StickyLayer.tsx) mounted in [`App.tsx`](src/App.tsx) — visible on all routes; positions are viewport `x`/`y` in Dexie (`coordSpace: 'viewport'`).
+- Add/manage UI on Notes only: [`StickyDock`](src/features/stickies/StickyDock.tsx).
+
+### Debug mode storage
+
+- `npm run dev:debug` / `build:debug` use Dexie DB **`mentell-debug`** and localStorage keys prefixed `mentell.debug-data.*` via [`storageScope.ts`](src/shared/storage/storageScope.ts). Production `npm run dev` uses **`mentell`** — seed/clear in the debug panel does not touch prod journal data on the same origin.
+- Theme (`mentell.theme`) and debug toggles (`mentell.debug.*`) stay unscoped.
+- Debug builds skip PWA registration in [`main.tsx`](src/main.tsx).
+
+### Debug mode Firebase
+
+- [`DebugAuthProvider`](src/shared/firebase/DebugAuthProvider.tsx): in-memory auth, signs out any prod session, auto sandbox sign-in (anonymous + displayName `DEBUGGER`, or `VITE_DEBUG_FIREBASE_CUSTOM_TOKEN` for fixed uid `DEBUGGER`). Standard sign-in UI is hidden.
+- See [`docs/FIREBASE.md`](docs/FIREBASE.md) for optional custom token setup.
+
 ### Motion
 
 - **Route transitions:** Wrap route trees in [`AnimatedRoutes`](src/shared/motion/AnimatedRoutes.tsx) (fade + slight vertical slide). Keep [`AppLegalFooter`](src/components/AppLegalFooter.tsx) **outside** the animated wrapper so the footer does not re-animate on every tab.
@@ -93,4 +110,4 @@ In-app page: [`src/features/legal/PrivacyPolicyPage.tsx`](src/features/legal/Pri
 - The app uses Vite 8 with `vite-plugin-pwa`; the service worker is generated at build time only (not during dev). PWA features cannot be tested with `npm run dev`.
 - **`npm run build` appears to hang** after printing `✓ built in …` — the process is still running **PWA/service-worker generation** with no further stdout for 20–40s. Use `npm run build:check` when you only need a quick compile verification.
 - Use `npm run dev -- --host 0.0.0.0` to expose the dev server on all interfaces (needed in cloud/container environments).
-- Debug mode: `npm run dev:debug` or `npm run build:debug` enables a debug panel via Vite's `--mode debug`.
+- Debug mode: `npm run dev:debug` or `npm run build:debug` enables a debug panel via Vite's `--mode debug` with isolated storage (see **Debug mode storage** above).

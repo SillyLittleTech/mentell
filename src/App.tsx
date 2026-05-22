@@ -10,7 +10,8 @@ import { useEffect, useState } from 'react'
 import { WeeklyProjector } from './features/compilation/WeeklyProjector'
 import { PackageAlert } from './features/packages/PackageAlert'
 import { Notepad } from './features/notes/Notepad'
-import { StickyBoard } from './features/stickies/StickyBoard'
+import { StickyDock } from './features/stickies/StickyDock'
+import { StickyLayer } from './features/stickies/StickyLayer'
 import { DebugPanel } from './features/debug/DebugPanel'
 import { generateDuePackages } from './features/packages/packageGenerator'
 import { ScoreTicker } from './features/score/ScoreTicker'
@@ -78,6 +79,7 @@ function App() {
   return (
     <div className="desk px-4 py-6">
       <TopBar score={score} incomingHint={incomingHint} />
+      <StickyLayer />
       <main className="mx-auto mt-6 w-full max-w-4xl">
         <AnimatedRoutes>
           <Route
@@ -173,7 +175,6 @@ function TopBar({
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
-            <ThemeToggleButton mode={mode} onToggle={toggle} />
             <button
               type="button"
               className="focus-ring rounded-xl border border-[var(--paper-border)] bg-[var(--paper-bg)] p-2 text-lg leading-none"
@@ -263,7 +264,15 @@ function TopBar({
                 onNavigate={() => setMobileMenuOpen(false)}
                 className="w-full"
               />
-              <ThemeToggleButton mode={mode} onToggle={toggle} className="mt-2 w-full" />
+              <div className="mt-2 flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-2">
+                <span className="text-sm font-medium">Appearance</span>
+                <ThemeToggleButton
+                  mode={mode}
+                  onToggle={toggle}
+                  variant="menu"
+                  showLabel
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -276,15 +285,22 @@ function ThemeToggleButton({
   mode,
   onToggle,
   className,
+  variant = 'icon',
+  showLabel = false,
 }: {
   mode: 'light' | 'dark'
   onToggle: () => void
   className?: string
+  variant?: 'icon' | 'menu'
+  showLabel?: boolean
 }) {
+  const label = mode === 'dark' ? 'Light mode' : 'Dark mode'
   return (
     <button
       type="button"
-      className={`focus-ring rounded-xl border border-[var(--paper-border)] p-2 ${className ?? ''}`}
+      className={`focus-ring inline-flex items-center gap-2 rounded-xl border border-[var(--paper-border)] ${
+        variant === 'menu' ? 'px-3 py-2' : 'p-2'
+      } ${className ?? ''}`}
       onClick={onToggle}
       aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -292,9 +308,10 @@ function ThemeToggleButton({
       <img
         alt=""
         src={publicUrl(mode === 'dark' ? '/asset/light.png' : '/asset/dark.png')}
-        className="h-8 w-8 select-none object-contain"
+        className="h-8 w-8 shrink-0 select-none object-contain"
         draggable={false}
       />
+      {showLabel ? <span className="text-sm font-medium">{label}</span> : null}
     </button>
   )
 }
@@ -438,7 +455,7 @@ function NotesPlaceholder() {
   return (
     <div className="space-y-4">
       <Notepad />
-      <StickyBoard />
+      <StickyDock />
     </div>
   )
 }

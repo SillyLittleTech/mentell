@@ -1,13 +1,18 @@
 import { deleteUser } from 'firebase/auth'
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore'
-import { db } from '../../db/schema'
+import { getDb } from '../../db/schema'
 import { formatShareCode } from '../../features/share/shareLinkUrl'
 import { SCORE_CHANGED_EVENT } from '../../features/score/scoreEvents'
 import { getFirebaseAuth, getFirebaseFirestore } from '../firebase/firebaseApp'
+import { scopedStorageKey } from '../storage/storageScope'
 import { disableSync } from '../sync/syncService'
 import { saveSyncState } from '../sync/syncState'
 
-const SCORE_KEYS = ['mentell.score.total', 'mentell.score.streak', 'mentell.score.lastDay'] as const
+const SCORE_KEYS = [
+  scopedStorageKey('mentell.score.total'),
+  scopedStorageKey('mentell.score.streak'),
+  scopedStorageKey('mentell.score.lastDay'),
+] as const
 
 function fs() {
   const f = getFirebaseFirestore()
@@ -22,10 +27,10 @@ async function deleteSubcollection(uid: string, name: string) {
 
 export async function clearLocalJournalData() {
   await Promise.all([
-    db.entries.clear(),
-    db.notes.clear(),
-    db.stickies.clear(),
-    db.packages.clear(),
+    getDb().entries.clear(),
+    getDb().notes.clear(),
+    getDb().stickies.clear(),
+    getDb().packages.clear(),
   ])
   for (const key of SCORE_KEYS) localStorage.removeItem(key)
   window.dispatchEvent(new CustomEvent(SCORE_CHANGED_EVENT))
@@ -58,8 +63,8 @@ export async function deleteCloudAccount(uid: string) {
 export async function deleteAccount(uid: string) {
   await deleteCloudAccount(uid)
   await clearLocalJournalData()
-  localStorage.removeItem('mentell.ai.profile')
-  localStorage.removeItem('mentell.shop.cats')
+  localStorage.removeItem(scopedStorageKey('mentell.ai.profile'))
+  localStorage.removeItem(scopedStorageKey('mentell.shop.cats'))
   disableSync()
   saveSyncState({ enabled: false, lastSyncedAt: null, lastError: null })
 

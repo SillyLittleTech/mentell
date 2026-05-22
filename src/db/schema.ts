@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie'
+import { dexieDatabaseName } from '../shared/storage/storageScope'
 
 export type EntrySentiment = '+' | '-' | '='
 export type WarningLevel = 'none' | 'warn'
@@ -30,6 +31,8 @@ export type NoteRow = {
   tag: NoteTag
 }
 
+export type StickyCoordSpace = 'viewport' | 'board'
+
 export type StickyRow = {
   id: string
   createdAt: number
@@ -39,6 +42,7 @@ export type StickyRow = {
   y: number
   color: string
   zIndex: number
+  coordSpace?: StickyCoordSpace
 }
 
 export type PackageKind = 'weekly' | 'monthly' | 'yearly'
@@ -58,8 +62,8 @@ export class MentellDB extends Dexie {
   stickies!: Table<StickyRow, string>
   packages!: Table<PackageRow, string>
 
-  constructor() {
-    super('mentell')
+  constructor(name: string) {
+    super(name)
 
     // v1: initial local-first tables
     this.version(1).stores({
@@ -106,8 +110,30 @@ export class MentellDB extends Dexie {
         await backfill<StickyRow>('stickies')
         await backfill<PackageRow>('packages')
       })
+
+    this.version(4)
+      .stores({
+        entries: '&id, dateKey, createdAt, updatedAt, sentiment, warningLevel',
+        notes: '&id, createdAt, updatedAt, tag',
+        stickies: '&id, createdAt, updatedAt, zIndex',
+        packages: '&id, kind, periodKey, createdAt, updatedAt, openedAt',
+      })
+      .upgrade(async (tx) => {
+        await tx.table('stickies').toCollection().modify((row: Partial<StickyRow>) => {
+          if (!row.coordSpace) row.coordSpace = 'board'
+        })
+      })
   }
 }
 
-export const db = new MentellDB()
+let dbInstance: MentellDB | null = null
+let dbInstanceName: string | null = null
 
+export function getDb() {
+  const name = dexieDatabaseName()
+  if (!dbInstance || dbInstanceName !== name) {
+    dbInstance = new MentellDB(name)
+    dbInstanceName = name
+  }
+  return dbInstance
+}

@@ -1,14 +1,15 @@
 import { addDays, parseISO } from 'date-fns'
-import { db } from '../../db/schema'
+import { getDb } from '../../db/schema'
 import { isPointsEnabled } from '../../shared/settings/appSettings'
+import { scopedStorageKey } from '../../shared/storage/storageScope'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
 /** Each extra log the same day earns this fraction of the previous log's nominal award. */
 const DAILY_LOG_DECAY = 0.5
 
-const SCORE_KEY = 'mentell.score.total'
-const STREAK_KEY = 'mentell.score.streak'
-const LAST_DAY_KEY = 'mentell.score.lastDay'
+const SCORE_KEY = scopedStorageKey('mentell.score.total')
+const STREAK_KEY = scopedStorageKey('mentell.score.streak')
+const LAST_DAY_KEY = scopedStorageKey('mentell.score.lastDay')
 
 export type ScoreResult = {
   base: number
@@ -98,7 +99,7 @@ export async function awardForSubmission(dateKey: string): Promise<ScoreResult> 
     }
   }
 
-  const logsTodayBefore = await db.entries.where('dateKey').equals(dateKey).count()
+  const logsTodayBefore = await getDb().entries.where('dateKey').equals(dateKey).count()
   const dailyMultiplier = dailyLogMultiplier(logsTodayBefore)
 
   const total = getInt(SCORE_KEY, 0)

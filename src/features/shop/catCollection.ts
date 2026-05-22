@@ -1,6 +1,7 @@
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
+import { scopedStorageKey } from '../../shared/storage/storageScope'
 
-const CATS_KEY = 'mentell.shop.cats'
+const CATS_KEY = scopedStorageKey('mentell.shop.cats')
 
 export type CollectedCat = {
   id: string

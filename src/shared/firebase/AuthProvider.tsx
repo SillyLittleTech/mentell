@@ -12,15 +12,7 @@ import {
   type Auth,
   type User,
 } from 'firebase/auth'
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { isFirebaseEnabled, isFirebaseSyncEnabled } from '../features/featureFlags'
 import { formatAuthError } from './authErrors'
 import { getOAuthRedirectUri } from './config'
@@ -35,28 +27,7 @@ import { getFirebaseAuth } from './firebaseApp'
 import { finishSignIn } from './postSignIn'
 import { disableSync, enableSync } from '../sync/syncService'
 import { loadSyncState, saveSyncState } from '../sync/syncState'
-
-type AuthContextValue = {
-  enabled: boolean
-  user: User | null
-  loading: boolean
-  syncEnabled: boolean
-  syncError: string | null
-  lastSyncedAt: number | null
-  emailLinkSent: boolean
-  pendingEmailLinkConfirm: boolean
-  signInWithGoogle: () => Promise<void>
-  signInWithEmailPassword: (email: string, password: string) => Promise<void>
-  createAccountWithEmailPassword: (email: string, password: string) => Promise<void>
-  sendPasswordReset: (email: string) => Promise<void>
-  sendSignInLink: (email: string) => Promise<void>
-  confirmEmailLinkSignIn: (email: string) => Promise<void>
-  signOut: () => Promise<void>
-  setSyncEnabled: (on: boolean) => Promise<void>
-  syncNow: () => Promise<void>
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null)
+import { AuthContext, type AuthContextValue } from './authContext'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const enabled = isFirebaseEnabled()
@@ -320,12 +291,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
-}
-
-export function useAuthOptional() {
-  return useContext(AuthContext)
-}
+export { useAuth, useAuthOptional } from './authContext'

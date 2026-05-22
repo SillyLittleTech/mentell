@@ -1,8 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { StickyRow } from '../../db/schema'
-import { addSticky, deleteSticky, listStickies, updateSticky } from './stickiesService'
+import { LOCAL_DATA_CHANGED_EVENT } from '../../shared/sync/localDataEvents'
+import {
+  clampStickyPosition,
+  stickyDisplayPosition,
+} from './stickyCoords'
+import { deleteSticky, listStickies, updateSticky } from './stickiesService'
 
-const COLORS = ['#fbf4de', '#ffe2e2', '#e6fff0', '#e9f1ff', '#fff0c8']
 const STICKY_TEXT_COLOR = '#1f1b17'
 const CONTROL_BUTTON_CLASS =
   'focus-ring rounded-xl border border-black/20 bg-white/35 px-2 py-1 text-sm leading-none'
@@ -13,25 +17,29 @@ type DragState = {
   offsetY: number
 }
 
-export function StickyBoard() {
+export function StickyLayer() {
   const [stickies, setStickies] = useState<StickyRow[]>([])
   const [drag, setDrag] = useState<DragState | null>(null)
-  const boardRef = useRef<HTMLDivElement | null>(null)
+
+  const refresh = useCallback(() => {
+    void listStickies().then(setStickies)
+  }, [])
 
   useEffect(() => {
-    listStickies().then(setStickies)
-  }, [])
+    refresh()
+    const onData = () => refresh()
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, onData)
+    return () => window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, onData)
+  }, [refresh])
 
   const maxZ = useMemo(() => Math.max(0, ...stickies.map((s) => s.zIndex)), [stickies])
 
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       if (!drag) return
-      const board = boardRef.current
-      if (!board) return
-      const rect = board.getBoundingClientRect()
-      const x = e.clientX - rect.left - drag.offsetX
-      const y = e.clientY - rect.top - drag.offsetY
+      const rawX = e.clientX - drag.offsetX
+      const rawY = e.clientY - drag.offsetY
+      const { x, y } = clampStickyPosition(rawX, rawY)
 
       setStickies((all) =>
         all.map((s) =>
@@ -40,6 +48,7 @@ export function StickyBoard() {
                 ...s,
                 x,
                 y,
+                coordSpace: 'viewport' as const,
               }
             : s,
         ),
@@ -51,7 +60,7 @@ export function StickyBoard() {
       const s = stickies.find((x) => x.id === drag.id)
       setDrag(null)
       if (!s) return
-      await updateSticky(s.id, { x: s.x, y: s.y })
+      await updateSticky(s.id, { x: s.x, y: s.y, coordSpace: 'viewport' })
     }
 
     window.addEventListener('pointermove', onMove)
@@ -70,53 +79,44 @@ export function StickyBoard() {
     const offsetX = e.clientX - rect.left
     const offsetY = e.clientY - rect.top
     const nextZ = maxZ + 1
-    setStickies((all) => all.map((x) => (x.id === sticky.id ? { ...x, zIndex: nextZ } : x)))
+    const pos = stickyDisplayPosition(sticky)
+    setStickies((all) =>
+      all.map((x) =>
+        x.id === sticky.id
+          ? { ...x, x: pos.x, y: pos.y, zIndex: nextZ, coordSpace: 'viewport' as const }
+          : x,
+      ),
+    )
     setDrag({ id: sticky.id, offsetX, offsetY })
-    void updateSticky(sticky.id, { zIndex: nextZ })
+    void updateSticky(sticky.id, { zIndex: nextZ, coordSpace: 'viewport' })
   }
 
   const cycleColor = async (sticky: StickyRow) => {
+    const COLORS = ['#fbf4de', '#ffe2e2', '#e6fff0', '#e9f1ff', '#fff0c8']
     const index = COLORS.indexOf(sticky.color)
     const color = COLORS[(index + 1 + COLORS.length) % COLORS.length] ?? COLORS[0]!
     setStickies((all) => all.map((x) => (x.id === sticky.id ? { ...x, color } : x)))
     await updateSticky(sticky.id, { color })
   }
 
-  return (
-    <section className="paper rounded-3xl p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="font-paper text-2xl">Sticky board</div>
-          <div className="ink-muted mt-1 text-sm">Drag them around — they stay put on reload.</div>
-        </div>
-        <button
-          type="button"
-          className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-xl leading-none"
-          aria-label="Add sticky"
-          title="Add sticky"
-          onClick={async () => {
-            const board = boardRef.current
-            const rect = board?.getBoundingClientRect()
-            const x = rect ? rect.width * 0.55 : 220
-            const y = rect ? rect.height * 0.25 : 80
-            const color = COLORS[Math.floor(Math.random() * COLORS.length)]!
-            const row = await addSticky({ text: 'New note…', x, y, color })
-            setStickies((all) => [...all, row])
-          }}
-        >
-          📝➕
-        </button>
-      </div>
+  if (stickies.length === 0) return null
 
-      <div
-        ref={boardRef}
-        className="relative mt-5 h-[420px] overflow-visible rounded-3xl border border-[var(--paper-border)]"
-      >
-        {stickies.map((s) => (
+  return (
+    <div
+      className="pointer-events-none fixed inset-0 z-20"
+      aria-hidden={false}
+    >
+      {stickies.map((s) => {
+        const pos = stickyDisplayPosition(s)
+        const display =
+          drag?.id === s.id
+            ? { x: s.x, y: s.y }
+            : pos
+        return (
           <div
             key={s.id}
-            className="absolute"
-            style={{ left: s.x, top: s.y, zIndex: s.zIndex }}
+            className="pointer-events-auto absolute"
+            style={{ left: display.x, top: display.y, zIndex: s.zIndex }}
           >
             <div
               className="w-[220px] cursor-grab select-none rounded-3xl border border-black/20 p-4 shadow-[0_10px_30px_rgba(0,0,0,0.18)] active:cursor-grabbing"
@@ -182,9 +182,8 @@ export function StickyBoard() {
               </button>
             </div>
           </div>
-        ))}
-      </div>
-    </section>
+        )
+      })}
+    </div>
   )
 }
-

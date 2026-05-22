@@ -3,6 +3,7 @@ import { loadAiProfile } from '../compilation/aiProfile'
 import { useAppSettings } from '../../shared/settings/useAppSettings'
 import { AccountSyncSection } from './AccountSyncSection'
 import { SettingsAccountFeatures } from './SettingsAccountFeatures'
+import { SettingsDebugCloudSection } from './SettingsDebugCloudSection'
 
 export function SettingsPage() {
   const { settings, updateSettings } = useAppSettings()
@@ -70,6 +71,7 @@ export function SettingsPage() {
         </div>
       </section>
 
+      <SettingsDebugCloudSection />
       <AccountSyncSection />
 
       <section className="paper rounded-3xl p-6">

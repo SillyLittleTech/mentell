@@ -1,5 +1,5 @@
 import { subDays, format } from 'date-fns'
-import { db } from '../../db/schema'
+import { getDb } from '../../db/schema'
 import { getScoreSnapshot } from '../score/scoreService'
 import type { ShareDashboardPayload, ShareEntryPreview, SharePermissions } from './shareTypes'
 
@@ -11,7 +11,7 @@ function dateKeyInWindow(dateKey: string, maxDays: number) {
 export async function buildSharePayload(
   permissions: SharePermissions,
 ): Promise<ShareDashboardPayload> {
-  const all = await db.entries.orderBy('createdAt').reverse().toArray()
+  const all = await getDb().entries.orderBy('createdAt').reverse().toArray()
   const inWindow = all.filter((e) => dateKeyInWindow(e.dateKey, permissions.maxDays))
 
   let positives = 0

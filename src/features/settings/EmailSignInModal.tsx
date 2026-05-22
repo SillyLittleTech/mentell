@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect } from 'react'
+import { isDebugMode } from '../../shared/debug/debugFlags'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import { AccountEmailSignInForm } from './AccountEmailSignInForm'
 import { useAuthOptional } from '../../shared/firebase/AuthProvider'
@@ -23,7 +24,7 @@ export function EmailSignInModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  if (!auth) return null
+  if (isDebugMode() || !auth) return null
 
   return (
     <AnimatePresence>

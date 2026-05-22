@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { GoogleSignInButton } from '../../components/GoogleSignInButton'
+import { isDebugMode } from '../../shared/debug/debugFlags'
 import { isFirebaseEnabled, isFirebaseSyncEnabled } from '../../shared/features/featureFlags'
 import { useAppSettings } from '../../shared/settings/useAppSettings'
 import { useAuthOptional } from '../../shared/firebase/AuthProvider'
@@ -22,7 +23,7 @@ export function SyncOnboardingBanner({ shakeKey = 0 }: { shakeKey?: number }) {
     if (auth?.pendingEmailLinkConfirm) setEmailModalOpen(true)
   }, [auth?.pendingEmailLinkConfirm])
 
-  if (!isFirebaseEnabled() || !isFirebaseSyncEnabled()) return null
+  if (isDebugMode() || !isFirebaseEnabled() || !isFirebaseSyncEnabled()) return null
   if (settings.syncPromptDismissed) return null
   if (auth?.user) return null
 

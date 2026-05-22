@@ -1,5 +1,5 @@
 import {
-  db,
+  getDb,
   type EntryEmotion,
   type EntryRow,
   type EntrySentiment,
@@ -40,7 +40,7 @@ export async function upsertEntryFromDraft(draft: EntryDraft) {
     streakAtSubmit: draft.streakAtSubmit,
   }
 
-  await db.entries.put(row)
+  await getDb().entries.put(row)
   notifyLocalDataChanged()
 
   return row

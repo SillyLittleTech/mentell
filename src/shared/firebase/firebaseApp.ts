@@ -1,6 +1,7 @@
 import { initializeApp, type FirebaseApp } from 'firebase/app'
-import { getAuth, type Auth } from 'firebase/auth'
+import { getAuth, initializeAuth, inMemoryPersistence, type Auth } from 'firebase/auth'
 import { getFirestore, type Firestore } from 'firebase/firestore'
+import { isDebugMode } from '../debug/debugFlags'
 import { getFirebaseWebConfig } from './config'
 
 let app: FirebaseApp | null = null
@@ -19,7 +20,11 @@ export function getFirebaseApp() {
 export function getFirebaseAuth() {
   const fb = getFirebaseApp()
   if (!fb) return null
-  if (!auth) auth = getAuth(fb)
+  if (!auth) {
+    auth = isDebugMode()
+      ? initializeAuth(fb, { persistence: inMemoryPersistence })
+      : getAuth(fb)
+  }
   return auth
 }
 

@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
+import { scopedStorageKey } from '../../shared/storage/storageScope'
 
-const PROFILE_KEY = 'mentell.ai.profile'
+const PROFILE_KEY = scopedStorageKey('mentell.ai.profile')
 
 export const AiAgeRangeSchema = z.enum([
   '',
