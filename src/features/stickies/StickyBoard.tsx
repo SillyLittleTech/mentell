@@ -3,9 +3,6 @@ import type { StickyRow } from '../../db/schema'
 import { addSticky, deleteSticky, listStickies, updateSticky } from './stickiesService'
 
 const COLORS = ['#fbf4de', '#ffe2e2', '#e6fff0', '#e9f1ff', '#fff0c8']
-const STICKY_WIDTH = 220
-const STICKY_HEIGHT = 220
-const DRAG_MARGIN = 140
 const STICKY_TEXT_COLOR = '#1f1b17'
 const CONTROL_BUTTON_CLASS =
   'focus-ring rounded-xl border border-black/20 bg-white/35 px-2 py-1 text-sm leading-none'
@@ -41,8 +38,8 @@ export function StickyBoard() {
           s.id === drag.id
             ? {
                 ...s,
-                x: clamp(x, -DRAG_MARGIN, rect.width - STICKY_WIDTH + DRAG_MARGIN),
-                y: clamp(y, -DRAG_MARGIN, rect.height - STICKY_HEIGHT + DRAG_MARGIN),
+                x,
+                y,
               }
             : s,
         ),
@@ -189,9 +186,5 @@ export function StickyBoard() {
       </div>
     </section>
   )
-}
-
-function clamp(n: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, n))
 }
 
