@@ -93,12 +93,6 @@ export function WeeklyProjector() {
       window.clearInterval(id)
     }
   }, [todayKey, aiEnabled, profile, mode, restoreCachedSummary])
-
-  useEffect(() => {
-    if (!stats) return
-    restoreCachedSummary(stats, profile, mode)
-  }, [mode, stats, profile, restoreCachedSummary])
-
   useEffect(() => {
     const onScore = () => setScore(getScoreSnapshot())
     window.addEventListener(SCORE_CHANGED_EVENT, onScore)
