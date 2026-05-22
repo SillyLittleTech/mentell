@@ -94,7 +94,18 @@ Add `localhost` under **Authorized domains** if you test email links locally.
 
 Add **Repository variables** (Settings → Actions → Variables) matching `.env.local` when enabling cloud features in production builds. Update [`.github/workflows/gh-pages.yml`](../.github/workflows/gh-pages.yml) — already wired for optional vars.
 
-**Wrangler:** unchanged. Weekly AI still uses `WEEKLY_AI_TOKEN` secret only.
+**Wrangler:** unchanged for weekly AI (`WEEKLY_AI_TOKEN` secret only).
+
+## Web Push + Firestore (optional)
+
+When `VITE_ENABLE_FIREBASE_SYNC=1` and push env vars are set, the Cloudflare Worker can read Firestore server-side to send “package ready” pushes to signed-in users.
+
+1. GCP → IAM → Service Accounts → create e.g. `mentell-push-cron`.
+2. Grant **Cloud Datastore User** (Firestore read).
+3. Keys → JSON → `wrangler secret put FIREBASE_SERVICE_ACCOUNT_JSON` (worker only; never in the client bundle).
+4. Client subscribe sends the user’s Firebase ID token; cron queries `users/{uid}/entries` and `users/{uid}/packages`.
+
+Non-synced users still receive generic weekly reminders on **Eastern Time** if they subscribed with push enabled. No change to [`firestore.rules`](../firestore.rules) for end users.
 
 ## Share links
 

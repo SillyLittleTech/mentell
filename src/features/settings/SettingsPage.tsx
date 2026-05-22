@@ -1,13 +1,42 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadAiProfile } from '../compilation/aiProfile'
 import { useAppSettings } from '../../shared/settings/useAppSettings'
+import { notificationPermission, maybeRequestNotificationPermission } from '../../pwa/notifications'
+import { isWebPushConfigured, syncPushSubscription, unsubscribePush } from '../../pwa/pushSubscribe'
+import { browserTimezone } from '../../shared/settings/appSettings'
 import { AccountSyncSection } from './AccountSyncSection'
 import { SettingsAccountFeatures } from './SettingsAccountFeatures'
 import { SettingsDebugCloudSection } from './SettingsDebugCloudSection'
 
+const WEEKDAY_OPTIONS = [
+  { value: 0, label: 'Sunday' },
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
+]
+
 export function SettingsPage() {
   const { settings, updateSettings } = useAppSettings()
   const [nameDraft, setNameDraft] = useState(settings.globalName)
+  const perm = notificationPermission()
+
+  useEffect(() => {
+    void maybeRequestNotificationPermission()
+  }, [])
+
+  useEffect(() => {
+    if (!settings.disableNotifications && isWebPushConfigured()) {
+      void syncPushSubscription()
+    }
+  }, [
+    settings.disableNotifications,
+    settings.deliveryWeekday,
+    settings.deliveryTimeLocal,
+    settings.timezone,
+  ])
 
   useEffect(() => {
     setNameDraft(settings.globalName)
@@ -67,6 +96,76 @@ export function SettingsPage() {
               onChange={(e) => updateSettings({ disablePoints: e.target.checked })}
             />
           </label>
+          <label className="flex items-center justify-between gap-3 text-sm">
+            <span>
+              Disable notifications
+              <div className="ink-muted text-xs">
+                Stops permission prompts, in-app alerts, and background push when configured.
+              </div>
+            </span>
+            <input
+              type="checkbox"
+              checked={settings.disableNotifications}
+              onChange={(e) => {
+                updateSettings({ disableNotifications: e.target.checked })
+                if (e.target.checked) void unsubscribePush()
+              }}
+            />
+          </label>
+          {!settings.disableNotifications && perm === 'denied' ? (
+            <p className="text-sm" style={{ color: 'var(--danger)' }}>
+              Notifications are blocked in your browser. Enable them in your browser&apos;s site settings for
+              this page.
+            </p>
+          ) : null}
+          {!settings.disablePoints ? (
+            <div className="grid gap-3 rounded-2xl border border-[var(--paper-border)] p-4">
+              <div className="text-sm font-medium">Package delivery</div>
+              <p className="ink-muted text-xs">
+                Weekly packages appear after this day and time, once that journal week is complete
+                (Monday–Sunday). With cloud sync and push enabled, delivery uses your timezone below;
+                otherwise push reminders use Eastern Time.
+              </p>
+              <label className="grid gap-1 text-sm">
+                <span className="ink-muted text-xs font-medium">Delivery day</span>
+                <select
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
+                  value={settings.deliveryWeekday}
+                  onChange={(e) =>
+                    updateSettings({ deliveryWeekday: Number(e.target.value) })
+                  }
+                >
+                  {WEEKDAY_OPTIONS.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span className="ink-muted text-xs font-medium">Delivery time</span>
+                <input
+                  type="time"
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
+                  value={settings.deliveryTimeLocal}
+                  onChange={(e) => updateSettings({ deliveryTimeLocal: e.target.value })}
+                />
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span className="ink-muted text-xs font-medium">Timezone (push)</span>
+                <input
+                  type="text"
+                  readOnly
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 opacity-80"
+                  value={settings.timezone}
+                  onFocus={() => updateSettings({ timezone: browserTimezone() })}
+                />
+                <span className="ink-muted text-xs">
+                  Detected from your device. Focus this field to refresh.
+                </span>
+              </label>
+            </div>
+          ) : null}
           <SettingsAccountFeatures />
         </div>
       </section>

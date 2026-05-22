@@ -9,9 +9,15 @@ import { AuthProvider } from './shared/firebase/AuthProvider.tsx'
 import { DebugAuthProvider } from './shared/firebase/DebugAuthProvider.tsx'
 import { isDebugMode } from './shared/debug/debugFlags.ts'
 import { isFirebaseEnabled } from './shared/features/featureFlags.ts'
+import { isWebPushConfigured } from './pwa/pushSubscribe.ts'
+import { registerDebugPushServiceWorker } from './pwa/registerDebugPushSw.ts'
 import { registerSW } from 'virtual:pwa-register'
 
-if (!isDebugMode()) {
+if (isDebugMode()) {
+  if (isWebPushConfigured()) {
+    void registerDebugPushServiceWorker()
+  }
+} else {
   registerSW({ immediate: true })
 }
 

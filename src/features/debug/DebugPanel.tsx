@@ -13,8 +13,21 @@ import {
 import { clearWeeklyAiCache } from '../compilation/weeklyAiCache'
 import { ensurePackage } from '../packages/packageService'
 import { clearCatCollection } from '../shop/catCollection'
-import { requestNotificationsPermission } from '../../pwa/notifications'
 import { notifyScoreChanged } from '../score/scoreEvents'
+import {
+  debugForegroundNotification,
+  debugRequestNotificationPermission,
+  debugRunPackageDeliveryNotify,
+  debugScheduleDelayedForeground,
+  debugUnregisterServiceWorker,
+  debugWaitForServiceWorker,
+  getNotificationDebugSnapshot,
+  sendWorkerPushTest,
+  sendWorkerPushTestDelayed,
+  syncPushSubscriptionWithResult,
+  unsubscribePush,
+  type NotificationDebugSnapshot,
+} from './debugNotifications'
 import { dexieDatabaseName, scopedStorageKey } from '../../shared/storage/storageScope'
 
 export function DebugPanel() {
@@ -26,6 +39,9 @@ export function DebugPanel() {
   const [skipAiCache, setSkipAiCacheState] = useState(getSkipAiCache())
   const [debugScore, setDebugScore] = useState('')
   const [debugStreak, setDebugStreak] = useState('')
+  const [notifSnap, setNotifSnap] = useState<NotificationDebugSnapshot | null>(null)
+  const [notifResult, setNotifResult] = useState<string | null>(null)
+  const [pushDelaySec, setPushDelaySec] = useState(30)
   const [inspector, setInspector] = useState<{
     entries: number
     notes: number
@@ -71,13 +87,44 @@ export function DebugPanel() {
     })
   }
 
+  async function refreshNotifications() {
+    setNotifSnap(await getNotificationDebugSnapshot())
+  }
+
   useEffect(() => {
     if (!enabled || !open) return
     const t = window.setTimeout(() => {
       refreshInspector()
+      void refreshNotifications()
     }, 0)
     return () => window.clearTimeout(t)
   }, [enabled, open])
+
+  useEffect(() => {
+    if (!open || !notifSnap) return
+    if (notifSnap.serviceWorkerReady) return
+    if (notifSnap.serviceWorkerState !== 'installing' && !notifSnap.serviceWorkerRegistered) return
+    const id = window.setInterval(() => void refreshNotifications(), 2000)
+    return () => window.clearInterval(id)
+  }, [open, notifSnap?.serviceWorkerReady, notifSnap?.serviceWorkerState, notifSnap?.serviceWorkerRegistered])
+
+  async function runNotifAction(
+    label: string,
+    fn: () => Promise<{ ok: boolean; detail: string; status?: number }>,
+  ) {
+    setBusy(true)
+    setNotifResult(`${label}…`)
+    try {
+      const res = await fn()
+      const status = res.status ? ` (${res.status})` : ''
+      setNotifResult(`${label}: ${res.ok ? 'ok' : 'fail'}${status} — ${res.detail}`)
+      await refreshNotifications()
+    } catch (e) {
+      setNotifResult(`${label}: error — ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (!open) return
@@ -174,16 +221,229 @@ export function DebugPanel() {
                   />
                 </label>
 
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[var(--paper-border)] p-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-mono text-xs font-bold">notifications</div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-xl border border-[var(--paper-border)] px-2 py-1 text-xs disabled:opacity-60"
+                  onClick={() => void refreshNotifications()}
+                >
+                  refresh
+                </button>
+              </div>
+              {notifSnap ? (
+                <dl className="ink-muted mt-2 grid gap-1 font-mono text-[10px] leading-snug">
+                  <div>
+                    <dt className="inline">permission </dt>
+                    <dd className="inline text-[var(--ink)]">{notifSnap.permission}</dd>
+                  </div>
+                  <div>
+                    <dt className="inline">in-app enabled </dt>
+                    <dd className="inline text-[var(--ink)]">
+                      {notifSnap.enabledInApp ? 'yes' : 'no'}
+                      {notifSnap.disableNotifications ? ' (disabled in settings)' : ''}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline">push env </dt>
+                    <dd className="inline text-[var(--ink)]">
+                      {notifSnap.webPushEnvConfigured ? 'configured' : 'missing'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline">worker VAPID </dt>
+                    <dd className="inline text-[var(--ink)]">
+                      {notifSnap.workerVapidConfigured === null
+                        ? 'unknown'
+                        : notifSnap.workerVapidConfigured
+                          ? 'ready'
+                          : 'missing (.dev.vars)'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline">service worker </dt>
+                    <dd className="inline text-[var(--ink)]">
+                      {notifSnap.serviceWorkerReady
+                        ? 'ready'
+                        : notifSnap.serviceWorkerRegistered
+                          ? notifSnap.serviceWorkerState
+                          : 'none'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline">push subscription </dt>
+                    <dd className="inline text-[var(--ink)]">
+                      {notifSnap.pushSubscriptionActive ? 'yes' : 'no'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="inline">delivery </dt>
+                    <dd className="inline text-[var(--ink)]">
+                      wd={notifSnap.deliveryWeekday} {notifSnap.deliveryTimeLocal}{' '}
+                      {notifSnap.timezone}
+                    </dd>
+                  </div>
+                  {notifSnap.pushApiBase ? (
+                    <div className="break-all">
+                      <dt className="inline">api </dt>
+                      <dd className="inline text-[var(--ink)]">{notifSnap.pushApiBase}</dd>
+                    </div>
+                  ) : null}
+                  {notifSnap.serviceWorkerNote ? (
+                    <p className="mt-1 text-[var(--ink)]">{notifSnap.serviceWorkerNote}</p>
+                  ) : null}
+                </dl>
+              ) : (
+                <p className="ink-muted mt-2 text-xs">Loading…</p>
+              )}
+              {notifResult ? (
+                <p className="mt-2 break-words font-mono text-[10px] leading-snug text-[var(--ink)]">
+                  {notifResult}
+                </p>
+              ) : null}
+              <div className="mt-2 grid gap-2">
                 <button
                   type="button"
                   disabled={busy}
                   className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
-                  onClick={async () => {
-                    await requestNotificationsPermission()
-                  }}
+                  onClick={() =>
+                    void runNotifAction('permission', () => debugRequestNotificationPermission())
+                  }
                 >
-                  Request notifications permission
-                  <div className="ink-muted text-xs">For testing OS notification permission flow.</div>
+                  Request permission + subscribe
+                  <div className="ink-muted text-xs">Prompts OS permission; syncs push if env is set.</div>
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={() =>
+                    void runNotifAction('foreground', async () => debugForegroundNotification())
+                  }
+                >
+                  Foreground test notification
+                  <div className="ink-muted text-xs">Uses Notification API while tab is open.</div>
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={() =>
+                    void runNotifAction('delivery', () => debugRunPackageDeliveryNotify())
+                  }
+                >
+                  Run package delivery + notify
+                </button>
+                <label className="grid gap-1 text-sm">
+                  <span className="ink-muted text-xs font-medium">Delayed test (seconds)</span>
+                  <select
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 text-xs"
+                    value={pushDelaySec}
+                    onChange={(e) => setPushDelaySec(Number(e.target.value))}
+                  >
+                    <option value={3}>3</option>
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={15}>15</option>
+                    <option value={30}>30</option>
+                    <option value={45}>45</option>
+                    <option value={60}>60</option>
+                    <option value={90}>90</option>
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  disabled={busy || !notifSnap?.webPushEnvConfigured}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={() =>
+                    void runNotifAction('delayed push', () =>
+                      sendWorkerPushTestDelayed(pushDelaySec),
+                    )
+                  }
+                >
+                  Schedule delayed push (close tab OK)
+                  <div className="ink-muted text-xs">
+                    Worker sends Web Push after the delay — best test for Safari background
+                    behavior. Sync push first.
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={() =>
+                    void runNotifAction('delayed foreground', async () =>
+                      debugScheduleDelayedForeground(pushDelaySec),
+                    )
+                  }
+                >
+                  Schedule delayed foreground
+                  <div className="ink-muted text-xs">
+                    Same delay, but uses Notification API — tab must stay open; Safari may
+                    suppress while focused.
+                  </div>
+                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-2 py-2 text-xs font-medium disabled:opacity-60"
+                    onClick={() =>
+                      void runNotifAction('wait for SW', () => debugWaitForServiceWorker())
+                    }
+                  >
+                    Wait for SW
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-2 py-2 text-xs font-medium disabled:opacity-60"
+                    onClick={() =>
+                      void runNotifAction('unregister SW', () => debugUnregisterServiceWorker())
+                    }
+                  >
+                    Unregister SW
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || !notifSnap?.webPushEnvConfigured}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-2 py-2 text-xs font-medium disabled:opacity-60"
+                    onClick={() =>
+                      void runNotifAction('subscribe', () => syncPushSubscriptionWithResult())
+                    }
+                  >
+                    Sync push (worker)
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || !notifSnap?.webPushEnvConfigured}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-2 py-2 text-xs font-medium disabled:opacity-60"
+                    onClick={() => void runNotifAction('push test', () => sendWorkerPushTest())}
+                  >
+                    Worker /push/test
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={() =>
+                    void runNotifAction('unsubscribe', async () => {
+                      await unsubscribePush()
+                      return { ok: true, detail: 'Unsubscribed locally + worker' }
+                    })
+                  }
+                >
+                  Unsubscribe push
+                  <div className="ink-muted text-xs">
+                    If SW was stuck on installing: Unregister SW → reload → Wait for SW → Sync push.
+                    Close tab after /push/test for background push.
+                  </div>
                 </button>
               </div>
             </div>

@@ -91,12 +91,22 @@ In-app page: [`src/features/legal/PrivacyPolicyPage.tsx`](src/features/legal/Pri
 
 - `npm run dev:debug` / `build:debug` use Dexie DB **`mentell-debug`** and localStorage keys prefixed `mentell.debug-data.*` via [`storageScope.ts`](src/shared/storage/storageScope.ts). Production `npm run dev` uses **`mentell`** — seed/clear in the debug panel does not touch prod journal data on the same origin.
 - Theme (`mentell.theme`) and debug toggles (`mentell.debug.*`) stay unscoped.
-- Debug builds skip PWA registration in [`main.tsx`](src/main.tsx).
+- Debug builds use [`public/dev-push-sw.js`](public/dev-push-sw.js) (push-only, no Workbox) when push env vars are set — not vite-plugin-pwa dev SW. Debug panel → **notifications**: permission, subscribe, `/push/test`, status readout ([`debugNotifications.ts`](src/features/debug/debugNotifications.ts)).
 
 ### Debug mode Firebase
 
 - [`DebugAuthProvider`](src/shared/firebase/DebugAuthProvider.tsx): in-memory auth, signs out any prod session, auto sandbox sign-in (anonymous + displayName `DEBUGGER`, or `VITE_DEBUG_FIREBASE_CUSTOM_TOKEN` for fixed uid `DEBUGGER`). Standard sign-in UI is hidden.
 - See [`docs/FIREBASE.md`](docs/FIREBASE.md) for optional custom token setup.
+
+### Notifications and package delivery
+
+- Settings → **Features**: `disableNotifications`, **Package delivery** (weekday + local time, default Monday 9:00), **Timezone** (device IANA, for push). Synced via Firestore `meta/settings` when cloud sync is on.
+- Permission prompts: [`maybeRequestNotificationPermission`](src/pwa/notifications.ts) on Settings open and after letter submit, only when notifications are not disabled and permission is `default`.
+- Delivery schedule: [`packageDelivery.ts`](src/features/packages/packageDelivery.ts) + [`generateDuePackages`](src/features/packages/packageGenerator.ts) create weekly packages only after the configured instant; [`runPackageDeliveryAndNotify`](src/features/packages/runPackageDelivery.ts) shows an OS notification when new packages appear while the tab is open.
+- Visible-tab poll in [`App.tsx`](src/App.tsx) every 60s runs delivery while the tab is focused.
+- **Web Push (optional, tab closed):** `VITE_VAPID_PUBLIC_KEY` + `VITE_PUSH_API_BASE` on the same worker. [`src/pwa/sw.ts`](src/pwa/sw.ts) + [`pushSubscribe.ts`](src/pwa/pushSubscribe.ts); worker cron every 15m, `PUSH_KV`, optional `FIREBASE_SERVICE_ACCOUNT_JSON` for synced users (package-ready vs generic EST reminder).
+
+**Push operator setup:** `npx web-push generate-vapid-keys` → `wrangler kv namespace create PUSH_KV` (+ `--preview`) → paste ids in `worker/wrangler.jsonc` → `wrangler secret put VAPID_PUBLIC_KEY|VAPID_PRIVATE_KEY|FIREBASE_SERVICE_ACCOUNT_JSON` → `npm run worker:deploy`. GitHub **Variables:** `VITE_VAPID_PUBLIC_KEY`, `VITE_PUSH_API_BASE` (worker origin, no trailing slash). Details: [`worker/README.md`](worker/README.md).
 
 ### Motion
 
@@ -107,7 +117,7 @@ In-app page: [`src/features/legal/PrivacyPolicyPage.tsx`](src/features/legal/Pri
 ### Non-obvious notes
 
 - There are no automated tests (no test framework configured). Verify changes via lint, type checking, and manual browser testing.
-- The app uses Vite 8 with `vite-plugin-pwa`; the service worker is generated at build time only (not during dev). PWA features cannot be tested with `npm run dev`.
+- The app uses Vite 8 with `vite-plugin-pwa` (`injectManifest` + `devOptions.enabled` for local SW). For push, set `VITE_VAPID_PUBLIC_KEY` + `VITE_PUSH_API_BASE` in `.env.local` and **restart** Vite after changing env. Use `http://127.0.0.1:8787` (not `https://`) for local worker. Fallback: `npm run build && npm run preview`.
 - **`npm run build` appears to hang** after printing `✓ built in …` — the process is still running **PWA/service-worker generation** with no further stdout for 20–40s. Use `npm run build:check` when you only need a quick compile verification.
 - Use `npm run dev -- --host 0.0.0.0` to expose the dev server on all interfaces (needed in cloud/container environments).
 - Debug mode: `npm run dev:debug` or `npm run build:debug` enables a debug panel via Vite's `--mode debug` with isolated storage (see **Debug mode storage** above).

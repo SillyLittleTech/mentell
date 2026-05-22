@@ -13,7 +13,10 @@ import { Notepad } from './features/notes/Notepad'
 import { StickyDock } from './features/stickies/StickyDock'
 import { StickyLayer } from './features/stickies/StickyLayer'
 import { DebugPanel } from './features/debug/DebugPanel'
-import { generateDuePackages } from './features/packages/packageGenerator'
+import { runPackageDeliveryAndNotify } from './features/packages/runPackageDelivery'
+import { maybeRequestNotificationPermission } from './pwa/notifications'
+import { isWebPushConfigured, syncPushSubscription } from './pwa/pushSubscribe'
+import { loadAppSettings } from './shared/settings/appSettings'
 import { ScoreTicker } from './features/score/ScoreTicker'
 import { ScoreBurst } from './features/score/ScoreBurst'
 import { Shoppe } from './features/shop/Shoppe'
@@ -40,7 +43,32 @@ function App() {
   } | null>(null)
 
   useEffect(() => {
-    generateDuePackages()
+    void runPackageDeliveryAndNotify()
+    if (!loadAppSettings().disableNotifications && isWebPushConfigured()) {
+      void syncPushSubscription()
+    }
+  }, [])
+
+  const auth = useAuthOptional()
+  const authUid = auth?.user?.uid
+  useEffect(() => {
+    if (authUid && !loadAppSettings().disableNotifications && isWebPushConfigured()) {
+      void syncPushSubscription()
+    }
+  }, [authUid])
+
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === 'visible') {
+        void runPackageDeliveryAndNotify()
+      }
+    }
+    const id = window.setInterval(tick, 60_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+    }
   }, [])
 
   useEffect(() => {
@@ -428,7 +456,10 @@ function HomePlaceholder({
             streakAtSubmit: award.nextStreak,
           })
 
-          await generateDuePackages()
+          await runPackageDeliveryAndNotify()
+          if (!loadAppSettings().disableNotifications) {
+            void maybeRequestNotificationPermission()
+          }
           onScoreChange(award.totalDelta, award.hint, { deferOverlay: true })
           setSubmitting(true)
         }}
