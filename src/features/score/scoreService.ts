@@ -1,6 +1,7 @@
 import { addDays, parseISO } from 'date-fns'
 import { db } from '../../db/schema'
 import { isPointsEnabled } from '../../shared/settings/appSettings'
+import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
 /** Each extra log the same day earns this fraction of the previous log's nominal award. */
 const DAILY_LOG_DECAY = 0.5
@@ -116,6 +117,7 @@ export async function awardForSubmission(dateKey: string): Promise<ScoreResult> 
   setInt(SCORE_KEY, nextTotal)
   setInt(STREAK_KEY, nextStreak)
   localStorage.setItem(LAST_DAY_KEY, dateKey)
+  notifyLocalDataChanged()
 
   const hint = buildAwardHint(logsTodayBefore, dailyMultiplier, totalDelta, bonus, nextStreak)
 
@@ -156,6 +158,7 @@ export function spendScore(spent: number): SpendScoreResult {
 
   const nextTotal = total - clean
   setInt(SCORE_KEY, nextTotal)
+  notifyLocalDataChanged()
   return { ok: true, spent: clean, nextTotal }
 }
 
@@ -175,6 +178,7 @@ export function awardForPackageOpen(kind: 'weekly' | 'monthly' | 'yearly'): Pack
   const delta = packageDelta(kind)
   const nextTotal = total + delta
   setInt(SCORE_KEY, nextTotal)
+  notifyLocalDataChanged()
 
   const hint =
     kind === 'yearly'

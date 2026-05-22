@@ -1,3 +1,5 @@
+import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
+
 const CATS_KEY = 'mentell.shop.cats'
 
 export type CollectedCat = {
@@ -27,6 +29,7 @@ function readRaw(): CollectedCat[] {
 
 function writeRaw(cats: CollectedCat[]) {
   localStorage.setItem(CATS_KEY, JSON.stringify(cats))
+  notifyLocalDataChanged()
 }
 
 export function loadCatCollection(): CollectedCat[] {

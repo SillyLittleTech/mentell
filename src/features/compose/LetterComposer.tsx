@@ -27,8 +27,10 @@ const EMOTION_OPTIONS: Array<{ value: EntryEmotion; label: string }> = [
 
 export function LetterComposer({
   onSubmit,
+  disabled = false,
 }: {
   onSubmit: (draft: Draft) => Promise<void> | void
+  disabled?: boolean
 }) {
   const [step, setStep] = useState<'write' | 'review'>('write')
   const [sentiment, setSentiment] = useState<SentimentValue>('+')
@@ -46,7 +48,7 @@ export function LetterComposer({
     flag.warningLevel === 'warn' ? 'warn' : step === 'review' ? 'review' : 'write'
 
   async function handleSubmit() {
-    if (isSubmitting) return
+    if (disabled || isSubmitting) return
     setIsSubmitting(true)
     setSubmitState('idle')
     try {
@@ -78,7 +80,10 @@ export function LetterComposer({
   }
 
   return (
-    <div className="space-y-4">
+    <div
+      className={`space-y-4 ${disabled ? 'pointer-events-none opacity-50' : ''}`}
+      aria-disabled={disabled}
+    >
       <ProgressLight state={progressState} />
 
       <section className="paper rounded-3xl p-6">
@@ -87,12 +92,13 @@ export function LetterComposer({
             <div className="font-paper text-2xl">Today’s letter</div>
             <div className="ink-muted mt-1 text-sm">Date: {dateKey}</div>
           </div>
-          <SentimentPills value={sentiment} onChange={setSentiment} />
+          <SentimentPills value={sentiment} onChange={disabled ? () => {} : setSentiment} />
         </header>
 
         <div className="mt-6 grid gap-5">
           <Field label="Situation">
             <input
+              disabled={disabled}
               className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-lg"
               value={situation}
               onChange={(e) => setSituation(e.target.value)}
@@ -102,6 +108,7 @@ export function LetterComposer({
 
           <Field label="Details">
             <textarea
+              disabled={disabled}
               className="focus-ring min-h-[180px] w-full resize-y rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-lg leading-relaxed"
               value={details}
               onChange={(e) => setDetails(e.target.value)}
@@ -112,6 +119,7 @@ export function LetterComposer({
           <Field label="Emotion check‑in">
             <div className="grid gap-3">
               <select
+                disabled={disabled}
                 className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 text-sm"
                 value={emotion}
                 onChange={(e) => setEmotion(e.target.value as EntryEmotion)}
@@ -124,6 +132,7 @@ export function LetterComposer({
               </select>
               {emotion === 'other' ? (
                 <input
+                  disabled={disabled}
                   className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-lg"
                   value={emotionNote}
                   onChange={(e) => setEmotionNote(e.target.value)}
@@ -162,6 +171,7 @@ export function LetterComposer({
             {step === 'review' ? (
               <button
                 type="button"
+                disabled={disabled}
                 className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-medium"
                 onClick={() => setStep('write')}
               >
@@ -172,6 +182,7 @@ export function LetterComposer({
             {step === 'write' ? (
               <button
                 type="button"
+                disabled={disabled}
                 className="focus-ring rounded-2xl px-4 py-3 text-sm font-medium"
                 style={{ background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }}
                 onClick={() => setStep('review')}
@@ -183,7 +194,7 @@ export function LetterComposer({
                 type="button"
                 className="focus-ring rounded-2xl px-4 py-3 text-sm font-medium"
                 style={{ background: 'var(--success)', color: 'rgba(0,0,0,0.92)' }}
-                disabled={isSubmitting}
+                disabled={disabled || isSubmitting}
                 onClick={handleSubmit}
               >
                 {isSubmitting ? 'Submitting…' : 'Submit'}

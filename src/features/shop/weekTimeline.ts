@@ -41,7 +41,10 @@ export async function getWeekTimelineDays(
     let status: WeekDayStatus = 'noData'
     if (completedKeys.has(dateKey)) {
       status = 'completed'
-    } else if (firstEntryDate && dateKey < firstEntryDate) {
+    } else if (!firstEntryDate) {
+      // No logs yet — past days are not "missed"
+      status = 'noData'
+    } else if (dateKey < firstEntryDate) {
       status = 'noData'
     } else if (dateKey > todayKey) {
       status = 'noData'

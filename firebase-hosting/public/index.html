@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mentell</title>
+    <link rel="icon" href="/asset/mentell-icon.png" type="image/png" />
+    <style>
+      :root {
+        --bg: #505153;
+        --paper: #f6f3ed;
+        --ink: #2a2a2a;
+        --muted: #5c5c5c;
+        --border: rgba(42, 42, 42, 0.15);
+        --accent: #2a9b58;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+      }
+      main {
+        max-width: 28rem;
+        width: 100%;
+        background: var(--paper);
+        border-radius: 1.5rem;
+        padding: 2rem;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+      }
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.75rem;
+        font-weight: 600;
+      }
+      p {
+        margin: 0 0 1rem;
+        line-height: 1.5;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .cta {
+        display: inline-block;
+        margin: 0.5rem 0 1.25rem;
+        padding: 0.75rem 1.25rem;
+        background: rgba(42, 155, 88, 0.15);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        color: var(--ink);
+        font-weight: 600;
+        text-decoration: none;
+        font-size: 0.95rem;
+      }
+      .cta:hover {
+        background: rgba(42, 155, 88, 0.25);
+      }
+      .note {
+        font-size: 0.85rem;
+        border-top: 1px solid var(--border);
+        padding-top: 1rem;
+        margin-top: 0.5rem;
+      }
+      footer {
+        margin-top: 1rem;
+        font-size: 0.8rem;
+      }
+      footer a {
+        color: var(--muted);
+      }
+      img.logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img class="logo" src="/asset/mentell-icon.png" width="48" height="48" alt="" />
+      <h1>Mentell</h1>
+      <p>
+        This page is only a pointer to the journal app. Cloud backup and sign-in happen inside
+        Mentell—not here.
+      </p>
+      <a class="cta" href="https://mentell.sillylittle.tech/">Open Mentell</a>
+      <p class="note">
+        To back up and sync your journal across devices, open Mentell, go to
+        <strong>Settings → Account &amp; sync</strong>, and sign in with <strong>Google</strong>,
+        email and password, or a <strong>sign-in link</strong> sent to your inbox.
+      </p>
+      <footer>
+        <a href="https://projects.sillylittle.tech/mentell/">Alternate app URL</a>
+      </footer>
+    </main>
+  </body>
+</html>

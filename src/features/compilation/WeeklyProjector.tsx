@@ -25,6 +25,7 @@ function profileActiveHint(profile: AiProfile) {
   return null
 }
 import { clearWeeklyAiCache, getCachedWeeklySummary } from './weeklyAiCache'
+import { SharingPanel } from '../settings/SharingSection'
 import { WeeklyAiSettings, WeeklyAiSettingsButton } from './WeeklyAiSettings'
 import {
   buildRawReportHtml,
@@ -425,6 +426,8 @@ export function WeeklyProjector() {
           </motion.div>
         ) : null}
       </AnimatePresence>
+
+      <SharingPanel />
     </div>
   )
 }

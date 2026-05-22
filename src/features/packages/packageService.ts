@@ -1,17 +1,21 @@
 import { db, type PackageKind, type PackageRow } from '../../db/schema'
 import { makeId } from '../../shared/id'
 import { awardForPackageOpen } from '../score/scoreService'
+import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
 export async function ensurePackage(kind: PackageKind, periodKey: string) {
   const existing = await db.packages.where({ kind, periodKey }).first()
   if (existing) return existing
+  const now = Date.now()
   const row: PackageRow = {
     id: makeId('pkg'),
     kind,
     periodKey,
-    createdAt: Date.now(),
+    createdAt: now,
+    updatedAt: now,
   }
   await db.packages.put(row)
+  notifyLocalDataChanged()
   return row
 }
 
@@ -21,7 +25,13 @@ export async function markPackageOpened(id: string) {
   if (pkg.openedAt) return { awarded: false as const, delta: 0, hint: null as string | null }
 
   const award = awardForPackageOpen(pkg.kind)
-  await db.packages.update(id, { openedAt: Date.now(), openedScoreDelta: award.delta })
+  const now = Date.now()
+  await db.packages.update(id, {
+    openedAt: now,
+    openedScoreDelta: award.delta,
+    updatedAt: now,
+  })
+  notifyLocalDataChanged()
   return { awarded: true as const, delta: award.delta, hint: award.hint }
 }
 

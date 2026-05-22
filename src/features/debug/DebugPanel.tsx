@@ -454,6 +454,7 @@ export function DebugPanel() {
                   const mk = (dateKey: string, sentiment: '+' | '-' | '=') => ({
                     id: makeId('entry'),
                     createdAt: now,
+                    updatedAt: now,
                     dateKey,
                     sentiment,
                     emotion: 'calm' as const,
