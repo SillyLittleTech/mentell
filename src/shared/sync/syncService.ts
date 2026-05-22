@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
@@ -133,12 +134,22 @@ async function pushCollection<T extends { id: string; updatedAt?: number; create
   uid: string,
   name: 'entries' | 'notes' | 'stickies' | 'packages',
   rows: T[],
+  options?: { deleteRemoteMissing?: boolean },
 ) {
-  await Promise.all(
-    rows.map((row) =>
-      setDoc(userRef(uid, name, row.id), row as DocumentData, { merge: true }),
-    ),
+  const writes = rows.map((row) =>
+    setDoc(userRef(uid, name, row.id), row as DocumentData, { merge: true }),
   )
+  if (!options?.deleteRemoteMissing) {
+    await Promise.all(writes)
+    return
+  }
+
+  const localIds = new Set(rows.map((row) => row.id))
+  const remoteSnap = await getDocs(collection(fs(), 'users', uid, name))
+  const deletes = remoteSnap.docs
+    .filter((docSnap) => !localIds.has(docSnap.id))
+    .map((docSnap) => deleteDoc(docSnap.ref))
+  await Promise.all([...writes, ...deletes])
 }
 
 async function pushMeta(uid: string) {
@@ -184,7 +195,7 @@ export async function pushLocalToCloud(uid: string) {
   await Promise.all([
     pushCollection(uid, 'entries', entries),
     pushCollection(uid, 'notes', notes),
-    pushCollection(uid, 'stickies', stickies),
+    pushCollection(uid, 'stickies', stickies, { deleteRemoteMissing: true }),
     pushCollection(uid, 'packages', packages),
     pushMeta(uid),
   ])
