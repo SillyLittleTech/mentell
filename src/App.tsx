@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, useLocation } from 'react-router-dom'
+import { Link, Navigate, Route } from 'react-router-dom'
 import { AnimatedRoutes } from './shared/motion/AnimatedRoutes'
 import { AnimatePresence } from 'framer-motion'
 import { useTheme } from './shared/theme/useTheme'
@@ -129,14 +129,10 @@ function TopBar({
   score: ReturnType<typeof getScoreSnapshot>
   incomingHint: string | null
 }) {
-  const location = useLocation()
   const { mode, toggle } = useTheme()
   const { settings } = useAppSettings()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  useEffect(() => {
-    setMobileMenuOpen(false)
-  }, [location.pathname])
 
   return (
     <header className="mx-auto w-full max-w-4xl space-y-3">
