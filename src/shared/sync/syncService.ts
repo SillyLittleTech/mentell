@@ -194,7 +194,7 @@ export async function pushLocalToCloud(uid: string) {
   ])
   await Promise.all([
     pushCollection(uid, 'entries', entries),
-    pushCollection(uid, 'notes', notes),
+    pushCollection(uid, 'notes', notes, { deleteRemoteMissing: true }),
     pushCollection(uid, 'stickies', stickies, { deleteRemoteMissing: true }),
     pushCollection(uid, 'packages', packages),
     pushMeta(uid),
