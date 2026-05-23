@@ -10,7 +10,7 @@ function shoulderPivot(el: SVGGElement): { cx: number; cy: number } {
 }
 
 function elementPointToSvg(
-  el: SVGElement,
+  el: SVGGraphicsElement,
   local: { cx: number; cy: number },
 ): { cx: number; cy: number } {
   const svg = el.ownerSVGElement
@@ -26,7 +26,7 @@ function elementPointToSvg(
 }
 
 function svgPointToElement(
-  el: SVGElement,
+  el: SVGGraphicsElement,
   svgPoint: { cx: number; cy: number },
 ): { cx: number; cy: number } {
   const svg = el.ownerSVGElement
@@ -71,10 +71,10 @@ export function useArmPoseAnimation(
 
     const leftSleeves = charManifest.arms.armL.sleeveIds
       .map((id) => svg.getElementById(id))
-      .filter((el): el is SVGElement => el instanceof SVGElement)
+      .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement)
     const rightSleeves = charManifest.arms.armR.sleeveIds
       .map((id) => svg.getElementById(id))
-      .filter((el): el is SVGElement => el instanceof SVGElement)
+      .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement)
 
     const apply = (degL: number, degR: number) => {
       setRotate(armL, degL, pivotLLocal.cx, pivotLLocal.cy)

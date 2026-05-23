@@ -1,13 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import cursorTemplateSvg from '../../../asset/shop/cursor.svg?raw'
-import stampTemplateSvg from '../../../asset/shop/stamp.svg?raw'
-import { publicUrl } from '../../shared/publicUrl'
 import { useTheme } from '../../shared/theme/useTheme'
 import {
   loadShopCatalog,
   type CursorItem,
   type ShopCatalogItem,
-  type StampItem,
   type ThemeItem,
 } from './shopCatalog'
 import {
@@ -17,8 +14,6 @@ import {
 } from './shopInventory'
 
 type CursorContext = 'default' | 'pointer' | 'text'
-
-const FALLBACK_STAMP = publicUrl('/asset/stamp.png')
 
 function findEquippedItem<T extends ShopCatalogItem>(
   items: ShopCatalogItem[],
@@ -55,42 +50,6 @@ function applyThemeCosmetics(mode: 'light' | 'dark', themeItem: ThemeItem | null
   setThemeCssVar('--paper-border', palette.paperBorder)
   setThemeCssVar('--accent', palette.accent)
   setThemeCssVar('--shop-theme-overlay', palette.overlay)
-}
-
-function svgElementById(doc: Document, id: string) {
-  const el = doc.getElementById(id)
-  return el instanceof SVGElement ? el : null
-}
-
-function renderStampDataUri(item: StampItem): string {
-  const doc = new DOMParser().parseFromString(stampTemplateSvg, 'image/svg+xml')
-  const svg = doc.documentElement
-  if (!(svg instanceof SVGSVGElement)) return FALLBACK_STAMP
-  const stampRoot = svgElementById(doc, 'stamp-root')
-  const border = svgElementById(doc, 'stamp-border')
-  const inner = svgElementById(doc, 'stamp-inner')
-  const text = svgElementById(doc, 'stamp-text')
-
-  if (stampRoot) {
-    const tilt = Number.isFinite(item.stamp.tiltDeg) ? item.stamp.tiltDeg : -14
-    stampRoot.setAttribute('transform', `rotate(${tilt} 128 128)`)
-    stampRoot.style.opacity = String(
-      Number.isFinite(item.stamp.opacity) ? item.stamp.opacity : 0.24,
-    )
-  }
-  if (border) {
-    border.setAttribute('stroke', item.stamp.outline)
-    border.setAttribute('fill', item.stamp.ink)
-    border.style.opacity = '0.08'
-  }
-  if (inner) {
-    inner.setAttribute('stroke', item.stamp.outline)
-  }
-  if (text) {
-    text.setAttribute('fill', item.stamp.textColor ?? item.stamp.outline)
-    text.textContent = item.stamp.text
-  }
-  return serializeSvgElement(svg)
 }
 
 function renderCursorCssValue(item: CursorItem, context: CursorContext): string | null {
@@ -145,27 +104,14 @@ function applyCursorCosmetics(cursorItem: CursorItem | null) {
   if (text) document.documentElement.style.setProperty('--shop-cursor-text', text)
 }
 
-export function useShopInventoryState() {
+function useShopInventoryState() {
   const [inventory, setInventory] = useState<ShopInventory>(() => loadShopInventory())
   useEffect(() => subscribeShopInventory((next) => setInventory(next)), [])
   return inventory
 }
 
-export function useShopCatalogState() {
+function useShopCatalogState() {
   return useMemo(() => loadShopCatalog(), [])
-}
-
-export function isOwned(inventory: ShopInventory, itemId: string) {
-  return inventory.ownedItemIds.includes(itemId)
-}
-
-export function useEquippedStampImage() {
-  const catalog = useShopCatalogState()
-  const inventory = useShopInventoryState()
-  return useMemo(() => {
-    const stamp = findEquippedItem<StampItem>(catalog.items, 'stamp', inventory.equipped.stampId)
-    return stamp ? renderStampDataUri(stamp) : FALLBACK_STAMP
-  }, [catalog.items, inventory.equipped.stampId])
 }
 
 export function ShopCosmeticEffects() {

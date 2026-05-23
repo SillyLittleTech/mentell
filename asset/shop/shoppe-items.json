@@ -6,7 +6,7 @@
       "type": "theme",
       "name": "Sunrise Paper",
       "description": "Soft amber desk tones with warm paper for daylight journaling.",
-      "cost": 280,
+      "cost": 60,
       "preview": "/asset/light.png",
       "theme": {
         "light": {
@@ -30,7 +30,7 @@
       "type": "theme",
       "name": "Aurora Night",
       "description": "A cooler desk tint for late-night writing sessions.",
-      "cost": 320,
+      "cost": 70,
       "preview": "/asset/dark.png",
       "theme": {
         "light": {
@@ -54,7 +54,7 @@
       "type": "theme",
       "name": "Rose Noir",
       "description": "Muted burgundy ink vibes with softer high-contrast accents.",
-      "cost": 360,
+      "cost": 80,
       "preview": "/asset/mentell-icon.png",
       "theme": {
         "light": {
@@ -78,7 +78,7 @@
       "type": "stamp",
       "name": "Gotcha Stamp",
       "description": "Bold red stamp inspired by your sketched GOTCHA look.",
-      "cost": 210,
+      "cost": 45,
       "preview": "/asset/stamp.png",
       "stamp": {
         "text": "Gotcha",
@@ -94,7 +94,7 @@
       "type": "stamp",
       "name": "Airmail Stamp",
       "description": "Postal blue variant for outgoing reflections.",
-      "cost": 170,
+      "cost": 35,
       "preview": "/asset/stamp.png",
       "stamp": {
         "text": "Airmail",
@@ -110,7 +110,7 @@
       "type": "stamp",
       "name": "Secret Stamp",
       "description": "Stealthy violet stamp with softer letterpress text.",
-      "cost": 190,
+      "cost": 40,
       "preview": "/asset/stamp.png",
       "stamp": {
         "text": "Secret",
@@ -126,7 +126,7 @@
       "type": "cursor",
       "name": "Comet Cursor",
       "description": "Crisp sky-blue cursor set for default, pointer, and text.",
-      "cost": 160,
+      "cost": 30,
       "preview": "/asset/projector.png",
       "cursor": {
         "primary": "#78c5ff",
@@ -145,7 +145,7 @@
       "type": "cursor",
       "name": "Ember Cursor",
       "description": "Warm amber cursor set with high contrast outlines.",
-      "cost": 160,
+      "cost": 30,
       "preview": "/asset/envelope.png",
       "cursor": {
         "primary": "#ff8f4a",
@@ -164,7 +164,7 @@
       "type": "image",
       "name": "Gift Print",
       "description": "A collectible image item example for future inventory drops.",
-      "cost": 120,
+      "cost": 20,
       "preview": "/asset/gift_small.png",
       "image": {
         "url": "/asset/gift_large.png"

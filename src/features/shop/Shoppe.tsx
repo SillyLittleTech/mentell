@@ -18,6 +18,7 @@ import {
   type ShopInventory,
 } from './shopInventory'
 import { loadShopCatalog, type ShopCatalogItem } from './shopCatalog'
+import { renderStampPreviewForItem } from './shopStampAsset'
 
 const CAT_COST = 250
 
@@ -44,10 +45,6 @@ export function Shoppe({
   const [balance, setBalance] = useState(() => getScoreSnapshot().total)
 
   useEffect(() => {
-    setBalance(getScoreSnapshot().total)
-  }, [collection, inventory])
-
-  useEffect(() => {
     return subscribeShopInventory((next) => setInventory(next))
   }, [])
 
@@ -58,6 +55,7 @@ export function Shoppe({
   }, [])
 
   function itemPreview(item: ShopCatalogItem) {
+    if (item.type === 'stamp') return renderStampPreviewForItem(item)
     if (!item.preview) return null
     if (item.preview.startsWith('/')) return publicUrl(item.preview)
     return item.preview

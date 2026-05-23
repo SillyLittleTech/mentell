@@ -186,7 +186,7 @@ let catalogCache: ShopCatalog | null = null
 
 export function loadShopCatalog(): ShopCatalog {
   if (catalogCache) return catalogCache
-  let parsed: unknown = null
+  let parsed: unknown
   try {
     parsed = JSON.parse(catalogJson)
   } catch {

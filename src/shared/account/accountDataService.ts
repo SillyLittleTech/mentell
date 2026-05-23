@@ -92,6 +92,7 @@ export async function deleteAccount(uid: string) {
     if (code === 'auth/requires-recent-login') {
       throw new Error(
         'Google needs a fresh sign-in to delete your account. Sign out, sign in again, then retry.',
+        { cause: e },
       )
     }
     throw e

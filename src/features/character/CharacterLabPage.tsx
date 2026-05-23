@@ -17,7 +17,9 @@ export function CharacterLabPage() {
   const [pose, setPose] = useState<CharacterPoseId>('wave')
 
   const toggleByKey = useMemo(() => {
-    const map = new Map(charManifest.toggleGroups.map((g) => [g.key, g]))
+    const map = new Map<string, (typeof charManifest.toggleGroups)[number]>(
+      charManifest.toggleGroups.map((g) => [g.key, g]),
+    )
     return map
   }, [])
 
