@@ -74,22 +74,6 @@
       }
     },
     {
-      "id": "stamp-gotcha",
-      "type": "stamp",
-      "name": "Gotcha Stamp",
-      "description": "Bold red stamp inspired by your sketched GOTCHA look.",
-      "cost": 45,
-      "preview": "/asset/stamp.png",
-      "stamp": {
-        "text": "Gotcha",
-        "ink": "#cf2040",
-        "outline": "#9d1730",
-        "textColor": "#9d1730",
-        "tiltDeg": -14,
-        "opacity": 0.24
-      }
-    },
-    {
       "id": "stamp-airmail",
       "type": "stamp",
       "name": "Airmail Stamp",
@@ -134,9 +118,9 @@
         "outline": "#1a4e83",
         "textPrimary": "#5ab8ff",
         "hotspot": {
-          "default": [3, 3],
-          "pointer": [4, 2],
-          "text": [8, 14]
+          "default": [2, 2],
+          "pointer": [3, 2],
+          "text": [5, 9]
         }
       }
     },
@@ -153,9 +137,9 @@
         "outline": "#7f3b1b",
         "textPrimary": "#ffb45b",
         "hotspot": {
-          "default": [3, 3],
-          "pointer": [4, 2],
-          "text": [8, 14]
+          "default": [2, 2],
+          "pointer": [3, 2],
+          "text": [5, 9]
         }
       }
     },

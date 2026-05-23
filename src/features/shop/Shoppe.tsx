@@ -17,13 +17,89 @@ import {
   unlockShopItem,
   type ShopInventory,
 } from './shopInventory'
-import { loadShopCatalog, type ShopCatalogItem } from './shopCatalog'
+import {
+  loadShopCatalog,
+  type CursorItem,
+  type ShopCatalogItem,
+  type ThemeItem,
+} from './shopCatalog'
+import { renderCursorCssValue } from './shopCursorAsset'
 import { renderStampPreviewForItem } from './shopStampAsset'
 
 const CAT_COST = 250
 
 type CatApiRow = { id?: string; url?: string }
 type EquippableType = 'theme' | 'stamp' | 'cursor'
+
+function ThemePreview({ item }: { item: ThemeItem }) {
+  return (
+    <div className="mt-3 rounded-xl border border-[var(--paper-border)] p-2">
+      <div
+        className="h-20 w-full rounded-lg"
+        style={{
+          background: `linear-gradient(135deg, ${item.theme.light.deskBg} 0%, ${item.theme.light.paperBg ?? item.theme.light.deskBg} 48%, ${item.theme.dark.deskBg} 52%, ${item.theme.dark.paperBg ?? item.theme.dark.deskBg} 100%)`,
+        }}
+      />
+      <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] font-medium uppercase tracking-wide opacity-75">
+        <span>Light desk</span>
+        <span
+          className="inline-block h-3 w-3 rounded-full border border-black/25"
+          style={{ background: item.theme.light.deskBg }}
+        />
+        <span>Dark desk</span>
+        <span
+          className="inline-block h-3 w-3 rounded-full border border-white/30"
+          style={{ background: item.theme.dark.deskBg }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function CursorHoverPreview({ item }: { item: CursorItem }) {
+  const defaultCursor = renderCursorCssValue(item, 'default')
+  const pointerCursor = renderCursorCssValue(item, 'pointer') ?? defaultCursor
+  const textCursor = renderCursorCssValue(item, 'text') ?? pointerCursor
+  return (
+    <div className="mt-3 rounded-xl border border-[var(--paper-border)] p-2">
+      <div
+        className="flex h-20 w-full items-center justify-between rounded-lg border border-[var(--paper-border)] bg-black/5 px-3 text-xs"
+        style={{ cursor: defaultCursor ?? 'auto' }}
+      >
+        <span className="font-mono uppercase tracking-wide opacity-75">hover box</span>
+        <button
+          type="button"
+          className="rounded-lg border border-[var(--paper-border)] px-2 py-1 text-[11px] font-semibold"
+          style={{ cursor: pointerCursor ?? 'pointer' }}
+        >
+          pointer
+        </button>
+        <input
+          type="text"
+          readOnly
+          value="text"
+          aria-label={`${item.name} text cursor preview`}
+          className="w-14 rounded border border-[var(--paper-border)] bg-transparent px-1.5 py-1 text-[11px]"
+          style={{ cursor: textCursor ?? 'text' }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ShopItemPreview({ item, preview }: { item: ShopCatalogItem; preview: string | null }) {
+  if (item.type === 'theme') return <ThemePreview item={item} />
+  if (item.type === 'cursor') return <CursorHoverPreview item={item} />
+  if (!preview) return null
+  return (
+    <img
+      src={preview}
+      alt=""
+      className="mt-3 h-20 w-full rounded-xl border border-[var(--paper-border)] object-contain p-1"
+      draggable={false}
+    />
+  )
+}
 
 export function Shoppe({
   onScoreChange,
@@ -56,6 +132,7 @@ export function Shoppe({
 
   function itemPreview(item: ShopCatalogItem) {
     if (item.type === 'stamp') return renderStampPreviewForItem(item)
+    if (item.type === 'theme' || item.type === 'cursor') return null
     if (!item.preview) return null
     if (item.preview.startsWith('/')) return publicUrl(item.preview)
     return item.preview
@@ -83,11 +160,6 @@ export function Shoppe({
     if (item.type === 'stamp') return 'Updates the default submit stamp artwork in the send animation.'
     if (item.type === 'cursor') return 'Applies custom default, pointer, and text cursors.'
     return 'Collectible image item for future gallery drops.'
-  }
-
-  function paletteForTheme(item: ShopCatalogItem) {
-    if (item.type !== 'theme') return null
-    return item.theme
   }
 
   function canEquip(item: ShopCatalogItem): item is Extract<ShopCatalogItem, { type: EquippableType }> {
@@ -234,7 +306,6 @@ export function Shoppe({
             const equippable = canEquip(item)
             const equipped = equippable && equippedId(item.type) === item.id
             const preview = itemPreview(item)
-            const palette = paletteForTheme(item)
             return (
               <article
                 key={item.id}
@@ -249,40 +320,7 @@ export function Shoppe({
                 </div>
                 <div className="ink-muted mt-2 text-sm">{item.description}</div>
                 <div className="ink-muted mt-1 text-xs">{catalogHint(item)}</div>
-                {palette ? (
-                  <div className="mt-3 flex items-center gap-3 text-xs">
-                    <div className="flex items-center gap-1">
-                      <span className="opacity-70">Light:</span>
-                      <span
-                        className="inline-block h-3 w-3 rounded-full border border-black/20"
-                        style={{ background: palette.light.deskBg }}
-                      />
-                      <span
-                        className="inline-block h-3 w-3 rounded-full border border-black/20"
-                        style={{ background: palette.light.paperBg }}
-                      />
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="opacity-70">Dark:</span>
-                      <span
-                        className="inline-block h-3 w-3 rounded-full border border-white/25"
-                        style={{ background: palette.dark.deskBg }}
-                      />
-                      <span
-                        className="inline-block h-3 w-3 rounded-full border border-white/25"
-                        style={{ background: palette.dark.paperBg }}
-                      />
-                    </div>
-                  </div>
-                ) : null}
-                {preview ? (
-                  <img
-                    src={preview}
-                    alt=""
-                    className="mt-3 h-20 w-full rounded-xl border border-[var(--paper-border)] object-contain p-1"
-                    draggable={false}
-                  />
-                ) : null}
+                <ShopItemPreview item={item} preview={preview} />
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {!owned ? (
                     <button

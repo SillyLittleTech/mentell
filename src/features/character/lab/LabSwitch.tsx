@@ -15,7 +15,7 @@ export function LabSwitch({
         role="switch"
         aria-checked={checked}
         className={`focus-ring relative h-7 w-12 shrink-0 rounded-full border border-[var(--paper-border)] transition-colors ${
-          checked ? 'bg-[var(--ink)]' : 'bg-[var(--paper-bg)]'
+          checked ? 'bg-[var(--paper-ink)]' : 'bg-[var(--paper-bg)]'
         }`}
         onClick={() => onChange(!checked)}
       >

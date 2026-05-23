@@ -140,7 +140,7 @@ export function CharacterLabPage() {
                   type="button"
                   className={`focus-ring rounded-xl border px-3 py-1.5 text-sm ${
                     pose === id
-                      ? 'border-[var(--ink)] bg-[var(--ink)] text-[var(--paper-bg)]'
+                      ? 'border-[var(--paper-ink)] bg-[var(--paper-ink)] text-[var(--paper-bg)]'
                       : 'border-[var(--paper-border)]'
                   }`}
                   onClick={() => setPose(id)}

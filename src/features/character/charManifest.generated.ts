@@ -45,13 +45,10 @@ export const charManifest = {
       "label": "Hair",
       "defaultFill": "#311e00",
       "targetIds": [
-        "path85-7",
         "path85",
         "path87-4",
         "path87-4-4",
-        "path90",
         "path91",
-        "path93",
         "path94",
         "path95",
         "path96",
@@ -63,18 +60,6 @@ export const charManifest = {
   ],
   "globalFillGroups": [
     {
-      "key": "sleeves",
-      "label": "Togglesleeve",
-      "parentId": "layer19",
-      "defaultFill": "#261b4f",
-      "targetIds": [
-        "path124",
-        "path125",
-        "path126",
-        "path127"
-      ]
-    },
-    {
       "key": "shirt",
       "label": "Toggleshirt",
       "parentId": "layer15",
@@ -85,25 +70,21 @@ export const charManifest = {
         "path119",
         "path120"
       ]
+    },
+    {
+      "key": "sleeves",
+      "label": "Togglesleeve",
+      "parentId": "layer19",
+      "defaultFill": "#261b4f",
+      "targetIds": [
+        "path124",
+        "path125",
+        "path126",
+        "path127"
+      ]
     }
   ],
   "toggleGroups": [
-    {
-      "key": "layer19",
-      "label": "Togglesleeve",
-      "parentId": "layer19",
-      "defaultOption": "g127",
-      "options": [
-        {
-          "id": "g125",
-          "label": "Longshirtsleeve"
-        },
-        {
-          "id": "g127",
-          "label": "Shortsleeve"
-        }
-      ]
-    },
     {
       "key": "layer15",
       "label": "Toggleshirt",
@@ -185,6 +166,22 @@ export const charManifest = {
       ]
     },
     {
+      "key": "layer19",
+      "label": "Togglesleeve",
+      "parentId": "layer19",
+      "defaultOption": "g127",
+      "options": [
+        {
+          "id": "g125",
+          "label": "Longshirtsleeve"
+        },
+        {
+          "id": "g127",
+          "label": "Shortsleeve"
+        }
+      ]
+    },
+    {
       "key": "blush",
       "label": "Blush",
       "parentId": "g102",
@@ -207,15 +204,15 @@ export const charManifest = {
       "path45": "#ddae67",
       "path65": "#5042ae",
       "hair_fill": "#311e00",
-      "sleeves": "#261b4f",
-      "shirt": "#261b4f"
+      "shirt": "#261b4f",
+      "sleeves": "#261b4f"
     },
     "toggles": {
-      "layer19": "g127",
       "layer15": "path67",
       "layer16": "g96",
       "layer17": "g103",
       "layer18": "g105",
+      "layer19": "g127",
       "blush": "on"
     }
   },

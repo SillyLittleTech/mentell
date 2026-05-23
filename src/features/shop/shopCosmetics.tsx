@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import cursorTemplateSvg from '../../../asset/shop/cursor.svg?raw'
 import { useTheme } from '../../shared/theme/useTheme'
 import {
   loadShopCatalog,
@@ -7,13 +6,12 @@ import {
   type ShopCatalogItem,
   type ThemeItem,
 } from './shopCatalog'
+import { renderCursorCssValue } from './shopCursorAsset'
 import {
   loadShopInventory,
   subscribeShopInventory,
   type ShopInventory,
 } from './shopInventory'
-
-type CursorContext = 'default' | 'pointer' | 'text'
 
 function findEquippedItem<T extends ShopCatalogItem>(
   items: ShopCatalogItem[],
@@ -23,11 +21,6 @@ function findEquippedItem<T extends ShopCatalogItem>(
   if (!id) return null
   const item = items.find((entry) => entry.id === id && entry.type === itemType)
   return (item as T | undefined) ?? null
-}
-
-function serializeSvgElement(svg: SVGSVGElement) {
-  const raw = new XMLSerializer().serializeToString(svg)
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(raw)}`
 }
 
 function setThemeCssVar(name: string, value?: string) {
@@ -50,43 +43,6 @@ function applyThemeCosmetics(mode: 'light' | 'dark', themeItem: ThemeItem | null
   setThemeCssVar('--paper-border', palette.paperBorder)
   setThemeCssVar('--accent', palette.accent)
   setThemeCssVar('--shop-theme-overlay', palette.overlay)
-}
-
-function renderCursorCssValue(item: CursorItem, context: CursorContext): string | null {
-  const doc = new DOMParser().parseFromString(cursorTemplateSvg, 'image/svg+xml')
-  const svg = doc.documentElement
-  if (!(svg instanceof SVGSVGElement)) return null
-
-  const contextLayers = svg.querySelectorAll<SVGGElement>('g[data-context]')
-  contextLayers.forEach((layer) => {
-    const active = layer.dataset.context === context
-    layer.style.display = active ? 'inline' : 'none'
-  })
-
-  const fills = svg.querySelectorAll<SVGElement>('[data-fill]')
-  fills.forEach((el) => {
-    const role = el.dataset.fill
-    if (role === 'primary') el.setAttribute('fill', item.cursor.primary)
-    if (role === 'secondary') el.setAttribute('fill', item.cursor.secondary)
-    if (role === 'outline') el.setAttribute('fill', item.cursor.outline)
-    if (role === 'text') el.setAttribute('fill', item.cursor.textPrimary ?? item.cursor.primary)
-  })
-
-  const strokes = svg.querySelectorAll<SVGElement>('[data-stroke]')
-  strokes.forEach((el) => {
-    const role = el.dataset.stroke
-    if (role === 'outline') el.setAttribute('stroke', item.cursor.outline)
-    if (role === 'primary') el.setAttribute('stroke', item.cursor.primary)
-  })
-
-  const hotspot = item.cursor.hotspot?.[context]
-  const defaultHotspot: Record<CursorContext, [number, number]> = {
-    default: [3, 3],
-    pointer: [4, 2],
-    text: [8, 14],
-  }
-  const [hx, hy] = hotspot ?? defaultHotspot[context]
-  return `url("${serializeSvgElement(svg)}") ${hx} ${hy}, auto`
 }
 
 function applyCursorCosmetics(cursorItem: CursorItem | null) {

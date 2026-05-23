@@ -2,6 +2,10 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import charSvg from '../../../asset/char/charprod.svg?raw'
 import headshotSvg from '../../../asset/char/headshot.svg?raw'
 import { applyCharacterAppearance } from './applyCharacterAppearance'
+import {
+  fixCharacterPaintOrder,
+  fixHeadshotPaintOrder,
+} from './characterPaintOrder'
 import { charManifest } from './charManifest'
 import {
   defaultCharacterAppearance,
@@ -57,8 +61,13 @@ export function MentellCharacter({
     svg.setAttribute('height', '100%')
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
     svg.style.display = 'block'
-    svg.style.overflow = 'visible'
-    applyCharacterAppearance(svg, JSON.parse(appearanceKey) as CharacterAppearance)
+    svg.style.overflow = asset === 'headshot' ? 'hidden' : 'visible'
+    if (asset === 'character') {
+      fixCharacterPaintOrder(svg)
+    } else {
+      fixHeadshotPaintOrder(svg)
+    }
+    applyCharacterAppearance(svg, appearance)
     setSvgGeneration((g) => g + 1)
   }, [appearanceKey, asset])
 

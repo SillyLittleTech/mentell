@@ -1,4 +1,4 @@
-import { Link, Navigate, Route, useLocation } from 'react-router-dom'
+import { Link, Navigate, Route } from 'react-router-dom'
 import { AnimatedRoutes } from './shared/motion/AnimatedRoutes'
 import { AnimatePresence } from 'framer-motion'
 import { useTheme } from './shared/theme/useTheme'
@@ -31,9 +31,8 @@ import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage'
 import { CharacterLabPage } from './features/character/CharacterLabPage'
 import { CharacterNavIcon } from './features/character/CharacterNavIcon'
 import { DeskCharacterLayout } from './features/character/DeskCharacterLayout'
-import { MentellCharacter } from './features/character/MentellCharacter'
-import { poseForPathname } from './features/character/characterPoses'
-import { useCharacterAppearance } from './features/character/useCharacterAppearance'
+import { LeftDeskMascot } from './features/character/LeftDeskMascot'
+import { MobileHeaderMascot } from './features/character/MobileHeaderMascot'
 import { CharacterTabIconSync } from './features/character/CharacterTabIconSync'
 import { isFirebaseSyncEnabled, isShareLinksEnabled } from './shared/features/featureFlags'
 import { useAuthOptional } from './shared/firebase/AuthProvider'
@@ -117,6 +116,7 @@ function App() {
       <CharacterTabIconSync />
       <ShopCosmeticEffects />
       <TopBar score={score} incomingHint={incomingHint} />
+      <LeftDeskMascot />
       <StickyLayer />
       <main className="mx-auto mt-6 w-full max-w-4xl">
         <AnimatedRoutes>
@@ -170,9 +170,6 @@ function TopBar({
   score: ReturnType<typeof getScoreSnapshot>
   incomingHint: string | null
 }) {
-  const { pathname } = useLocation()
-  const menuPose = poseForPathname(pathname)
-  const { appearance: menuAppearance, ready: menuCharacterReady } = useCharacterAppearance()
   const { mode, toggle } = useTheme()
   const { settings } = useAppSettings()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -212,8 +209,13 @@ function TopBar({
             {!settings.disablePoints ? (
               <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
                 <ScoreTicker total={score.total} streak={score.streak} hint={incomingHint} />
+                <MobileHeaderMascot />
               </div>
-            ) : null}
+            ) : (
+              <div className="paper flex items-center rounded-2xl px-2 py-1 md:hidden">
+                <MobileHeaderMascot />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
@@ -270,20 +272,6 @@ function TopBar({
                 ✕
               </button>
             </div>
-
-            {menuCharacterReady ? (
-              <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-2">
-                <div>
-                  <div className="font-mono text-xs opacity-70">Desk companion</div>
-                  <div className="text-sm font-medium">Current character</div>
-                </div>
-                <MentellCharacter
-                  pose={menuPose}
-                  appearance={menuAppearance}
-                  className="h-20 w-16 shrink-0"
-                />
-              </div>
-            ) : null}
 
             <div className="grid gap-2 overflow-y-auto pr-1">
               <DeskLink
@@ -417,7 +405,7 @@ function DeskLink({
     >
       <div className="flex items-center gap-2">
         {isCharacter ? (
-          <CharacterNavIcon className="h-8 w-8 shrink-0 select-none" />
+          <CharacterNavIcon className="-my-0.5 h-9 w-9 shrink-0 select-none" />
         ) : icon ? (
           <img alt="" src={icon} draggable={false} className="h-8 w-8 shrink-0 select-none object-contain" />
         ) : null}

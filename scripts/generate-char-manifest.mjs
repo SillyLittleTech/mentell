@@ -186,7 +186,8 @@ function collectHairFillIds(xml) {
     const tag = m[0]
     const id = tag.match(ID_RE)?.[1]
     const style = tag.match(STYLE_RE)?.[1] ?? ''
-    if (!id || !parseFill(style)) continue
+    const fill = parseFill(style)
+    if (!id || !fill || fill.toLowerCase() === '#ffffff') continue
     ids.push(id)
   }
   return [...new Set(ids)]
