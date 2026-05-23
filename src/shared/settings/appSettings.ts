@@ -4,6 +4,18 @@ import { scopedStorageKey } from '../storage/storageScope'
 const SETTINGS_KEY = scopedStorageKey('mentell.settings')
 const SETTINGS_EVENT = 'mentell:settings-changed'
 
+export const DEFAULT_DELIVERY_WEEKDAY = 1 // Monday (0 = Sunday)
+export const DEFAULT_DELIVERY_TIME_LOCAL = '09:00'
+export const FALLBACK_PUSH_TIMEZONE = 'America/New_York'
+
+export function browserTimezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || FALLBACK_PUSH_TIMEZONE
+  } catch {
+    return FALLBACK_PUSH_TIMEZONE
+  }
+}
+
 export type AppSettings = {
   reducedMotion: boolean
   disableAi: boolean
@@ -12,6 +24,12 @@ export type AppSettings = {
   /** When true, RAW reports use only `globalName` (no AI display name fallback). */
   globalNameManuallySet: boolean
   syncPromptDismissed: boolean
+  disableNotifications: boolean
+  /** 0 = Sunday … 6 = Saturday (date-fns weekStartsOn: 1) */
+  deliveryWeekday: number
+  deliveryTimeLocal: string
+  /** IANA timezone for push delivery when sync is on */
+  timezone: string
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -21,6 +39,10 @@ const DEFAULT_SETTINGS: AppSettings = {
   globalName: '',
   globalNameManuallySet: false,
   syncPromptDismissed: false,
+  disableNotifications: false,
+  deliveryWeekday: DEFAULT_DELIVERY_WEEKDAY,
+  deliveryTimeLocal: DEFAULT_DELIVERY_TIME_LOCAL,
+  timezone: browserTimezone(),
 }
 
 function sanitizeGlobalName(raw: string) {
@@ -30,6 +52,31 @@ function sanitizeGlobalName(raw: string) {
     .slice(0, 40)
     .replace(/[^a-zA-Z\u00C0-\u024F\s'\-]/g, '')
     .trim()
+}
+
+function sanitizeDeliveryTimeLocal(raw: string | undefined) {
+  const m = (raw ?? DEFAULT_DELIVERY_TIME_LOCAL).trim().match(/^(\d{1,2}):(\d{2})$/)
+  if (!m) return DEFAULT_DELIVERY_TIME_LOCAL
+  const h = Math.min(23, Math.max(0, Number(m[1])))
+  const min = Math.min(59, Math.max(0, Number(m[2])))
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+}
+
+function sanitizeDeliveryWeekday(raw: number | undefined) {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return DEFAULT_DELIVERY_WEEKDAY
+  return Math.min(6, Math.max(0, Math.trunc(n)))
+}
+
+function sanitizeTimezone(raw: string | undefined) {
+  const tz = (raw ?? '').trim()
+  if (!tz) return browserTimezone()
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz })
+    return tz
+  } catch {
+    return FALLBACK_PUSH_TIMEZONE
+  }
 }
 
 export function sanitizeAppSettings(input: Partial<AppSettings>): AppSettings {
@@ -43,15 +90,21 @@ export function sanitizeAppSettings(input: Partial<AppSettings>): AppSettings {
     globalName,
     globalNameManuallySet,
     syncPromptDismissed: Boolean(input.syncPromptDismissed),
+    disableNotifications: Boolean(input.disableNotifications),
+    deliveryWeekday: sanitizeDeliveryWeekday(input.deliveryWeekday),
+    deliveryTimeLocal: sanitizeDeliveryTimeLocal(input.deliveryTimeLocal),
+    timezone: sanitizeTimezone(input.timezone),
   }
 }
 
 export function loadAppSettings(): AppSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY)
-    if (!raw) return { ...DEFAULT_SETTINGS }
+    if (!raw) return { ...DEFAULT_SETTINGS, timezone: browserTimezone() }
     const parsed = JSON.parse(raw) as Partial<AppSettings>
-    return sanitizeAppSettings(parsed)
+    const merged = { ...DEFAULT_SETTINGS, ...parsed }
+    if (!parsed.timezone) merged.timezone = browserTimezone()
+    return sanitizeAppSettings(merged)
   } catch {
     return { ...DEFAULT_SETTINGS }
   }

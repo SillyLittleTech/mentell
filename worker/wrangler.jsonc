@@ -1,16 +1,29 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "mentell-weekly-ai",
-  "main": "src/index.ts",
-  "compatibility_date": "2024-09-23",
-  "ai": {
-    "binding": "AI"
-  },
-  "kv_namespaces": [
-    {
-      "binding": "RATE_LIMIT_KV",
-      "id": "f6aa33d72731426787415a8c94415dd9",
-      "preview_id": "15c059bac7174625a93906b3096d8b26"
-    }
-  ]
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "mentell-weekly-ai",
+	"main": "src/index.ts",
+	"compatibility_date": "2024-09-23",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"triggers": {
+		"crons": [
+			"*/15 * * * *"
+		]
+	},
+	"ai": {
+		"binding": "AI"
+	},
+	"kv_namespaces": [
+		{
+			"binding": "RATE_LIMIT_KV",
+			"id": "f6aa33d72731426787415a8c94415dd9",
+			"preview_id": "15c059bac7174625a93906b3096d8b26"
+		},
+		{
+			"binding": "PUSH_KV",
+			"id": "fc6d5a915d384f2b8073722c9e8249e9",
+      "preview_id": "d52384dd7b3e4aec9849c759ed826d03"
+		}
+	]
 }

@@ -11,8 +11,13 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url))
 const base = process.env.VITE_BASE ?? '/'
 const appVersion = readFileSync(path.join(rootDir, 'VERSION'), 'utf8').trim()
 
+const prodPrecacheGlobs = ['**/*.{js,css,html,ico,png,svg,webp,woff2}']
+
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command, mode }) => {
+  const enablePwaDevSw = command === 'serve' && mode !== 'debug'
+
+  return {
   base,
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
@@ -30,30 +35,40 @@ export default defineConfig({
       ? []
       : [
           VitePWA({
-      registerType: 'autoUpdate',
-      workbox: {
-        maximumFileSizeToCacheInBytes: 4_000_000,
-        navigateFallback: `${base}index.html`,
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff2}'],
-      },
-      manifest: {
-        name: 'Mentell',
-        short_name: 'Mentell',
-        description: 'Local-first stationery journal',
-        theme_color: '#505153',
-        background_color: '#505153',
-        display: 'standalone',
-        start_url: base,
-        icons: [
-          {
-            src: 'asset/mentell-icon.png',
-            sizes: '1024x1024',
-            type: 'image/png',
-            purpose: 'any',
-          },
-        ],
-      },
+            strategies: 'injectManifest',
+            srcDir: 'src/pwa',
+            filename: 'sw.ts',
+            injectRegister: null,
+            registerType: 'autoUpdate',
+            devOptions: {
+              enabled: enablePwaDevSw,
+              type: 'module',
+              navigateFallback: 'index.html',
+            },
+            injectManifest: {
+              maximumFileSizeToCacheInBytes: 4_000_000,
+              /** Dev: skip precache so install does not hang on missing assets */
+              globPatterns: command === 'serve' ? [] : prodPrecacheGlobs,
+            },
+            manifest: {
+              name: 'Mentell',
+              short_name: 'Mentell',
+              description: 'Local-first stationery journal',
+              theme_color: '#505153',
+              background_color: '#505153',
+              display: 'standalone',
+              start_url: base,
+              icons: [
+                {
+                  src: 'asset/mentell-icon.png',
+                  sizes: '1024x1024',
+                  type: 'image/png',
+                  purpose: 'any',
+                },
+              ],
+            },
           }),
         ]),
   ],
+  }
 })

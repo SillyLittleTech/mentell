@@ -4,8 +4,12 @@ import { awardForPackageOpen } from '../score/scoreService'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
 export async function ensurePackage(kind: PackageKind, periodKey: string) {
+  return (await ensurePackageWithStatus(kind, periodKey)).row
+}
+
+export async function ensurePackageWithStatus(kind: PackageKind, periodKey: string) {
   const existing = await getDb().packages.where({ kind, periodKey }).first()
-  if (existing) return existing
+  if (existing) return { row: existing, created: false as const }
   const now = Date.now()
   const row: PackageRow = {
     id: makeId('pkg'),
@@ -16,7 +20,7 @@ export async function ensurePackage(kind: PackageKind, periodKey: string) {
   }
   await getDb().packages.put(row)
   notifyLocalDataChanged()
-  return row
+  return { row, created: true as const }
 }
 
 export async function markPackageOpened(id: string) {
@@ -53,4 +57,3 @@ export function iconLevelForPackages(pkgs: { kind: PackageKind }[]) {
   if (counts.weekly > 0) return 1
   return 0
 }
-

@@ -1,5 +1,12 @@
 # Copy to worker/.dev.vars (gitignored) for local wrangler dev
 # Quote tokens that contain # @ ! etc. (otherwise # starts a comment)
 WEEKLY_SUMMARY_TOKEN="your-token-here"
+# Web Push — REQUIRED for /push/test and delayed push in wrangler dev (secrets alone are not enough locally)
+# Generate: npx web-push generate-vapid-keys
+# Use the same pair as production wrangler secret put VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY
+VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+# Firebase service account JSON (one line) for cron Firestore reads when users sync
+# FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 # Optional extra CORS host suffixes (comma-separated), e.g. ".myotherdomain.com"
 # ALLOWED_HOST_SUFFIXES=".sillylittle.tech"
