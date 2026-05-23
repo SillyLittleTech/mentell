@@ -2,7 +2,7 @@ import { eachWeekOfInterval, endOfWeek, format, parseISO, startOfWeek, subWeeks 
 import type { PackageRow } from '../../db/schema'
 import { getDb } from '../../db/schema'
 import { loadAppSettings } from '../../shared/settings/appSettings'
-import { ensurePackage } from './packageService'
+import { ensurePackageWithStatus } from './packageService'
 import { weekKeyForDateKey } from '../compilation/weeklyStats'
 import { isWeekDeliverable } from './packageDelivery'
 
@@ -35,13 +35,8 @@ export async function generateDuePackages(now: Date = new Date()) {
     const count = await getDb().entries.where('dateKey').between(startKey, endKey, true, true).count()
     if (count <= 0) continue
 
-    const existing = await getDb().packages
-      .where({ kind: 'weekly', periodKey: weekKeyForDateKey(startKey) })
-      .first()
-    if (existing) continue
-
-    const row = await ensurePackage('weekly', weekKeyForDateKey(startKey))
-    created.push(row)
+    const result = await ensurePackageWithStatus('weekly', weekKeyForDateKey(startKey))
+    if (result.created) created.push(result.row)
   }
 
   return { created }

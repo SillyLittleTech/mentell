@@ -1,5 +1,3 @@
-import { endOfWeek, format, parseISO, startOfWeek, subWeeks } from 'date-fns'
-
 export const GENERIC_PUSH_TIMEZONE = 'America/New_York'
 
 const WEEKDAY_SHORT: Record<string, number> = {
@@ -53,13 +51,47 @@ export function inDeliveryWindow(
 }
 
 export function lastCompletedWeekRange(now: Date, timeZone: string) {
-  const todayKey = dateKeyInTimeZone(now, timeZone)
-  const today = parseISO(todayKey)
-  const lastCompleteWeekEnd = endOfWeek(subWeeks(today, 1), { weekStartsOn: 1 })
-  const lastCompleteWeekStart = startOfWeek(lastCompleteWeekEnd, { weekStartsOn: 1 })
+  const today = parseDateKeyAsUtc(dateKeyInTimeZone(now, timeZone))
+  const currentWeekStart = mondayStartUtc(today)
+  const lastCompleteWeekStart = addDaysUtc(currentWeekStart, -7)
+  const lastCompleteWeekEnd = addDaysUtc(lastCompleteWeekStart, 6)
+  const week = isoWeekParts(lastCompleteWeekStart)
   return {
-    weekKey: format(lastCompleteWeekStart, "yyyy-'W'II"),
-    startKey: format(lastCompleteWeekStart, 'yyyy-MM-dd'),
-    endKey: format(lastCompleteWeekEnd, 'yyyy-MM-dd'),
+    weekKey: `${week.year}-W${String(week.week).padStart(2, '0')}`,
+    startKey: formatUtcDateKey(lastCompleteWeekStart),
+    endKey: formatUtcDateKey(lastCompleteWeekEnd),
   }
+}
+
+function parseDateKeyAsUtc(dateKey: string) {
+  const m = dateKey.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) throw new Error(`Invalid date key: ${dateKey}`)
+  return new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])))
+}
+
+function addDaysUtc(date: Date, days: number) {
+  const next = new Date(date.getTime())
+  next.setUTCDate(next.getUTCDate() + days)
+  return next
+}
+
+function mondayStartUtc(date: Date) {
+  const offset = (date.getUTCDay() + 6) % 7
+  return addDaysUtc(date, -offset)
+}
+
+function formatUtcDateKey(date: Date) {
+  const y = date.getUTCFullYear()
+  const m = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(date.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function isoWeekParts(mondayDate: Date) {
+  const thursday = addDaysUtc(mondayDate, 3)
+  const year = thursday.getUTCFullYear()
+  const jan4 = new Date(Date.UTC(year, 0, 4))
+  const jan4Monday = mondayStartUtc(jan4)
+  const days = Math.floor((mondayDate.getTime() - jan4Monday.getTime()) / 86_400_000)
+  return { year, week: Math.floor(days / 7) + 1 }
 }

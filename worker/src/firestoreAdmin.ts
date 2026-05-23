@@ -27,7 +27,10 @@ async function getAccessToken(sa: ServiceAccount) {
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${assertion}`,
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion,
+    }),
   })
   if (!res.ok) throw new Error('Failed to obtain Firestore access token')
   const json = (await res.json()) as { access_token?: string; expires_in?: number }

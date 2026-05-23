@@ -118,54 +118,50 @@ export function SettingsPage() {
               this page.
             </p>
           ) : null}
-          {!settings.disablePoints ? (
-            <div className="grid gap-3 rounded-2xl border border-[var(--paper-border)] p-4">
-              <div className="text-sm font-medium">Package delivery</div>
-              <p className="ink-muted text-xs">
-                Weekly packages appear after this day and time, once that journal week is complete
-                (Monday–Sunday). With cloud sync and push enabled, delivery uses your timezone below;
-                otherwise push reminders use Eastern Time.
-              </p>
-              <label className="grid gap-1 text-sm">
-                <span className="ink-muted text-xs font-medium">Delivery day</span>
-                <select
-                  className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
-                  value={settings.deliveryWeekday}
-                  onChange={(e) =>
-                    updateSettings({ deliveryWeekday: Number(e.target.value) })
-                  }
-                >
-                  {WEEKDAY_OPTIONS.map((d) => (
-                    <option key={d.value} value={d.value}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-1 text-sm">
-                <span className="ink-muted text-xs font-medium">Delivery time</span>
-                <input
-                  type="time"
-                  className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
-                  value={settings.deliveryTimeLocal}
-                  onChange={(e) => updateSettings({ deliveryTimeLocal: e.target.value })}
-                />
-              </label>
-              <label className="grid gap-1 text-sm">
-                <span className="ink-muted text-xs font-medium">Timezone (push)</span>
-                <input
-                  type="text"
-                  readOnly
-                  className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 opacity-80"
-                  value={settings.timezone}
-                  onFocus={() => updateSettings({ timezone: browserTimezone() })}
-                />
-                <span className="ink-muted text-xs">
-                  Detected from your device. Focus this field to refresh.
-                </span>
-              </label>
-            </div>
-          ) : null}
+          <div className="grid gap-3 rounded-2xl border border-[var(--paper-border)] p-4">
+            <div className="text-sm font-medium">Package delivery</div>
+            <p className="ink-muted text-xs">
+              Weekly packages appear after this day and time, once that journal week is complete
+              (Monday–Sunday). With cloud sync and push enabled, delivery uses your timezone below;
+              otherwise push reminders use Eastern Time.
+            </p>
+            <label className="grid gap-1 text-sm">
+              <span className="ink-muted text-xs font-medium">Delivery day</span>
+              <select
+                className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
+                value={settings.deliveryWeekday}
+                onChange={(e) => updateSettings({ deliveryWeekday: Number(e.target.value) })}
+              >
+                {WEEKDAY_OPTIONS.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="ink-muted text-xs font-medium">Delivery time</span>
+              <input
+                type="time"
+                className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
+                value={settings.deliveryTimeLocal}
+                onChange={(e) => updateSettings({ deliveryTimeLocal: e.target.value })}
+              />
+            </label>
+            <label className="grid gap-1 text-sm">
+              <span className="ink-muted text-xs font-medium">Timezone (push)</span>
+              <input
+                type="text"
+                readOnly
+                className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 opacity-80"
+                value={settings.timezone}
+                onFocus={() => updateSettings({ timezone: browserTimezone() })}
+              />
+              <span className="ink-muted text-xs">
+                Detected from your device. Focus this field to refresh.
+              </span>
+            </label>
+          </div>
           <SettingsAccountFeatures />
         </div>
       </section>

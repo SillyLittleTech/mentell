@@ -8,6 +8,8 @@ import type { PushSubscriber, SubscribeBody, UnsubscribeBody } from './pushTypes
 const DEFAULT_DELIVERY_WEEKDAY = 1
 const DEFAULT_DELIVERY_TIME = '09:00'
 const FALLBACK_TZ = 'America/New_York'
+const PUSH_HOUR_LIMIT = 60
+const PUSH_DAY_LIMIT = 180
 
 function normalizeToken(raw: string) {
   const t = raw.trim()
@@ -48,6 +50,7 @@ function authorizeSharedToken(request: Request, env: PushEnv) {
 }
 
 function subscriberKey(uid: string | undefined, clientId: string | undefined) {
+  if (uid && clientId) return `sub:${uid}:${clientId}`
   if (uid) return `sub:${uid}`
   if (clientId) return `sub:cid:${clientId}`
   return null
@@ -103,6 +106,8 @@ export async function handlePushSubscribe(request: Request, env: PushEnv) {
   const clientId = body.clientId?.trim()
   const key = subscriberKey(uid, clientId)
   if (!key) return corsJson({ error: 'clientId required when not signed in' }, 400, env, origin)
+  const limited = await enforcePushRateLimit(env, clientIp(request), 'subscribe')
+  if (!limited.ok) return corsJson({ error: limited.reason }, 429, env, origin)
 
   const record: PushSubscriber = {
     endpoint: sub.endpoint,
@@ -116,8 +121,14 @@ export async function handlePushSubscribe(request: Request, env: PushEnv) {
     updatedAt: Date.now(),
   }
 
+  const previousRaw = await env.PUSH_KV.get(key)
+  const previous = parseSubscriber(previousRaw)
+
   await env.PUSH_KV.put(key, JSON.stringify(record))
   await env.PUSH_KV.put(`ep:${await hashEndpoint(sub.endpoint)}`, key)
+  if (previous?.endpoint && previous.endpoint !== sub.endpoint) {
+    await env.PUSH_KV.delete(`ep:${await hashEndpoint(previous.endpoint)}`)
+  }
 
   return corsJson({ ok: true }, 200, env, origin)
 }
@@ -142,12 +153,16 @@ export async function handlePushUnsubscribe(request: Request, env: PushEnv) {
   const clientId = body.clientId?.trim()
   const key = subscriberKey(uid, clientId)
   if (!key) return corsJson({ error: 'clientId required when not signed in' }, 400, env, origin)
+  const limited = await enforcePushRateLimit(env, clientIp(request), 'unsubscribe')
+  if (!limited.ok) return corsJson({ error: limited.reason }, 429, env, origin)
 
   if (body.endpoint) {
     const epKey = `ep:${await hashEndpoint(body.endpoint)}`
     const mapped = await env.PUSH_KV.get(epKey)
-    if (mapped) await env.PUSH_KV.delete(mapped)
-    await env.PUSH_KV.delete(epKey)
+    if (mapped === key) {
+      await env.PUSH_KV.delete(mapped)
+      await env.PUSH_KV.delete(epKey)
+    }
   }
   await env.PUSH_KV.delete(key)
 
@@ -172,11 +187,11 @@ function vapidNotConfiguredResponse(env: PushEnv, origin: string | null) {
 
 export async function handlePushStatus(request: Request, env: PushEnv) {
   const origin = request.headers.get('Origin')
-  if (request.method === 'OPTIONS') return corsResponse(null, 204, env, origin)
+  if (request.method === 'OPTIONS') return corsResponse(null, 204, env, origin, 'GET, OPTIONS')
   if (request.method !== 'GET') {
-    return corsJson({ error: 'Method not allowed' }, 405, env, origin)
+    return corsJson({ error: 'Method not allowed' }, 405, env, origin, 'GET, OPTIONS')
   }
-  return corsJson({ vapidConfigured: vapidConfigured(env) }, 200, env, origin)
+  return corsJson({ vapidConfigured: vapidConfigured(env) }, 200, env, origin, 'GET, OPTIONS')
 }
 
 function sleep(ms: number) {
@@ -196,6 +211,8 @@ export async function handlePushTestDelayed(
   if (!authorizeSharedToken(request, env)) {
     return corsJson({ error: 'Unauthorized' }, 401, env, origin)
   }
+  const limited = await enforcePushRateLimit(env, clientIp(request), 'test-delayed')
+  if (!limited.ok) return corsJson({ error: limited.reason }, 429, env, origin)
   if (!vapidConfigured(env)) {
     return vapidNotConfiguredResponse(env, origin)
   }
@@ -247,6 +264,8 @@ export async function handlePushTest(request: Request, env: PushEnv) {
   if (!authorizeSharedToken(request, env)) {
     return corsJson({ error: 'Unauthorized' }, 401, env, origin)
   }
+  const limited = await enforcePushRateLimit(env, clientIp(request), 'test')
+  if (!limited.ok) return corsJson({ error: limited.reason }, 429, env, origin)
   if (!vapidConfigured(env)) {
     return vapidNotConfiguredResponse(env, origin)
   }
@@ -273,4 +292,43 @@ async function hashEndpoint(endpoint: string) {
   const data = new TextEncoder().encode(endpoint)
   const digest = await crypto.subtle.digest('SHA-256', data)
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+function clientIp(request: Request) {
+  return (
+    request.headers.get('CF-Connecting-IP') ??
+    request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ??
+    'unknown'
+  )
+}
+
+async function enforcePushRateLimit(env: PushEnv, ip: string, route: string) {
+  const now = Date.now()
+  const hourKey = `push:h:${route}:${ip}:${Math.floor(now / (60 * 60 * 1000))}`
+  const dayKey = `push:d:${route}:${ip}:${Math.floor(now / (24 * 60 * 60 * 1000))}`
+  const hourCount = await incrementRate(env.RATE_LIMIT_KV, hourKey)
+  if (hourCount > PUSH_HOUR_LIMIT) {
+    return { ok: false as const, reason: `Hourly limit reached (${PUSH_HOUR_LIMIT}/hour).` }
+  }
+  const dayCount = await incrementRate(env.RATE_LIMIT_KV, dayKey)
+  if (dayCount > PUSH_DAY_LIMIT) {
+    return { ok: false as const, reason: `Daily limit reached (${PUSH_DAY_LIMIT}/day).` }
+  }
+  return { ok: true as const }
+}
+
+async function incrementRate(kv: KVNamespace, key: string) {
+  const raw = await kv.get(key)
+  const next = (raw ? Number(raw) : 0) + 1
+  await kv.put(key, String(next), { expirationTtl: 60 * 60 * 48 })
+  return next
+}
+
+function parseSubscriber(raw: string | null) {
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as PushSubscriber
+  } catch {
+    return null
+  }
 }
