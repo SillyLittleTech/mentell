@@ -8,7 +8,7 @@ export const CHARACTER_POSES: Record<CharacterPoseId, ArmPose> = {
   think: { armL: -66, armR: 22 },
   write: { armL: -24, armR: 48 },
   shop: { armL: 24, armR: -44 },
-  wave: { armL: -82, armR: 16 },
+  wave: { armL: -104, armR: 28 },
 }
 
 export const POSE_LABELS: Record<CharacterPoseId, string> = {
