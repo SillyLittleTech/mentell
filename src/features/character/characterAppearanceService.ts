@@ -1,4 +1,5 @@
 import { getDb } from '../../db/schema'
+import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 import {
   defaultCharacterAppearance,
   type CharacterAppearance,
@@ -46,6 +47,7 @@ export async function loadCharacterAppearance(): Promise<CharacterAppearance> {
 
 export async function saveCharacterAppearance(appearance: CharacterAppearance) {
   cache = appearance
+  loadPromise = Promise.resolve(cache)
   const row = {
     id: CHARACTER_APPEARANCE_ROW_ID,
     updatedAt: Date.now(),
@@ -54,6 +56,7 @@ export async function saveCharacterAppearance(appearance: CharacterAppearance) {
   }
   await getDb().characterAppearance.put(row)
   notifyAppearanceChanged()
+  notifyLocalDataChanged()
 }
 
 export function scheduleSaveCharacterAppearance(appearance: CharacterAppearance) {
@@ -83,5 +86,12 @@ export async function clearCharacterAppearance() {
   cache = null
   loadPromise = null
   await getDb().characterAppearance.clear()
+  notifyAppearanceChanged()
+  notifyLocalDataChanged()
+}
+
+export function applyCharacterAppearanceFromCloud(appearance: CharacterAppearance) {
+  cache = mergeWithDefaults(appearance)
+  loadPromise = Promise.resolve(cache)
   notifyAppearanceChanged()
 }

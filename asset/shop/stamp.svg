@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <g id="stamp-root" transform="rotate(-14 128 128)">
+    <rect
+      id="stamp-border"
+      x="26"
+      y="70"
+      width="204"
+      height="116"
+      rx="10"
+      ry="10"
+      fill="#c61d1d"
+      fill-opacity="0.08"
+      stroke="#9e1717"
+      stroke-width="10"
+      stroke-dasharray="18 8"
+    />
+    <rect
+      id="stamp-inner"
+      x="38"
+      y="82"
+      width="180"
+      height="92"
+      rx="8"
+      ry="8"
+      fill="none"
+      stroke="#9e1717"
+      stroke-width="4"
+    />
+    <text
+      id="stamp-text"
+      x="128"
+      y="140"
+      fill="#9e1717"
+      font-family="Arial, Helvetica, sans-serif"
+      font-size="58"
+      font-weight="800"
+      letter-spacing="1.2"
+      text-anchor="middle"
+      dominant-baseline="middle"
+    >
+      Stamp
+    </text>
+  </g>
+</svg>
