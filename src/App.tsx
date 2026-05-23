@@ -417,7 +417,7 @@ function DeskLink({
     >
       <div className="flex items-center gap-2">
         {isCharacter ? (
-          <CharacterNavIcon className="h-8 w-8 shrink-0 select-none" />
+          <CharacterNavIcon className="-my-0.5 h-9 w-9 shrink-0 select-none" />
         ) : icon ? (
           <img alt="" src={icon} draggable={false} className="h-8 w-8 shrink-0 select-none object-contain" />
         ) : null}

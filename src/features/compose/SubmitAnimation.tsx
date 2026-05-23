@@ -89,31 +89,17 @@ export function SubmitAnimation({
                   <RopeWrap active={showRopePasses} showKnot={showKnot} />
 
                   {stampLanded ? (
-                    stamp.isCustom ? (
-                      <div
-                        className="pointer-events-none absolute left-1/2 top-1/2 flex h-[45%] w-[45%] min-h-[100px] min-w-[100px] -translate-x-1/2 -translate-y-1/2 select-none items-center justify-center rounded-[1.1rem] border-[6px] border-dashed px-2 text-center"
-                        style={{
-                          borderColor: stamp.outline,
-                          background: stamp.ink,
-                          color: stamp.textColor,
-                          opacity: 0.55,
-                          boxShadow: `0 10px 20px color-mix(in oklab, ${stamp.outline} 35%, transparent)`,
-                        }}
-                        aria-hidden
-                      >
-                        <span className="font-mono text-lg font-black uppercase tracking-[0.14em]">
-                          {stamp.text}
-                        </span>
-                      </div>
-                    ) : (
-                      <img
-                        alt=""
-                        src={stamp.src}
-                        draggable={false}
-                        className="pointer-events-none absolute left-1/2 top-1/2 h-[45%] w-[45%] min-h-[100px] min-w-[100px] -translate-x-1/2 -translate-y-1/2 select-none object-contain opacity-[0.22]"
-                        aria-hidden
-                      />
-                    )
+                    <img
+                      alt=""
+                      src={stamp.src}
+                      draggable={false}
+                      className="pointer-events-none absolute left-1/2 top-1/2 h-[45%] w-[45%] min-h-[100px] min-w-[100px] -translate-x-1/2 -translate-y-1/2 select-none object-contain"
+                      style={{
+                        opacity: stamp.isCustom ? 0.56 : 0.34,
+                        filter: `drop-shadow(0 9px 16px color-mix(in oklab, ${stamp.outline} 40%, transparent))`,
+                      }}
+                      aria-hidden
+                    />
                   ) : null}
 
                   <AnimatePresence>
@@ -140,59 +126,29 @@ export function SubmitAnimation({
                           if (!reduced) setStampLanded(true)
                         }}
                       >
-                        {stamp.isCustom ? (
-                          <motion.div
-                            className="flex h-[200px] w-[200px] max-w-[min(45vw,220px)] select-none items-center justify-center rounded-[1.6rem] border-[10px] border-dashed px-4 text-center"
-                            style={{
-                              borderColor: stamp.outline,
-                              background: stamp.ink,
-                              color: stamp.textColor,
-                              filter: `drop-shadow(0 18px 30px color-mix(in oklab, ${stamp.outline} 45%, transparent))`,
-                            }}
-                            initial={reduced ? {} : { scaleY: 1 }}
-                            animate={
-                              reduced
-                                ? {}
-                                : {
-                                    scaleY: [1, 0.88, 1],
-                                  }
-                            }
-                            transition={{
-                              scaleY: {
-                                delay: motionDuration(0.35) || 0,
-                                duration: motionDuration(0.2) || 0.01,
-                              },
-                            }}
-                          >
-                            <span className="font-mono text-4xl font-black uppercase tracking-[0.16em]">
-                              {stamp.text}
-                            </span>
-                          </motion.div>
-                        ) : (
-                          <motion.img
-                            alt=""
-                            src={stamp.src}
-                            draggable={false}
-                            className="h-[200px] w-[200px] max-w-[min(45vw,220px)] select-none object-contain"
-                            style={{
-                              filter: 'drop-shadow(0 18px 30px rgba(0,0,0,0.22))',
-                            }}
-                            initial={reduced ? {} : { scaleY: 1 }}
-                            animate={
-                              reduced
-                                ? {}
-                                : {
-                                    scaleY: [1, 0.88, 1],
-                                  }
-                            }
-                            transition={{
-                              scaleY: {
-                                delay: motionDuration(0.35) || 0,
-                                duration: motionDuration(0.2) || 0.01,
-                              },
-                            }}
-                          />
-                        )}
+                        <motion.img
+                          alt=""
+                          src={stamp.src}
+                          draggable={false}
+                          className="h-[200px] w-[200px] max-w-[min(45vw,220px)] select-none object-contain"
+                          style={{
+                            filter: `drop-shadow(0 18px 30px color-mix(in oklab, ${stamp.outline} 48%, transparent))`,
+                          }}
+                          initial={reduced ? {} : { scaleY: 1 }}
+                          animate={
+                            reduced
+                              ? {}
+                              : {
+                                  scaleY: [1, 0.88, 1],
+                                }
+                          }
+                          transition={{
+                            scaleY: {
+                              delay: motionDuration(0.35) || 0,
+                              duration: motionDuration(0.2) || 0.01,
+                            },
+                          }}
+                        />
                       </motion.div>
                     ) : null}
                   </AnimatePresence>

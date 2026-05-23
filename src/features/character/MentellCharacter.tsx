@@ -30,6 +30,22 @@ export type MentellCharacterProps = {
   title?: string
 }
 
+function bringElementToFront(svg: SVGSVGElement, id: string | undefined) {
+  if (!id) return
+  const el = svg.getElementById(id)
+  const parent = el?.parentElement
+  if (!el || !parent) return
+  parent.appendChild(el)
+}
+
+function promoteAnimatedArmLayers(svg: SVGSVGElement) {
+  const sleeveParentId =
+    charManifest.globalFillGroups.find((group) => group.key === 'sleeves')?.parentId ?? 'layer19'
+  bringElementToFront(svg, sleeveParentId)
+  bringElementToFront(svg, charManifest.arms.armL.jointId)
+  bringElementToFront(svg, charManifest.arms.armR.jointId)
+}
+
 export function MentellCharacter({
   pose,
   asset = 'character',
@@ -58,6 +74,10 @@ export function MentellCharacter({
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
     svg.style.display = 'block'
     svg.style.overflow = 'visible'
+    if (asset === 'character') {
+      // Keep animated arms/sleeves painted above torso across SVG reorder tweaks.
+      promoteAnimatedArmLayers(svg)
+    }
     applyCharacterAppearance(svg, JSON.parse(appearanceKey) as CharacterAppearance)
     setSvgGeneration((g) => g + 1)
   }, [appearanceKey, asset])

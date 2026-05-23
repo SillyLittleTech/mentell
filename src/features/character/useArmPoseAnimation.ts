@@ -89,7 +89,7 @@ export function useArmPoseAnimation(
       }
     }
 
-    const duration = motionDuration(0.4)
+    const duration = motionDuration(0.55)
 
     if (duration === 0) {
       apply(pose.armL, pose.armR)
@@ -103,16 +103,18 @@ export function useArmPoseAnimation(
     let currentR = fromR
 
     const controlsL = animate(fromL, pose.armL, {
+      type: 'spring',
       duration,
-      ease: [0.4, 0, 0.2, 1],
+      bounce: 0.22,
       onUpdate: (v) => {
         currentL = v
         apply(currentL, currentR)
       },
     })
     const controlsR = animate(fromR, pose.armR, {
+      type: 'spring',
       duration,
-      ease: [0.4, 0, 0.2, 1],
+      bounce: 0.22,
       onUpdate: (v) => {
         currentR = v
         apply(currentL, currentR)
