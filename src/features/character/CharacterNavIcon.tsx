@@ -3,9 +3,10 @@ import { useMemo } from 'react'
 import headshotSvg from '../../../asset/char/headshot.svg?raw'
 import { applyCharacterAppearance } from './applyCharacterAppearance'
 import type { CharacterAppearance } from './characterAppearance'
+import { fixHeadshotPaintOrder } from './characterPaintOrder'
 import { useCharacterAppearance } from './useCharacterAppearance'
 
-const NAV_BADGE_VIEWBOX = '16 4 68 74'
+const NAV_BADGE_VIEWBOX = '0 0 100 100'
 
 function buildBadgeSrc(appearance: CharacterAppearance) {
   const parsed = new DOMParser().parseFromString(headshotSvg, 'image/svg+xml')
@@ -15,6 +16,7 @@ function buildBadgeSrc(appearance: CharacterAppearance) {
   svg.setAttribute('height', '96')
   svg.setAttribute('viewBox', NAV_BADGE_VIEWBOX)
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+  fixHeadshotPaintOrder(svg)
   if (appearance) applyCharacterAppearance(svg, appearance)
   const serialized = new XMLSerializer().serializeToString(svg)
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(serialized)}`

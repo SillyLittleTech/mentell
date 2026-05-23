@@ -29,8 +29,8 @@ export function OptionDial({
               aria-pressed={pressed}
               className={`focus-ring min-w-[2.25rem] rounded-lg px-2.5 py-1.5 text-sm font-medium tabular-nums ${
                 pressed
-                  ? 'bg-[var(--ink)] text-[var(--paper-bg)]'
-                  : 'text-[var(--ink)] opacity-70 hover:opacity-100'
+                  ? 'bg-[var(--paper-ink)] text-[var(--paper-bg)]'
+                  : 'text-[var(--paper-ink)] opacity-70 hover:opacity-100'
               }`}
               onClick={() => onChange(opt.id)}
             >
