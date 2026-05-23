@@ -4,12 +4,6 @@ import type { CharacterAppearance } from './characterAppearance'
 
 function setToggleOptionVisible(el: SVGElement, show: boolean) {
   el.style.display = show ? 'inline' : 'none'
-  if (!show || !(el instanceof SVGGElement)) return
-  for (const child of el.querySelectorAll<SVGElement>('path,ellipse,g')) {
-    const attr = child.getAttribute('style') ?? ''
-    if (attr.includes('display:none') && !attr.includes('display:inline')) continue
-    child.style.display = 'inline'
-  }
 }
 
 export function applyCharacterAppearance(

@@ -41,8 +41,32 @@ function svgPointToElement(
   return { cx: asElement.x, cy: asElement.y }
 }
 
-function setRotate(el: SVGElement, deg: number, cx: number, cy: number) {
-  el.setAttribute('transform', `rotate(${deg} ${cx} ${cy})`)
+type RotatingNode = {
+  el: SVGGraphicsElement
+  baseTransform: string
+  pivot: { cx: number; cy: number }
+}
+
+const BASE_TRANSFORM_ATTR = 'data-mentell-base-transform'
+
+function getBaseTransform(el: SVGGraphicsElement) {
+  const stored = el.getAttribute(BASE_TRANSFORM_ATTR)
+  if (stored !== null) return stored
+  const initial = el.getAttribute('transform') ?? ''
+  el.setAttribute(BASE_TRANSFORM_ATTR, initial)
+  return initial
+}
+
+function setRotateWithBase(node: RotatingNode, deg: number) {
+  const rotate = `rotate(${deg} ${node.pivot.cx} ${node.pivot.cy})`
+  node.el.setAttribute(
+    'transform',
+    node.baseTransform ? `${node.baseTransform} ${rotate}` : rotate,
+  )
+}
+
+function isRendered(el: SVGGraphicsElement) {
+  return getComputedStyle(el).display !== 'none'
 }
 
 export function useArmPoseAnimation(
@@ -59,41 +83,75 @@ export function useArmPoseAnimation(
   useEffect(() => {
     const svg = svgRef.current
     if (!svg) return
+    const nextPose: ArmPose = { armL: pose.armL, armR: pose.armR }
 
     const armL = svg.getElementById(charManifest.arms.armL.jointId) as SVGGElement | null
     const armR = svg.getElementById(charManifest.arms.armR.jointId) as SVGGElement | null
     if (!armL || !armR) return
+
+    const armLBase = getBaseTransform(armL)
+    const armRBase = getBaseTransform(armR)
+    armL.setAttribute('transform', armLBase)
+    armR.setAttribute('transform', armRBase)
 
     const pivotLLocal = shoulderPivot(armL)
     const pivotRLocal = shoulderPivot(armR)
     const pivotL = elementPointToSvg(armL, pivotLLocal)
     const pivotR = elementPointToSvg(armR, pivotRLocal)
 
+    const armLNode: RotatingNode = {
+      el: armL,
+      baseTransform: armLBase,
+      pivot: pivotLLocal,
+    }
+    const armRNode: RotatingNode = {
+      el: armR,
+      baseTransform: armRBase,
+      pivot: pivotRLocal,
+    }
+
     const leftSleeves = charManifest.arms.armL.sleeveIds
       .map((id) => svg.getElementById(id))
-      .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement)
+      .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement && isRendered(el))
     const rightSleeves = charManifest.arms.armR.sleeveIds
       .map((id) => svg.getElementById(id))
-      .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement)
+      .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement && isRendered(el))
+
+    const leftSleeveNodes: RotatingNode[] = leftSleeves.map((el) => {
+      const baseTransform = getBaseTransform(el)
+      el.setAttribute('transform', baseTransform)
+      return {
+        el,
+        baseTransform,
+        pivot: svgPointToElement(el, pivotL),
+      }
+    })
+    const rightSleeveNodes: RotatingNode[] = rightSleeves.map((el) => {
+      const baseTransform = getBaseTransform(el)
+      el.setAttribute('transform', baseTransform)
+      return {
+        el,
+        baseTransform,
+        pivot: svgPointToElement(el, pivotR),
+      }
+    })
 
     const apply = (degL: number, degR: number) => {
-      setRotate(armL, degL, pivotLLocal.cx, pivotLLocal.cy)
-      setRotate(armR, degR, pivotRLocal.cx, pivotRLocal.cy)
-      for (const el of leftSleeves) {
-        const localPivot = svgPointToElement(el, pivotL)
-        setRotate(el, degL, localPivot.cx, localPivot.cy)
+      setRotateWithBase(armLNode, degL)
+      setRotateWithBase(armRNode, degR)
+      for (const node of leftSleeveNodes) {
+        setRotateWithBase(node, degL)
       }
-      for (const el of rightSleeves) {
-        const localPivot = svgPointToElement(el, pivotR)
-        setRotate(el, degR, localPivot.cx, localPivot.cy)
+      for (const node of rightSleeveNodes) {
+        setRotateWithBase(node, degR)
       }
     }
 
     const duration = motionDuration(0.55)
 
     if (duration === 0) {
-      apply(pose.armL, pose.armR)
-      prevPose.current = pose
+      apply(nextPose.armL, nextPose.armR)
+      prevPose.current = nextPose
       return
     }
 
@@ -102,7 +160,7 @@ export function useArmPoseAnimation(
     let currentL = fromL
     let currentR = fromR
 
-    const controlsL = animate(fromL, pose.armL, {
+    const controlsL = animate(fromL, nextPose.armL, {
       type: 'spring',
       duration,
       bounce: 0.22,
@@ -111,7 +169,7 @@ export function useArmPoseAnimation(
         apply(currentL, currentR)
       },
     })
-    const controlsR = animate(fromR, pose.armR, {
+    const controlsR = animate(fromR, nextPose.armR, {
       type: 'spring',
       duration,
       bounce: 0.22,
@@ -121,10 +179,10 @@ export function useArmPoseAnimation(
       },
     })
 
-    prevPose.current = pose
+    prevPose.current = nextPose
     return () => {
       controlsL.stop()
       controlsR.stop()
     }
-  }, [svgRef, pose.armL, pose.armR, pose, svgGeneration])
+  }, [svgRef, pose.armL, pose.armR, svgGeneration])
 }

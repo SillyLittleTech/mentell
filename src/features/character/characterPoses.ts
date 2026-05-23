@@ -4,11 +4,11 @@ export type ArmPose = { armL: number; armR: number }
 
 export const CHARACTER_POSES: Record<CharacterPoseId, ArmPose> = {
   idle: { armL: 0, armR: 0 },
-  present: { armL: -48, armR: 42 },
-  think: { armL: -66, armR: 22 },
-  write: { armL: -24, armR: 48 },
+  present: { armL: 42, armR: -34 },
+  think: { armL: 58, armR: -14 },
+  write: { armL: 24, armR: -52 },
   shop: { armL: 24, armR: -44 },
-  wave: { armL: -104, armR: 28 },
+  wave: { armL: 104, armR: -28 },
 }
 
 export const POSE_LABELS: Record<CharacterPoseId, string> = {

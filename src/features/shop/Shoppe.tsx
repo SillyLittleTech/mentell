@@ -23,8 +23,8 @@ import {
   type ShopCatalogItem,
   type ThemeItem,
 } from './shopCatalog'
+import { renderCursorCssValue } from './shopCursorAsset'
 import { renderStampPreviewForItem } from './shopStampAsset'
-import { renderCursorCssValue } from './shopCosmetics'
 
 const CAT_COST = 250
 

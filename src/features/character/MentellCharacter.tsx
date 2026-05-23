@@ -73,7 +73,7 @@ export function MentellCharacter({
     svg.setAttribute('height', '100%')
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
     svg.style.display = 'block'
-    svg.style.overflow = 'visible'
+    svg.style.overflow = asset === 'headshot' ? 'hidden' : 'visible'
     if (asset === 'character') {
       // Keep animated arms/sleeves painted above torso across SVG reorder tweaks.
       promoteAnimatedArmLayers(svg)
