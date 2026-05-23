@@ -2,6 +2,12 @@ import { applyBlinkOpenState } from './characterBlink'
 import { charManifest } from './charManifest'
 import type { CharacterAppearance } from './characterAppearance'
 
+const EYE_TOGGLE_SOLID_FILL: Record<string, string> = {
+  g104: '#c8c9cd',
+  g105: '#986334',
+  g107: '#4599ba',
+}
+
 function setToggleOptionVisible(el: SVGElement, show: boolean) {
   el.style.display = show ? 'inline' : 'none'
 }
@@ -47,6 +53,19 @@ export function applyCharacterAppearance(
       const el = svg.getElementById(opt.id)
       if (!(el instanceof SVGElement)) continue
       setToggleOptionVisible(el, opt.id === active)
+    }
+
+    if (group.key === 'layer18') {
+      const activeToggle = svg.getElementById(active)
+      if (activeToggle instanceof SVGGElement) {
+        const solidFill = EYE_TOGGLE_SOLID_FILL[active]
+        if (solidFill) {
+          for (const path of activeToggle.querySelectorAll<SVGElement>('path')) {
+            path.style.fill = solidFill
+            path.style.opacity = '1'
+          }
+        }
+      }
     }
   }
 

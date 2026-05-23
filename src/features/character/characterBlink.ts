@@ -4,9 +4,8 @@ import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 
 function setLayerVisible(svg: SVGSVGElement, id: string, show: boolean) {
   const el = svg.getElementById(id)
-  if (el instanceof SVGElement) {
-    el.style.display = show ? 'inline' : 'none'
-  }
+  if (!(el instanceof SVGElement)) return
+  el.style.display = show ? 'inline' : 'none'
 }
 
 /** Default: open-eye *_BLK layers on, closed-eye BLK layer off. */

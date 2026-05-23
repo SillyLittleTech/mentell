@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import headshotSvg from '../../../asset/char/headshot.svg?raw'
 import { applyCharacterAppearance } from './applyCharacterAppearance'
 import { defaultCharacterAppearance } from './characterAppearance'
+import { fixHeadshotPaintOrder } from './characterPaintOrder'
 import { useCharacterAppearance } from './useCharacterAppearance'
 
 const FAVICON_SIZE = '96'
@@ -16,6 +17,7 @@ function buildCharacterFaviconDataUrl(appearance: ReturnType<typeof defaultChara
   svg.setAttribute('height', FAVICON_SIZE)
   svg.setAttribute('viewBox', FAVICON_HEAD_VIEWBOX)
   svg.setAttribute('preserveAspectRatio', 'xMidYMid meet')
+  fixHeadshotPaintOrder(svg)
   applyCharacterAppearance(svg, appearance)
   const serialized = new XMLSerializer().serializeToString(svg)
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(serialized)}`

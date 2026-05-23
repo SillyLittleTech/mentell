@@ -118,9 +118,9 @@
         "outline": "#1a4e83",
         "textPrimary": "#5ab8ff",
         "hotspot": {
-          "default": [3, 3],
-          "pointer": [4, 2],
-          "text": [8, 14]
+          "default": [2, 2],
+          "pointer": [3, 2],
+          "text": [5, 9]
         }
       }
     },
@@ -137,9 +137,9 @@
         "outline": "#7f3b1b",
         "textPrimary": "#ffb45b",
         "hotspot": {
-          "default": [3, 3],
-          "pointer": [4, 2],
-          "text": [8, 14]
+          "default": [2, 2],
+          "pointer": [3, 2],
+          "text": [5, 9]
         }
       }
     },

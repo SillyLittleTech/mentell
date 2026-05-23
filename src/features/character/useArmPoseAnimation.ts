@@ -4,8 +4,19 @@ import { charManifest } from './charManifest'
 import type { ArmPose } from './characterPoses'
 import { motionDuration } from '../../shared/motion/useMotionPrefs'
 
-function shoulderPivot(el: SVGGElement): { cx: number; cy: number } {
-  const box = el.getBBox()
+function shoulderPivot(joint: SVGGElement): { cx: number; cy: number } {
+  const path = joint.querySelector('path')
+  if (path) {
+    try {
+      const point = path.getPointAtLength(0)
+      if (Number.isFinite(point.x) && Number.isFinite(point.y)) {
+        return { cx: point.x, cy: point.y }
+      }
+    } catch {
+      // Fall through to the geometric fallback below.
+    }
+  }
+  const box = joint.getBBox()
   return { cx: box.x + box.width / 2, cy: box.y }
 }
 
