@@ -678,6 +678,7 @@ export function DebugPanel() {
                   await database.notes.clear()
                   await database.stickies.clear()
                   await database.packages.clear()
+                  await database.characterAppearance.clear()
                   localStorage.removeItem(scopedStorageKey('mentell.score.total'))
                   localStorage.removeItem(scopedStorageKey('mentell.score.streak'))
                   localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))

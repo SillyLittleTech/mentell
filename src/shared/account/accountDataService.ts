@@ -1,6 +1,7 @@
 import { deleteUser } from 'firebase/auth'
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore'
 import { getDb } from '../../db/schema'
+import { clearCharacterAppearance } from '../../features/character/characterAppearanceService'
 import { formatShareCode } from '../../features/share/shareLinkUrl'
 import { SCORE_CHANGED_EVENT } from '../../features/score/scoreEvents'
 import { getFirebaseAuth, getFirebaseFirestore } from '../firebase/firebaseApp'
@@ -32,6 +33,7 @@ export async function clearLocalJournalData() {
     getDb().stickies.clear(),
     getDb().packages.clear(),
   ])
+  await clearCharacterAppearance()
   for (const key of SCORE_KEYS) localStorage.removeItem(key)
   window.dispatchEvent(new CustomEvent(SCORE_CHANGED_EVENT))
 }
