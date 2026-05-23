@@ -9,6 +9,38 @@ function shoulderPivot(el: SVGGElement): { cx: number; cy: number } {
   return { cx: box.x + box.width / 2, cy: box.y }
 }
 
+function elementPointToSvg(
+  el: SVGGraphicsElement,
+  local: { cx: number; cy: number },
+): { cx: number; cy: number } {
+  const svg = el.ownerSVGElement
+  const elementMatrix = el.getScreenCTM()
+  const svgMatrix = svg?.getScreenCTM()
+  if (!svg || !elementMatrix || !svgMatrix) return local
+  const pt = svg.createSVGPoint()
+  pt.x = local.cx
+  pt.y = local.cy
+  const asScreen = pt.matrixTransform(elementMatrix)
+  const asSvg = asScreen.matrixTransform(svgMatrix.inverse())
+  return { cx: asSvg.x, cy: asSvg.y }
+}
+
+function svgPointToElement(
+  el: SVGGraphicsElement,
+  svgPoint: { cx: number; cy: number },
+): { cx: number; cy: number } {
+  const svg = el.ownerSVGElement
+  const elementMatrix = el.getScreenCTM()
+  const svgMatrix = svg?.getScreenCTM()
+  if (!svg || !elementMatrix || !svgMatrix) return svgPoint
+  const pt = svg.createSVGPoint()
+  pt.x = svgPoint.cx
+  pt.y = svgPoint.cy
+  const asScreen = pt.matrixTransform(svgMatrix)
+  const asElement = asScreen.matrixTransform(elementMatrix.inverse())
+  return { cx: asElement.x, cy: asElement.y }
+}
+
 function setRotate(el: SVGElement, deg: number, cx: number, cy: number) {
   el.setAttribute('transform', `rotate(${deg} ${cx} ${cy})`)
 }
@@ -32,21 +64,29 @@ export function useArmPoseAnimation(
     const armR = svg.getElementById(charManifest.arms.armR.jointId) as SVGGElement | null
     if (!armL || !armR) return
 
-    const pivotL = shoulderPivot(armL)
-    const pivotR = shoulderPivot(armR)
+    const pivotLLocal = shoulderPivot(armL)
+    const pivotRLocal = shoulderPivot(armR)
+    const pivotL = elementPointToSvg(armL, pivotLLocal)
+    const pivotR = elementPointToSvg(armR, pivotRLocal)
 
     const leftSleeves = charManifest.arms.armL.sleeveIds
       .map((id) => svg.getElementById(id))
-      .filter((el): el is SVGElement => el instanceof SVGElement)
+      .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement)
     const rightSleeves = charManifest.arms.armR.sleeveIds
       .map((id) => svg.getElementById(id))
-      .filter((el): el is SVGElement => el instanceof SVGElement)
+      .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement)
 
     const apply = (degL: number, degR: number) => {
-      setRotate(armL, degL, pivotL.cx, pivotL.cy)
-      setRotate(armR, degR, pivotR.cx, pivotR.cy)
-      for (const el of leftSleeves) setRotate(el, degL, pivotL.cx, pivotL.cy)
-      for (const el of rightSleeves) setRotate(el, degR, pivotR.cx, pivotR.cy)
+      setRotate(armL, degL, pivotLLocal.cx, pivotLLocal.cy)
+      setRotate(armR, degR, pivotRLocal.cx, pivotRLocal.cy)
+      for (const el of leftSleeves) {
+        const localPivot = svgPointToElement(el, pivotL)
+        setRotate(el, degL, localPivot.cx, localPivot.cy)
+      }
+      for (const el of rightSleeves) {
+        const localPivot = svgPointToElement(el, pivotR)
+        setRotate(el, degR, localPivot.cx, localPivot.cy)
+      }
     }
 
     const duration = motionDuration(0.4)

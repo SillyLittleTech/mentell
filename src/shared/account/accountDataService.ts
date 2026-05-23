@@ -2,6 +2,7 @@ import { deleteUser } from 'firebase/auth'
 import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore'
 import { getDb } from '../../db/schema'
 import { clearCharacterAppearance } from '../../features/character/characterAppearanceService'
+import { clearShopInventory } from '../../features/shop/shopInventory'
 import { formatShareCode } from '../../features/share/shareLinkUrl'
 import { SCORE_CHANGED_EVENT } from '../../features/score/scoreEvents'
 import { getFirebaseAuth, getFirebaseFirestore } from '../firebase/firebaseApp'
@@ -34,6 +35,7 @@ export async function clearLocalJournalData() {
     getDb().packages.clear(),
   ])
   await clearCharacterAppearance()
+  clearShopInventory()
   for (const key of SCORE_KEYS) localStorage.removeItem(key)
   window.dispatchEvent(new CustomEvent(SCORE_CHANGED_EVENT))
 }
@@ -56,7 +58,14 @@ export async function deleteCloudAccount(uid: string) {
     deleteSubcollection(uid, 'shareLinks'),
   ])
 
-  const metaIds = ['score', 'settings', 'aiProfile', 'shopCats'] as const
+  const metaIds = [
+    'score',
+    'settings',
+    'aiProfile',
+    'shopCats',
+    'shopInventory',
+    'characterAppearance',
+  ] as const
   await Promise.all(
     metaIds.map((id) => deleteDoc(doc(fs(), 'users', uid, 'meta', id)).catch(() => {})),
   )
@@ -67,6 +76,7 @@ export async function deleteAccount(uid: string) {
   await clearLocalJournalData()
   localStorage.removeItem(scopedStorageKey('mentell.ai.profile'))
   localStorage.removeItem(scopedStorageKey('mentell.shop.cats'))
+  localStorage.removeItem(scopedStorageKey('mentell.shop.inventory'))
   disableSync()
   saveSyncState({ enabled: false, lastSyncedAt: null, lastError: null })
 
@@ -82,6 +92,7 @@ export async function deleteAccount(uid: string) {
     if (code === 'auth/requires-recent-login') {
       throw new Error(
         'Google needs a fresh sign-in to delete your account. Sign out, sign in again, then retry.',
+        { cause: e },
       )
     }
     throw e

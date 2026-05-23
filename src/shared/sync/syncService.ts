@@ -25,6 +25,11 @@ import { loadAppSettings, type AppSettings } from '../settings/appSettings'
 import { getScoreSnapshot } from '../../features/score/scoreService'
 import { loadAiProfile, type AiProfile } from '../../features/compilation/aiProfile'
 import { loadCatCollection } from '../../features/shop/catCollection'
+import {
+  CHARACTER_APPEARANCE_ROW_ID,
+  applyCharacterAppearanceFromCloud,
+} from '../../features/character/characterAppearanceService'
+import { loadShopInventory, applyShopInventoryFromCloud } from '../../features/shop/shopInventory'
 import { scheduleSharePayloadRefresh } from '../../features/share/shareRefresh'
 import { LOCAL_DATA_CHANGED_EVENT } from './localDataEvents'
 
@@ -136,6 +141,57 @@ async function pullMeta(uid: string) {
       localStorage.setItem(scopedStorageKey('mentell.shop.cats'), JSON.stringify(data.cats))
     }
   }
+
+  const characterSnap = await getDoc(userRef(uid, 'meta', 'characterAppearance'))
+  if (characterSnap.exists()) {
+    const data = characterSnap.data() as {
+      appearance?: { fills?: Record<string, string>; toggles?: Record<string, string> }
+      updatedAt?: number
+    }
+    const remoteUpdatedAt =
+      typeof data.updatedAt === 'number' && Number.isFinite(data.updatedAt)
+        ? Math.trunc(data.updatedAt)
+        : 0
+    const local = await getDb().characterAppearance.get(CHARACTER_APPEARANCE_ROW_ID)
+    const localUpdatedAt = local?.updatedAt ?? 0
+    if (
+      data.appearance &&
+      typeof data.appearance === 'object' &&
+      remoteUpdatedAt >= localUpdatedAt
+    ) {
+      const fills =
+        data.appearance.fills && typeof data.appearance.fills === 'object'
+          ? data.appearance.fills
+          : {}
+      const toggles =
+        data.appearance.toggles && typeof data.appearance.toggles === 'object'
+          ? data.appearance.toggles
+          : {}
+      await getDb().characterAppearance.put({
+        id: CHARACTER_APPEARANCE_ROW_ID,
+        updatedAt: remoteUpdatedAt,
+        fills,
+        toggles,
+      })
+      applyCharacterAppearanceFromCloud({ fills, toggles })
+    }
+  }
+
+  const inventorySnap = await getDoc(userRef(uid, 'meta', 'shopInventory'))
+  if (inventorySnap.exists()) {
+    const data = inventorySnap.data() as { inventory?: unknown; updatedAt?: number }
+    const remoteUpdatedAt =
+      typeof data.updatedAt === 'number' && Number.isFinite(data.updatedAt)
+        ? Math.trunc(data.updatedAt)
+        : 0
+    const localInventory = loadShopInventory()
+    if (data.inventory && remoteUpdatedAt >= localInventory.updatedAt) {
+      applyShopInventoryFromCloud({
+        ...(data.inventory as object),
+        updatedAt: remoteUpdatedAt,
+      })
+    }
+  }
 }
 
 async function pushCollection<T extends { id: string; updatedAt?: number; createdAt: number }>(
@@ -162,6 +218,8 @@ async function pushCollection<T extends { id: string; updatedAt?: number; create
 
 async function pushMeta(uid: string) {
   const score = getScoreSnapshot()
+  const shopInventory = loadShopInventory()
+  const character = await getDb().characterAppearance.get(CHARACTER_APPEARANCE_ROW_ID)
   const now = Date.now()
   await setDoc(
     userRef(uid, 'meta', 'score'),
@@ -191,6 +249,23 @@ async function pushMeta(uid: string) {
     { cats: loadCatCollection(), updatedAt: now },
     { merge: true },
   )
+
+  await setDoc(
+    userRef(uid, 'meta', 'shopInventory'),
+    { inventory: shopInventory, updatedAt: Math.max(shopInventory.updatedAt, now) },
+    { merge: true },
+  )
+
+  if (character) {
+    await setDoc(
+      userRef(uid, 'meta', 'characterAppearance'),
+      {
+        appearance: { fills: character.fills, toggles: character.toggles },
+        updatedAt: character.updatedAt,
+      },
+      { merge: true },
+    )
+  }
 }
 
 export async function pushLocalToCloud(uid: string) {

@@ -1,0 +1,174 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "theme-sunrise-paper",
+      "type": "theme",
+      "name": "Sunrise Paper",
+      "description": "Soft amber desk tones with warm paper for daylight journaling.",
+      "cost": 60,
+      "preview": "/asset/light.png",
+      "theme": {
+        "light": {
+          "deskBg": "#d6b08a",
+          "paperBg": "#fff2db",
+          "paperBorder": "rgba(130, 78, 35, 0.2)",
+          "accent": "#cf552a",
+          "overlay": "radial-gradient(circle at 18% 12%, rgba(255, 229, 168, 0.32), transparent 58%)"
+        },
+        "dark": {
+          "deskBg": "#1c1620",
+          "paperBg": "#2a202b",
+          "paperBorder": "rgba(240, 168, 108, 0.24)",
+          "accent": "#ff8d4d",
+          "overlay": "radial-gradient(circle at 15% 20%, rgba(255, 165, 98, 0.16), transparent 62%)"
+        }
+      }
+    },
+    {
+      "id": "theme-aurora-night",
+      "type": "theme",
+      "name": "Aurora Night",
+      "description": "A cooler desk tint for late-night writing sessions.",
+      "cost": 70,
+      "preview": "/asset/dark.png",
+      "theme": {
+        "light": {
+          "deskBg": "#9fb2c7",
+          "paperBg": "#eef7ff",
+          "paperBorder": "rgba(46, 88, 132, 0.22)",
+          "accent": "#2a6db5",
+          "overlay": "radial-gradient(circle at 82% 10%, rgba(183, 237, 255, 0.34), transparent 56%)"
+        },
+        "dark": {
+          "deskBg": "#0f1728",
+          "paperBg": "#17243a",
+          "paperBorder": "rgba(147, 212, 255, 0.24)",
+          "accent": "#5fa4ff",
+          "overlay": "radial-gradient(circle at 80% 12%, rgba(95, 164, 255, 0.2), transparent 62%)"
+        }
+      }
+    },
+    {
+      "id": "theme-rose-noir",
+      "type": "theme",
+      "name": "Rose Noir",
+      "description": "Muted burgundy ink vibes with softer high-contrast accents.",
+      "cost": 80,
+      "preview": "/asset/mentell-icon.png",
+      "theme": {
+        "light": {
+          "deskBg": "#c9a0a7",
+          "paperBg": "#fff0f4",
+          "paperBorder": "rgba(118, 47, 66, 0.24)",
+          "accent": "#b1345a",
+          "overlay": "radial-gradient(circle at 10% 88%, rgba(255, 180, 204, 0.34), transparent 56%)"
+        },
+        "dark": {
+          "deskBg": "#1c1219",
+          "paperBg": "#2a1722",
+          "paperBorder": "rgba(235, 140, 176, 0.24)",
+          "accent": "#f072a3",
+          "overlay": "radial-gradient(circle at 15% 84%, rgba(240, 114, 163, 0.19), transparent 62%)"
+        }
+      }
+    },
+    {
+      "id": "stamp-gotcha",
+      "type": "stamp",
+      "name": "Gotcha Stamp",
+      "description": "Bold red stamp inspired by your sketched GOTCHA look.",
+      "cost": 45,
+      "preview": "/asset/stamp.png",
+      "stamp": {
+        "text": "Gotcha",
+        "ink": "#cf2040",
+        "outline": "#9d1730",
+        "textColor": "#9d1730",
+        "tiltDeg": -14,
+        "opacity": 0.24
+      }
+    },
+    {
+      "id": "stamp-airmail",
+      "type": "stamp",
+      "name": "Airmail Stamp",
+      "description": "Postal blue variant for outgoing reflections.",
+      "cost": 35,
+      "preview": "/asset/stamp.png",
+      "stamp": {
+        "text": "Airmail",
+        "ink": "#266ac9",
+        "outline": "#1d4e94",
+        "textColor": "#1d4e94",
+        "tiltDeg": -12,
+        "opacity": 0.25
+      }
+    },
+    {
+      "id": "stamp-secret",
+      "type": "stamp",
+      "name": "Secret Stamp",
+      "description": "Stealthy violet stamp with softer letterpress text.",
+      "cost": 40,
+      "preview": "/asset/stamp.png",
+      "stamp": {
+        "text": "Secret",
+        "ink": "#6f4eb3",
+        "outline": "#4b347a",
+        "textColor": "#4b347a",
+        "tiltDeg": -10,
+        "opacity": 0.24
+      }
+    },
+    {
+      "id": "cursor-comet",
+      "type": "cursor",
+      "name": "Comet Cursor",
+      "description": "Crisp sky-blue cursor set for default, pointer, and text.",
+      "cost": 30,
+      "preview": "/asset/projector.png",
+      "cursor": {
+        "primary": "#78c5ff",
+        "secondary": "#f0f8ff",
+        "outline": "#1a4e83",
+        "textPrimary": "#5ab8ff",
+        "hotspot": {
+          "default": [3, 3],
+          "pointer": [4, 2],
+          "text": [8, 14]
+        }
+      }
+    },
+    {
+      "id": "cursor-ember",
+      "type": "cursor",
+      "name": "Ember Cursor",
+      "description": "Warm amber cursor set with high contrast outlines.",
+      "cost": 30,
+      "preview": "/asset/envelope.png",
+      "cursor": {
+        "primary": "#ff8f4a",
+        "secondary": "#fff3dc",
+        "outline": "#7f3b1b",
+        "textPrimary": "#ffb45b",
+        "hotspot": {
+          "default": [3, 3],
+          "pointer": [4, 2],
+          "text": [8, 14]
+        }
+      }
+    },
+    {
+      "id": "image-gift-print",
+      "type": "image",
+      "name": "Gift Print",
+      "description": "A collectible image item example for future inventory drops.",
+      "cost": 20,
+      "preview": "/asset/gift_small.png",
+      "image": {
+        "url": "/asset/gift_large.png"
+      }
+    }
+  ]
+}

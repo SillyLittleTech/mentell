@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
 import { CharacterCorner } from './CharacterCorner'
 
-/** Wraps desk page content with a bottom-right character mascot. */
+/** Wraps desk page content and places mascot in spare page space on larger screens. */
 export function DeskCharacterLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="relative overflow-visible">
+    <div className="overflow-visible">
       {children}
-      <div className="pointer-events-none absolute bottom-0 right-0 z-[1] -translate-y-1 overflow-visible">
+      <div className="pointer-events-none mt-4 hidden justify-end pr-1 md:flex">
         <CharacterCorner />
       </div>
     </div>

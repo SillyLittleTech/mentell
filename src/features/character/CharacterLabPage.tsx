@@ -17,7 +17,9 @@ export function CharacterLabPage() {
   const [pose, setPose] = useState<CharacterPoseId>('wave')
 
   const toggleByKey = useMemo(() => {
-    const map = new Map(charManifest.toggleGroups.map((g) => [g.key, g]))
+    const map = new Map<string, (typeof charManifest.toggleGroups)[number]>(
+      charManifest.toggleGroups.map((g) => [g.key, g]),
+    )
     return map
   }, [])
 
@@ -50,8 +52,8 @@ export function CharacterLabPage() {
     <section className="paper rounded-3xl p-6">
       <div className="font-paper text-2xl">Character lab</div>
       <div className="ink-muted mt-1 text-sm">
-        Preview looks and poses. Changes save locally and update the desk mascot and Character
-        tab icon.
+        Preview looks and poses. Changes save locally, sync to cloud backup (when enabled), and
+        update both the desk mascot and browser tab icon.
       </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(12rem,16rem)_1fr]">
