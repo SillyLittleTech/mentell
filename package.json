@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "sync:assets": "node scripts/sync-assets.mjs",
+    "pose:lab": "elixir scripts/pose_lab.exs",
     "dev": "vite",
     "dev:debug": "vite --mode debug",
     "build": "npm run sync:assets && tsc -b && vite build",
