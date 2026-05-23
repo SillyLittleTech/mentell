@@ -116,6 +116,12 @@ export function applyShopInventoryFromCloud(input: unknown) {
   return writeInventory(parsed, { notifySync: false, preserveUpdatedAt: true })
 }
 
+export function clearShopInventory() {
+  localStorage.removeItem(SHOP_INVENTORY_KEY)
+  const cleared = { ...DEFAULT_SHOP_INVENTORY }
+  emitInventoryChanged(cleared)
+}
+
 export function subscribeShopInventory(cb: (inventory: ShopInventory) => void) {
   const handler = (event: Event) => {
     const detail = (event as CustomEvent<ShopInventory>).detail

@@ -79,9 +79,9 @@ export function PrivacyPolicyPage() {
       <section className="paper rounded-3xl p-6">
         <h2 className="font-paper text-xl">Local-first by default</h2>
         <p className="ink-muted mt-3 text-sm leading-relaxed">
-          Your journal entries, notes, score, and most settings are stored on your device (IndexedDB
-          and browser storage). They are not sent to a server unless you turn on optional cloud
-          features below.
+          Your journal entries, notes, score, character look, and most settings are stored on your
+          device (IndexedDB and browser storage). They are not sent to a server unless you turn on
+          optional cloud features below.
         </p>
       </section>
 
@@ -99,8 +99,9 @@ export function PrivacyPolicyPage() {
             <p className="ink-muted mt-3 text-sm leading-relaxed">
               With sync turned on, journal data and related settings you choose to back up are stored
               in <strong>Cloud Firestore</strong> under your account, keyed to your Firebase user id.
-              You can sign out, disable sync, delete local data, or delete your cloud account from
-              Settings. Cloud data is not intended for provider-managed or multi-patient use.
+              This includes character customization and shop cosmetics you unlock/equip. You can sign
+              out, disable sync, delete local data, or delete your cloud account from Settings. Cloud
+              data is not intended for provider-managed or multi-patient use.
             </p>
           ) : (
             <p className="ink-muted mt-3 text-sm leading-relaxed">

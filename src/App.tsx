@@ -1,4 +1,4 @@
-import { Link, Navigate, Route } from 'react-router-dom'
+import { Link, Navigate, Route, useLocation } from 'react-router-dom'
 import { AnimatedRoutes } from './shared/motion/AnimatedRoutes'
 import { AnimatePresence } from 'framer-motion'
 import { useTheme } from './shared/theme/useTheme'
@@ -31,8 +31,13 @@ import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage'
 import { CharacterLabPage } from './features/character/CharacterLabPage'
 import { CharacterNavIcon } from './features/character/CharacterNavIcon'
 import { DeskCharacterLayout } from './features/character/DeskCharacterLayout'
+import { MentellCharacter } from './features/character/MentellCharacter'
+import { poseForPathname } from './features/character/characterPoses'
+import { useCharacterAppearance } from './features/character/useCharacterAppearance'
+import { CharacterTabIconSync } from './features/character/CharacterTabIconSync'
 import { isFirebaseSyncEnabled, isShareLinksEnabled } from './shared/features/featureFlags'
 import { useAuthOptional } from './shared/firebase/AuthProvider'
+import { ShopCosmeticEffects } from './features/shop/shopCosmetics'
 
 type ScoreChangeOptions = { deferOverlay?: boolean }
 
@@ -109,6 +114,8 @@ function App() {
 
   return (
     <div className="desk px-4 py-6">
+      <CharacterTabIconSync />
+      <ShopCosmeticEffects />
       <TopBar score={score} incomingHint={incomingHint} />
       <StickyLayer />
       <main className="mx-auto mt-6 w-full max-w-4xl">
@@ -163,6 +170,9 @@ function TopBar({
   score: ReturnType<typeof getScoreSnapshot>
   incomingHint: string | null
 }) {
+  const { pathname } = useLocation()
+  const menuPose = poseForPathname(pathname)
+  const { appearance: menuAppearance, ready: menuCharacterReady } = useCharacterAppearance()
   const { mode, toggle } = useTheme()
   const { settings } = useAppSettings()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -260,6 +270,20 @@ function TopBar({
                 ✕
               </button>
             </div>
+
+            {menuCharacterReady ? (
+              <div className="mb-3 flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-2">
+                <div>
+                  <div className="font-mono text-xs opacity-70">Desk companion</div>
+                  <div className="text-sm font-medium">Current character</div>
+                </div>
+                <MentellCharacter
+                  pose={menuPose}
+                  appearance={menuAppearance}
+                  className="h-20 w-16 shrink-0"
+                />
+              </div>
+            ) : null}
 
             <div className="grid gap-2 overflow-y-auto pr-1">
               <DeskLink

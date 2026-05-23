@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
-import { publicUrl } from '../../shared/publicUrl'
 import { RopeWrap } from './RopeWrap'
+import { useEquippedStampImage } from '../shop/shopCosmetics'
 
 type Phase = 'stamp' | 'rope' | 'mailbox'
 
@@ -16,6 +16,7 @@ export function SubmitAnimation({
   const [phase, setPhase] = useState<Phase>('stamp')
   const [stampLanded, setStampLanded] = useState(false)
   const reduced = shouldReduceMotion()
+  const stampSrc = useEquippedStampImage()
 
   useEffect(() => {
     if (!open) return
@@ -92,7 +93,7 @@ export function SubmitAnimation({
                   {stampLanded ? (
                     <img
                       alt=""
-                      src={publicUrl('/asset/stamp.png')}
+                      src={stampSrc}
                       draggable={false}
                       className="pointer-events-none absolute left-1/2 top-1/2 h-[45%] w-[45%] min-h-[100px] min-w-[100px] -translate-x-1/2 -translate-y-1/2 select-none object-contain opacity-[0.22]"
                       aria-hidden
@@ -125,7 +126,7 @@ export function SubmitAnimation({
                       >
                         <motion.img
                           alt=""
-                          src={publicUrl('/asset/stamp.png')}
+                          src={stampSrc}
                           draggable={false}
                           className="h-[200px] w-[200px] max-w-[min(45vw,220px)] select-none object-contain"
                           style={{
