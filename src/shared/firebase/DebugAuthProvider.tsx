@@ -1,9 +1,7 @@
 import {
   onAuthStateChanged,
-  signInAnonymously,
   signInWithCustomToken,
   signOut as firebaseSignOut,
-  updateProfile,
   type Auth,
 } from 'firebase/auth'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -14,8 +12,6 @@ import { getFirebaseAuth } from './firebaseApp'
 import { enableSync, disableSync } from '../sync/syncService'
 import { loadSyncState, saveSyncState } from '../sync/syncState'
 
-const DEBUGGER_LABEL = 'DEBUGGER'
-
 function authDisabled(): Promise<void> {
   return Promise.reject(new Error('Sign-in is disabled in debug builds'))
 }
@@ -23,12 +19,8 @@ function authDisabled(): Promise<void> {
 async function ensureDebuggerSession(auth: Auth) {
   await firebaseSignOut(auth)
   const token = import.meta.env.VITE_DEBUG_FIREBASE_CUSTOM_TOKEN?.trim()
-  if (token) {
-    await signInWithCustomToken(auth, token)
-  } else {
-    const cred = await signInAnonymously(auth)
-    await updateProfile(cred.user, { displayName: DEBUGGER_LABEL })
-  }
+  if (!token) throw new Error('Debug cloud is disabled without a DEBUGGER custom token')
+  await signInWithCustomToken(auth, token)
 }
 
 export function DebugAuthProvider({ children }: { children: ReactNode }) {
@@ -41,7 +33,6 @@ export function DebugAuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!enabled) {
-      setLoading(false)
       return
     }
     const auth = getFirebaseAuth()
