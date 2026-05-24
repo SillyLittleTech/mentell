@@ -1,6 +1,7 @@
 import { applyBlinkOpenState } from './characterBlink'
 import { charManifest } from './charManifest'
 import type { CharacterAppearance } from './characterAppearance'
+import type { CharacterAccessoryItem } from '../shop/shopCatalog'
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
 const SVG_INSTANCE_ATTR = 'data-mentell-appearance-instance'
@@ -15,6 +16,106 @@ const EYE_TOGGLE_GRADIENT_FILL: Record<string, string> = {
 
 function setToggleOptionVisible(el: SVGElement, show: boolean) {
   el.style.display = show ? 'inline' : 'none'
+}
+
+function setElementVisible(el: SVGElement, show: boolean) {
+  el.style.display = show ? 'inline' : 'none'
+}
+
+function bringToFront(el: SVGElement) {
+  const svg = el.ownerSVGElement
+  if (!svg || el.parentNode === svg) {
+    el.parentNode?.appendChild(el)
+    return
+  }
+  svg.appendChild(el)
+}
+
+function normalizeLookup(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/_(toggle|iii|dni).*$/i, '')
+    .replace(/^toggle/, '')
+    .replace(/[^a-z0-9]+/g, '')
+}
+
+function toggleGroupMatches(
+  group: (typeof charManifest.toggleGroups)[number],
+  groupKey: string,
+) {
+  const normalized = normalizeLookup(groupKey)
+  return (
+    group.key === groupKey ||
+    group.parentId === groupKey ||
+    normalizeLookup(group.label) === normalized ||
+    normalizeLookup(group.key) === normalized
+  )
+}
+
+function optionMatches(option: { id: string; label: string }, optionId: string) {
+  const normalized = normalizeLookup(optionId)
+  return option.id === optionId || normalizeLookup(option.label) === normalized
+}
+
+function resolveAccessoryToggle(toggle: { groupKey: string; optionId: string }) {
+  const group = charManifest.toggleGroups.find((entry) =>
+    toggleGroupMatches(entry, toggle.groupKey),
+  )
+  const option = group?.options.find((entry) => optionMatches(entry, toggle.optionId))
+  if (!group || !option) return null
+  return { groupKey: group.key, optionId: option.id }
+}
+
+function isAccessoryToggleGroup(group: (typeof charManifest.toggleGroups)[number]) {
+  return ['layer2', 'layer3', 'layer4', 'layer5', 'layer6', 'layer7', 'layer8'].includes(
+    group.parentId,
+  )
+}
+
+function isBaseFillKey(key: string) {
+  return key === 'path45' || key === 'path65' || key === 'hair_fill'
+}
+
+function accessoryToggleRows(accessory: CharacterAccessoryItem) {
+  const rows = accessory.characterAccessory.toggles ?? []
+  const legacy = accessory.characterAccessory.toggle
+    ? [
+        {
+          groupKey: accessory.characterAccessory.toggle.groupKey,
+          optionIds: [accessory.characterAccessory.toggle.optionId],
+        },
+      ]
+    : []
+  return [...rows, ...legacy]
+}
+
+function setPartVisibleByKey(svg: SVGSVGElement, key: string, show: boolean) {
+  const byId = svg.getElementById(key)
+  if (byId instanceof SVGElement) {
+    setElementVisible(byId, show)
+    return
+  }
+  const normalized = normalizeLookup(key)
+  svg.querySelectorAll<SVGElement>('*').forEach((el) => {
+    const label = el.getAttribute('inkscape:label') ?? ''
+    if (normalizeLookup(label) === normalized) setElementVisible(el, show)
+  })
+}
+
+function setPetFaceVisible(svg: SVGSVGElement, show: boolean) {
+  for (const key of ['facebase_DNI', 'FACETOGGLE']) {
+    const normalized = normalizeLookup(key)
+    svg.querySelectorAll<SVGElement>('*').forEach((el) => {
+      const label = el.getAttribute('inkscape:label') ?? ''
+      if (normalizeLookup(label) !== normalized) return
+      setElementVisible(el, show)
+      if (show) bringToFront(el)
+    })
+  }
+}
+
+function hidePartByKey(svg: SVGSVGElement, key: string) {
+  setPartVisibleByKey(svg, key, false)
 }
 
 function parseHexColor(color: string): [number, number, number] | null {
@@ -115,8 +216,16 @@ function applyEyeGradient(svg: SVGSVGElement, activeToggle: SVGGElement, active:
 export function applyCharacterAppearance(
   svg: SVGSVGElement,
   appearance: CharacterAppearance,
+  accessories: CharacterAccessoryItem[] = [],
 ) {
+  const activeAccessoryFillKeys = new Set(
+    accessories.flatMap((accessory) => accessory.characterAccessory.fillKeys ?? []),
+  )
+
   for (const fillable of charManifest.fillables) {
+    if (!isBaseFillKey(fillable.key) && !activeAccessoryFillKeys.has(fillable.key)) {
+      continue
+    }
     const color = appearance.fills[fillable.key] ?? fillable.defaultFill
     const targetIds =
       'targetIds' in fillable && fillable.targetIds
@@ -142,14 +251,38 @@ export function applyCharacterAppearance(
     }
   }
 
+  const accessoryToggles = new Map<string, Set<string>>()
+  const accessoryPartKeys = new Set<string>()
+  for (const accessory of accessories) {
+    for (const row of accessoryToggleRows(accessory)) {
+      for (const optionId of row.optionIds) {
+        const resolved = resolveAccessoryToggle({ groupKey: row.groupKey, optionId })
+        if (!resolved) continue
+        const active = accessoryToggles.get(resolved.groupKey) ?? new Set<string>()
+        active.add(resolved.optionId)
+        accessoryToggles.set(resolved.groupKey, active)
+      }
+    }
+    for (const part of accessory.characterAccessory.parts ?? []) {
+      accessoryPartKeys.add(part)
+    }
+  }
+  let activeSkinHidingAccessory = false
+
   for (const group of charManifest.toggleGroups) {
-    const active = appearance.toggles[group.key] ?? group.defaultOption
+    const activeAccessoryOptions = accessoryToggles.get(group.key)
+    const active = activeAccessoryOptions
+      ? [...activeAccessoryOptions][0]
+      : isAccessoryToggleGroup(group)
+        ? null
+        : appearance.toggles[group.key] ?? group.defaultOption
 
     if (group.key === 'blush' && 'elementId' in group) {
       const blush = svg.getElementById(group.elementId)
       if (blush instanceof SVGElement) {
         blush.style.display = active === 'on' ? 'inline' : 'none'
         blush.style.opacity = active === 'on' ? '1' : '0'
+        blush.style.visibility = active === 'on' ? 'visible' : 'hidden'
       }
       continue
     }
@@ -157,15 +290,62 @@ export function applyCharacterAppearance(
     for (const opt of group.options) {
       const el = svg.getElementById(opt.id)
       if (!(el instanceof SVGElement)) continue
-      setToggleOptionVisible(el, opt.id === active)
+      const show = activeAccessoryOptions ? activeAccessoryOptions.has(opt.id) : opt.id === active
+      setToggleOptionVisible(
+        el,
+        show,
+      )
+      if (show && activeAccessoryOptions && group.key !== 'layer2') bringToFront(el)
     }
 
     if (group.key === 'layer18') {
+      if (!active) continue
       const activeToggle = svg.getElementById(active)
       if (activeToggle instanceof SVGGElement) {
         activeToggle.style.opacity = '1'
         applyEyeGradient(svg, activeToggle, active)
       }
+    }
+  }
+
+  setPetFaceVisible(svg, accessoryToggles.has('layer2'))
+
+  const knownAccessoryParts = [
+    'GHOST',
+    'GHOST_armL_joint',
+    'GHOST_armR_joint',
+    'SKELETON',
+    'SKELETON_armL_joint',
+    'SKELETON_armR_joint',
+    'Lemmon',
+  ]
+  for (const part of knownAccessoryParts) {
+    if (!accessoryPartKeys.has(part)) hidePartByKey(svg, part)
+  }
+
+  for (const accessory of accessories) {
+    for (const part of accessory.characterAccessory.parts ?? []) {
+      setPartVisibleByKey(svg, part, true)
+      const el = svg.getElementById(part)
+      if (el instanceof SVGElement) bringToFront(el)
+    }
+    if (accessory.characterAccessory.hideSkin) {
+      activeSkinHidingAccessory = true
+    }
+    if (accessory.characterAccessory.hideBaseClothes) {
+      for (const part of ['layer15', 'layer19', 'path65', 'shoesDNI']) {
+        setPartVisibleByKey(svg, part, false)
+      }
+    }
+  }
+
+  if (activeSkinHidingAccessory) {
+    const skin = charManifest.fillables.find((fillable) => fillable.key === 'path45')
+    const targetIds =
+      skin && 'targetIds' in skin && skin.targetIds ? [...skin.targetIds] : skin ? [skin.id] : []
+    for (const id of targetIds) {
+      const el = svg.getElementById(id)
+      if (el instanceof SVGElement) setElementVisible(el, false)
     }
   }
 

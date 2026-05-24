@@ -1,6 +1,6 @@
 import catalogJson from '../../../asset/shop/shoppe-items.json?raw'
 
-export type ShopItemType = 'image' | 'theme' | 'stamp' | 'cursor'
+export type ShopItemType = 'image' | 'theme' | 'stamp' | 'cursor' | 'characterAccessory'
 
 type ShopItemBase = {
   id: string
@@ -61,7 +61,50 @@ export type ImageItem = ShopItemBase & {
   }
 }
 
-export type ShopCatalogItem = ThemeItem | StampItem | CursorItem | ImageItem
+export type CharacterAccessoryItem = ShopItemBase & {
+  type: 'characterAccessory'
+  characterAccessory: {
+    scope: 'pet' | 'wrist' | 'hair' | 'fullBody' | 'shirt' | 'shoes' | 'pants' | 'face' | 'hat'
+    exclusiveGroup?: string
+    toggle?: {
+      groupKey: string
+      optionId: string
+    }
+    toggles?: {
+      groupKey: string
+      optionIds: string[]
+    }[]
+    parts?: string[]
+    fillKeys?: string[]
+    hideSkin?: boolean
+    hideBaseClothes?: boolean
+    anchoredIds?: {
+      armL?: string[]
+      armR?: string[]
+    }
+    choices?: {
+      id: string
+      label: string
+      toggles?: {
+        groupKey: string
+        optionIds: string[]
+      }[]
+      parts?: string[]
+      anchoredIds?: {
+        armL?: string[]
+        armR?: string[]
+      }
+    }[]
+    defaultChoiceId?: string
+  }
+}
+
+export type ShopCatalogItem =
+  | ThemeItem
+  | StampItem
+  | CursorItem
+  | ImageItem
+  | CharacterAccessoryItem
 
 export type ShopCatalog = {
   version: number
@@ -87,6 +130,11 @@ function asTuple(value: unknown): [number, number] | undefined {
   const second = Number(value[1])
   if (!Number.isFinite(first) || !Number.isFinite(second)) return undefined
   return [Math.trunc(first), Math.trunc(second)]
+}
+
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((row): row is string => typeof row === 'string' && row.trim().length > 0)
 }
 
 function parseThemePalette(value: unknown): ThemePalette {
@@ -177,6 +225,115 @@ function parseItem(value: unknown): ShopCatalogItem | null {
       image: { url: asString(image.url) },
     }
     if (!parsed.image.url) return null
+    return parsed
+  }
+  if (type === 'characterAccessory') {
+    const accessory = asRecord(row.characterAccessory)
+    if (!accessory) return null
+    const scope = asString(accessory.scope)
+    if (
+      scope !== 'pet' &&
+      scope !== 'wrist' &&
+      scope !== 'hair' &&
+      scope !== 'fullBody' &&
+      scope !== 'shirt' &&
+      scope !== 'shoes' &&
+      scope !== 'pants' &&
+      scope !== 'face' &&
+      scope !== 'hat'
+    ) {
+      return null
+    }
+    const toggle = asRecord(accessory.toggle)
+    const toggles = Array.isArray(accessory.toggles) ? accessory.toggles : []
+    const choices = Array.isArray(accessory.choices) ? accessory.choices : []
+    const anchoredIds = asRecord(accessory.anchoredIds)
+    const parsed: CharacterAccessoryItem = {
+      ...base,
+      type: 'characterAccessory',
+      characterAccessory: {
+        scope,
+        exclusiveGroup: asString(accessory.exclusiveGroup) || undefined,
+        toggle:
+          toggle && asString(toggle.groupKey) && asString(toggle.optionId)
+            ? {
+                groupKey: asString(toggle.groupKey),
+                optionId: asString(toggle.optionId),
+              }
+            : undefined,
+        toggles: toggles
+          .map((entry) => {
+            const toggleRow = asRecord(entry)
+            return toggleRow && asString(toggleRow.groupKey)
+              ? {
+                  groupKey: asString(toggleRow.groupKey),
+                  optionIds: asStringArray(toggleRow.optionIds),
+                }
+              : null
+          })
+          .filter(
+            (entry): entry is { groupKey: string; optionIds: string[] } =>
+              Boolean(entry && entry.optionIds.length > 0),
+          ),
+        parts: asStringArray(accessory.parts),
+        fillKeys: asStringArray(accessory.fillKeys),
+        hideSkin: accessory.hideSkin === true,
+        hideBaseClothes: accessory.hideBaseClothes === true,
+        anchoredIds: {
+          armL: asStringArray(anchoredIds?.armL),
+          armR: asStringArray(anchoredIds?.armR),
+        },
+        choices: choices
+          .map((entry) => {
+            const choice = asRecord(entry)
+            if (!choice || !asString(choice.id) || !asString(choice.label)) return null
+            const choiceAnchors = asRecord(choice.anchoredIds)
+            const choiceToggles = Array.isArray(choice.toggles) ? choice.toggles : []
+            return {
+              id: asString(choice.id),
+              label: asString(choice.label),
+              toggles: choiceToggles
+                .map((toggleEntry) => {
+                  const toggleRow = asRecord(toggleEntry)
+                  return toggleRow && asString(toggleRow.groupKey)
+                    ? {
+                        groupKey: asString(toggleRow.groupKey),
+                        optionIds: asStringArray(toggleRow.optionIds),
+                      }
+                    : null
+                })
+                .filter(
+                  (row): row is { groupKey: string; optionIds: string[] } =>
+                    Boolean(row && row.optionIds.length > 0),
+                ),
+              parts: asStringArray(choice.parts),
+              anchoredIds: {
+                armL: asStringArray(choiceAnchors?.armL),
+                armR: asStringArray(choiceAnchors?.armR),
+              },
+            }
+          })
+          .filter(
+            (
+              choice,
+            ): choice is {
+              id: string
+              label: string
+              toggles: { groupKey: string; optionIds: string[] }[]
+              parts: string[]
+              anchoredIds: { armL: string[]; armR: string[] }
+            } => choice !== null,
+          ),
+        defaultChoiceId: asString(accessory.defaultChoiceId) || undefined,
+      },
+    }
+    if (
+      !parsed.characterAccessory.toggle &&
+      !parsed.characterAccessory.toggles?.length &&
+      !parsed.characterAccessory.parts?.length
+    ) {
+      return null
+    }
     return parsed
   }
   return null

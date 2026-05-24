@@ -144,6 +144,344 @@
       }
     },
     {
+      "id": "accessory-pet-cat",
+      "type": "characterAccessory",
+      "name": "Desk Cat Companion",
+      "description": "A small cat friend for the character scene.",
+      "cost": 160,
+      "characterAccessory": {
+        "scope": "pet",
+        "exclusiveGroup": "pet",
+        "toggles": [
+          {
+            "groupKey": "togglepet",
+            "optionIds": ["Catbase"]
+          }
+        ],
+        "fillKeys": ["catbase"]
+      }
+    },
+    {
+      "id": "accessory-pet-dog",
+      "type": "characterAccessory",
+      "name": "Desk Dog Companion",
+      "description": "A small dog friend for the character scene.",
+      "cost": 160,
+      "characterAccessory": {
+        "scope": "pet",
+        "exclusiveGroup": "pet",
+        "toggles": [
+          {
+            "groupKey": "togglepet",
+            "optionIds": ["Dogbase"]
+          }
+        ],
+        "fillKeys": ["dogbase"]
+      }
+    },
+    {
+      "id": "accessory-watch",
+      "type": "characterAccessory",
+      "name": "Tiny Watch",
+      "description": "A little watch that follows both wrists during character poses.",
+      "cost": 95,
+      "characterAccessory": {
+        "scope": "wrist",
+        "exclusiveGroup": "wrist",
+        "fillKeys": ["watchr"],
+        "defaultChoiceId": "right",
+        "choices": [
+          {
+            "id": "right",
+            "label": "Right",
+            "toggles": [{ "groupKey": "togglewrist", "optionIds": ["WatchR"] }],
+            "anchoredIds": { "armR": ["WatchR"] }
+          },
+          {
+            "id": "left",
+            "label": "Left",
+            "toggles": [{ "groupKey": "togglewrist", "optionIds": ["WatchL"] }],
+            "anchoredIds": { "armL": ["WatchL"] }
+          },
+          {
+            "id": "both",
+            "label": "Both",
+            "toggles": [{ "groupKey": "togglewrist", "optionIds": ["WatchR", "WatchL"] }],
+            "anchoredIds": { "armL": ["WatchL"], "armR": ["WatchR"] }
+          }
+        ]
+      }
+    },
+    {
+      "id": "accessory-wristband",
+      "type": "characterAccessory",
+      "name": "Wristband",
+      "description": "Simple wristbands that stay anchored through arm animations.",
+      "cost": 85,
+      "characterAccessory": {
+        "scope": "wrist",
+        "exclusiveGroup": "wrist",
+        "fillKeys": ["bandr", "bandl"],
+        "defaultChoiceId": "right",
+        "choices": [
+          {
+            "id": "right",
+            "label": "Right",
+            "toggles": [{ "groupKey": "togglewrist", "optionIds": ["BandR"] }],
+            "anchoredIds": { "armR": ["BandR"] }
+          },
+          {
+            "id": "left",
+            "label": "Left",
+            "toggles": [{ "groupKey": "togglewrist", "optionIds": ["BandL"] }],
+            "anchoredIds": { "armL": ["BandL"] }
+          },
+          {
+            "id": "both",
+            "label": "Both",
+            "toggles": [{ "groupKey": "togglewrist", "optionIds": ["BandR", "BandL"] }],
+            "anchoredIds": { "armL": ["BandL"], "armR": ["BandR"] }
+          }
+        ]
+      }
+    },
+    {
+      "id": "accessory-hair-object",
+      "type": "characterAccessory",
+      "name": "Lemon Hair Pin",
+      "description": "A colorable hair object for the character.",
+      "cost": 120,
+      "characterAccessory": {
+        "scope": "hair",
+        "exclusiveGroup": "hair",
+        "parts": ["Lemmon"],
+        "fillKeys": ["lemmon"]
+      }
+    },
+    {
+      "id": "accessory-full-body-ghost",
+      "type": "characterAccessory",
+      "name": "Ghost Costume",
+      "description": "A premium full-body costume that replaces the base skin.",
+      "cost": 475,
+      "characterAccessory": {
+        "scope": "fullBody",
+        "exclusiveGroup": "fullBody",
+        "parts": ["GHOST", "GHOST_armL_joint", "GHOST_armR_joint"],
+        "hideSkin": true,
+        "hideBaseClothes": true,
+        "anchoredIds": {
+          "armL": ["GHOST_armL_joint"],
+          "armR": ["GHOST_armR_joint"]
+        }
+      }
+    },
+    {
+      "id": "accessory-full-body-skeleton",
+      "type": "characterAccessory",
+      "name": "Skeleton Costume",
+      "description": "A premium full-body skeleton costume that replaces the base skin.",
+      "cost": 525,
+      "characterAccessory": {
+        "scope": "fullBody",
+        "exclusiveGroup": "fullBody",
+        "parts": ["SKELETON", "SKELETON_armL_joint", "SKELETON_armR_joint"],
+        "hideSkin": true,
+        "hideBaseClothes": true,
+        "anchoredIds": {
+          "armL": ["SKELETON_armL_joint"],
+          "armR": ["SKELETON_armR_joint"]
+        }
+      }
+    },
+    {
+      "id": "accessory-boots",
+      "type": "characterAccessory",
+      "name": "Boots",
+      "description": "A pair of sturdy character boots.",
+      "cost": 140,
+      "characterAccessory": {
+        "scope": "fullBody",
+        "exclusiveGroup": "shoes",
+        "toggles": [{ "groupKey": "toggleshoes", "optionIds": ["BOOTS"] }]
+      }
+    },
+    {
+      "id": "accessory-sneakers",
+      "type": "characterAccessory",
+      "name": "Sneakers",
+      "description": "A pair of casual character sneakers.",
+      "cost": 140,
+      "characterAccessory": {
+        "scope": "fullBody",
+        "exclusiveGroup": "shoes",
+        "toggles": [{ "groupKey": "toggleshoes", "optionIds": ["SNEEKER"] }]
+      }
+    },
+    {
+      "id": "accessory-heels",
+      "type": "characterAccessory",
+      "name": "Heels",
+      "description": "A pair of character heels.",
+      "cost": 140,
+      "characterAccessory": {
+        "scope": "fullBody",
+        "exclusiveGroup": "shoes",
+        "toggles": [{ "groupKey": "toggleshoes", "optionIds": ["HEEL"] }]
+      }
+    },
+    {
+      "id": "accessory-gloves",
+      "type": "characterAccessory",
+      "name": "Gloves",
+      "description": "Colorable gloves for both hands.",
+      "cost": 125,
+      "characterAccessory": {
+        "scope": "wrist",
+        "exclusiveGroup": "wrist",
+        "toggles": [{ "groupKey": "togglewrist", "optionIds": ["GloveR", "GloveL"] }],
+        "fillKeys": ["glover", "glovel"],
+        "anchoredIds": { "armL": ["GloveL"], "armR": ["GloveR"] }
+      }
+    },
+    {
+      "id": "accessory-pockets",
+      "type": "characterAccessory",
+      "name": "Pockets",
+      "description": "Colorable trouser pockets.",
+      "cost": 80,
+      "characterAccessory": {
+        "scope": "pants",
+        "exclusiveGroup": "pants",
+        "toggles": [{ "groupKey": "togglepants", "optionIds": ["PocketR", "PocketL"] }],
+        "fillKeys": ["pocketr", "pocketl"]
+      }
+    },
+    {
+      "id": "accessory-shirt-star",
+      "type": "characterAccessory",
+      "name": "Star Shirt Patch",
+      "description": "A colorable shirt patch for the character.",
+      "cost": 110,
+      "characterAccessory": {
+        "scope": "fullBody",
+        "exclusiveGroup": "shirtPatch",
+        "toggles": [{ "groupKey": "layer6", "optionIds": ["STAR"] }],
+        "fillKeys": ["star"]
+      }
+    },
+    {
+      "id": "accessory-shirt-circle",
+      "type": "characterAccessory",
+      "name": "Circle Shirt Patch",
+      "description": "A colorable circle shirt patch for the character.",
+      "cost": 100,
+      "characterAccessory": {
+        "scope": "fullBody",
+        "exclusiveGroup": "shirtPatch",
+        "toggles": [{ "groupKey": "layer6", "optionIds": ["CIRCLE"] }],
+        "fillKeys": ["circle"]
+      }
+    },
+    {
+      "id": "accessory-shirt-square",
+      "type": "characterAccessory",
+      "name": "Square Shirt Patch",
+      "description": "A colorable square shirt patch for the character.",
+      "cost": 100,
+      "characterAccessory": {
+        "scope": "fullBody",
+        "exclusiveGroup": "shirtPatch",
+        "toggles": [{ "groupKey": "layer6", "optionIds": ["SQUARE"] }],
+        "fillKeys": ["square"]
+      }
+    },
+    {
+      "id": "accessory-glasses-square",
+      "type": "characterAccessory",
+      "name": "Square Glasses",
+      "description": "Square glasses for the character.",
+      "cost": 130,
+      "characterAccessory": {
+        "scope": "face",
+        "exclusiveGroup": "face",
+        "toggles": [{ "groupKey": "toggleface", "optionIds": ["Glassessquare"] }]
+      }
+    },
+    {
+      "id": "accessory-glasses-circle",
+      "type": "characterAccessory",
+      "name": "Circle Glasses",
+      "description": "Round glasses for the character.",
+      "cost": 130,
+      "characterAccessory": {
+        "scope": "face",
+        "exclusiveGroup": "face",
+        "toggles": [{ "groupKey": "toggleface", "optionIds": ["Glassescircle"] }]
+      }
+    },
+    {
+      "id": "accessory-bandana",
+      "type": "characterAccessory",
+      "name": "Bandana",
+      "description": "A colorable face bandana.",
+      "cost": 120,
+      "characterAccessory": {
+        "scope": "face",
+        "exclusiveGroup": "face",
+        "toggles": [{ "groupKey": "toggleface", "optionIds": ["Bandana"] }],
+        "fillKeys": ["bandana"]
+      }
+    },
+    {
+      "id": "accessory-mask",
+      "type": "characterAccessory",
+      "name": "Mask",
+      "description": "A face mask for the character.",
+      "cost": 120,
+      "characterAccessory": {
+        "scope": "face",
+        "exclusiveGroup": "face",
+        "toggles": [{ "groupKey": "toggleface", "optionIds": ["Mask"] }]
+      }
+    },
+    {
+      "id": "accessory-cowboy-hat",
+      "type": "characterAccessory",
+      "name": "Cowboy Hat",
+      "description": "A wide-brimmed cowboy hat.",
+      "cost": 170,
+      "characterAccessory": {
+        "scope": "hat",
+        "exclusiveGroup": "hat",
+        "toggles": [{ "groupKey": "togglehat", "optionIds": ["Cowboy"] }]
+      }
+    },
+    {
+      "id": "accessory-headcover",
+      "type": "characterAccessory",
+      "name": "Headcover",
+      "description": "A translucent full headcover.",
+      "cost": 180,
+      "characterAccessory": {
+        "scope": "hat",
+        "exclusiveGroup": "hat",
+        "toggles": [{ "groupKey": "togglehat", "optionIds": ["Headcover"] }]
+      }
+    },
+    {
+      "id": "accessory-crown",
+      "type": "characterAccessory",
+      "name": "Crown",
+      "description": "A bright crown for celebratory days.",
+      "cost": 220,
+      "characterAccessory": {
+        "scope": "hat",
+        "exclusiveGroup": "hat",
+        "toggles": [{ "groupKey": "togglehat", "optionIds": ["Crown"] }]
+      }
+    },
+    {
       "id": "image-gift-print",
       "type": "image",
       "name": "Gift Print",

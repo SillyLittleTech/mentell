@@ -56,6 +56,145 @@ export const charManifest = {
         "path97",
         "path100"
       ]
+    },
+    {
+      "id": "g86",
+      "key": "catbase",
+      "label": "Catbase",
+      "defaultFill": "#ffce67",
+      "targetIds": [
+        "path77",
+        "path78",
+        "path79",
+        "path81",
+        "path82",
+        "path86",
+        "path86-4"
+      ]
+    },
+    {
+      "id": "g91",
+      "key": "dogbase",
+      "label": "Dogbase",
+      "defaultFill": "#725d34",
+      "targetIds": [
+        "ellipse86",
+        "ellipse87",
+        "ellipse88",
+        "ellipse89",
+        "ellipse90",
+        "path92",
+        "path92-9"
+      ]
+    },
+    {
+      "id": "path3",
+      "key": "bandr",
+      "label": "BandR",
+      "defaultFill": "#c32033",
+      "targetIds": [
+        "path3"
+      ]
+    },
+    {
+      "id": "path3-0",
+      "key": "bandl",
+      "label": "BandL",
+      "defaultFill": "#c32033",
+      "targetIds": [
+        "path3-0"
+      ]
+    },
+    {
+      "id": "path13",
+      "key": "watchr",
+      "label": "WatchR",
+      "defaultFill": "#35090e",
+      "targetIds": [
+        "path13"
+      ]
+    },
+    {
+      "id": "path16",
+      "key": "glover",
+      "label": "GloveR",
+      "defaultFill": "#35090e",
+      "targetIds": [
+        "path16"
+      ]
+    },
+    {
+      "id": "path16-0",
+      "key": "glovel",
+      "label": "GloveL",
+      "defaultFill": "#35090e",
+      "targetIds": [
+        "path16-0"
+      ]
+    },
+    {
+      "id": "path10",
+      "key": "pocketr",
+      "label": "PocketR",
+      "defaultFill": "#c32033",
+      "targetIds": [
+        "path10"
+      ]
+    },
+    {
+      "id": "path10-7",
+      "key": "pocketl",
+      "label": "PocketL",
+      "defaultFill": "#2c2460",
+      "targetIds": [
+        "path10-7"
+      ]
+    },
+    {
+      "id": "path21",
+      "key": "circle",
+      "label": "CIRCLE",
+      "defaultFill": "#d38d5f",
+      "targetIds": [
+        "path21"
+      ]
+    },
+    {
+      "id": "rect21",
+      "key": "square",
+      "label": "SQUARE",
+      "defaultFill": "#d38d5f",
+      "targetIds": [
+        "rect21"
+      ]
+    },
+    {
+      "id": "path22",
+      "key": "star",
+      "label": "STAR",
+      "defaultFill": "#d38d5f",
+      "targetIds": [
+        "path22"
+      ]
+    },
+    {
+      "id": "path40",
+      "key": "bandana",
+      "label": "Bandana",
+      "defaultFill": "#800000",
+      "targetIds": [
+        "path40"
+      ]
+    },
+    {
+      "id": "g55",
+      "key": "lemmon",
+      "label": "Lemmon",
+      "defaultFill": "#ffe166",
+      "targetIds": [
+        "path54",
+        "path55"
+      ]
     }
   ],
   "globalFillGroups": [
@@ -182,6 +321,174 @@ export const charManifest = {
       ]
     },
     {
+      "key": "layer2",
+      "label": "Togglepet",
+      "parentId": "layer2",
+      "defaultOption": "g91",
+      "options": [
+        {
+          "id": "g86",
+          "label": "Catbase"
+        },
+        {
+          "id": "g91",
+          "label": "Dogbase"
+        }
+      ]
+    },
+    {
+      "key": "layer18-6",
+      "label": "Toggleeyecolour BLK",
+      "parentId": "layer18-6",
+      "defaultOption": "g105-1",
+      "options": [
+        {
+          "id": "g104-5",
+          "label": "Default"
+        },
+        {
+          "id": "g105-1",
+          "label": "Brown"
+        },
+        {
+          "id": "g107-1",
+          "label": "Blue"
+        }
+      ]
+    },
+    {
+      "key": "layer3",
+      "label": "Togglewrist",
+      "parentId": "layer3",
+      "defaultOption": "path3",
+      "options": [
+        {
+          "id": "path3",
+          "label": "BandR"
+        },
+        {
+          "id": "path3-0",
+          "label": "BandL"
+        },
+        {
+          "id": "g15",
+          "label": "WatchR"
+        },
+        {
+          "id": "g15-5",
+          "label": "WatchL"
+        },
+        {
+          "id": "path16",
+          "label": "GloveR"
+        },
+        {
+          "id": "path16-0",
+          "label": "GloveL"
+        }
+      ]
+    },
+    {
+      "key": "layer4",
+      "label": "Togglepants",
+      "parentId": "layer4",
+      "defaultOption": "path10-7",
+      "options": [
+        {
+          "id": "path10",
+          "label": "PocketR"
+        },
+        {
+          "id": "path10-7",
+          "label": "PocketL"
+        }
+      ]
+    },
+    {
+      "key": "layer5",
+      "label": "Toggleshoes",
+      "parentId": "layer5",
+      "defaultOption": "g16",
+      "options": [
+        {
+          "id": "g16",
+          "label": "BOOTS"
+        },
+        {
+          "id": "g20",
+          "label": "SNEEKER"
+        },
+        {
+          "id": "g21",
+          "label": "HEEL"
+        }
+      ]
+    },
+    {
+      "key": "layer6",
+      "label": "Toggleshirt",
+      "parentId": "layer6",
+      "defaultOption": "path22",
+      "options": [
+        {
+          "id": "path21",
+          "label": "CIRCLE"
+        },
+        {
+          "id": "rect21",
+          "label": "SQUARE"
+        },
+        {
+          "id": "path22",
+          "label": "STAR"
+        }
+      ]
+    },
+    {
+      "key": "layer7",
+      "label": "Toggleface",
+      "parentId": "layer7",
+      "defaultOption": "g27",
+      "options": [
+        {
+          "id": "g27",
+          "label": "Glassessquare"
+        },
+        {
+          "id": "g32",
+          "label": "Glassescircle"
+        },
+        {
+          "id": "path40",
+          "label": "Bandana"
+        },
+        {
+          "id": "g47",
+          "label": "Mask"
+        }
+      ]
+    },
+    {
+      "key": "layer8",
+      "label": "Togglehat",
+      "parentId": "layer8",
+      "defaultOption": "g51",
+      "options": [
+        {
+          "id": "g51",
+          "label": "Cowboy"
+        },
+        {
+          "id": "path52",
+          "label": "Headcover"
+        },
+        {
+          "id": "path53",
+          "label": "Crown"
+        }
+      ]
+    },
+    {
       "key": "blush",
       "label": "Blush",
       "parentId": "g102",
@@ -204,6 +511,20 @@ export const charManifest = {
       "path45": "#ddae67",
       "path65": "#5042ae",
       "hair_fill": "#311e00",
+      "catbase": "#ffce67",
+      "dogbase": "#725d34",
+      "bandr": "#c32033",
+      "bandl": "#c32033",
+      "watchr": "#35090e",
+      "glover": "#35090e",
+      "glovel": "#35090e",
+      "pocketr": "#c32033",
+      "pocketl": "#2c2460",
+      "circle": "#d38d5f",
+      "square": "#d38d5f",
+      "star": "#d38d5f",
+      "bandana": "#800000",
+      "lemmon": "#ffe166",
       "shirt": "#261b4f",
       "sleeves": "#261b4f"
     },
@@ -213,6 +534,14 @@ export const charManifest = {
       "layer17": "g103",
       "layer18": "g105",
       "layer19": "g127",
+      "layer2": "g91",
+      "layer18-6": "g105-1",
+      "layer3": "path3",
+      "layer4": "path10-7",
+      "layer5": "g16",
+      "layer6": "path22",
+      "layer7": "g27",
+      "layer8": "g51",
       "blush": "on"
     }
   },
@@ -220,9 +549,12 @@ export const charManifest = {
     "openLayerIds": [
       "layer14",
       "layer18",
-      "g100"
+      "g100",
+      "layer14-9",
+      "layer18-6",
+      "g100-4"
     ],
-    "closedLayerId": "g11",
+    "closedLayerId": "g11-7",
     "closedDurationMs": 120,
     "minIntervalMs": 2000,
     "maxIntervalMs": 4500

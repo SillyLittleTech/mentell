@@ -7,6 +7,8 @@ import {
   type CollectedCat,
 } from './catCollection'
 import { WeekTimelineCard } from './WeekTimelineCard'
+import { MentellCharacter } from '../character/MentellCharacter'
+import { defaultCharacterAppearance } from '../character/characterAppearance'
 import { useAppSettings } from '../../shared/settings/useAppSettings'
 import { publicUrl } from '../../shared/publicUrl'
 import { SCORE_CHANGED_EVENT } from '../score/scoreEvents'
@@ -19,6 +21,7 @@ import {
 } from './shopInventory'
 import {
   loadShopCatalog,
+  type CharacterAccessoryItem,
   type CursorItem,
   type ShopCatalogItem,
   type ThemeItem,
@@ -87,9 +90,45 @@ function CursorHoverPreview({ item }: { item: CursorItem }) {
   )
 }
 
+function previewAccessoryItem(item: CharacterAccessoryItem): CharacterAccessoryItem {
+  const choice =
+    item.characterAccessory.choices?.find(
+      (entry) => entry.id === item.characterAccessory.defaultChoiceId,
+    ) ?? item.characterAccessory.choices?.[0]
+  if (!choice) return item
+  return {
+    ...item,
+    characterAccessory: {
+      ...item.characterAccessory,
+      toggles: choice.toggles?.length ? choice.toggles : item.characterAccessory.toggles,
+      parts: choice.parts?.length ? choice.parts : item.characterAccessory.parts,
+      anchoredIds: choice.anchoredIds ?? item.characterAccessory.anchoredIds,
+    },
+  }
+}
+
+function CharacterAccessoryPreview({ item }: { item: CharacterAccessoryItem }) {
+  const previewItem = previewAccessoryItem(item)
+  return (
+    <div
+      className="mt-3 flex h-28 w-full items-center justify-center overflow-hidden rounded-xl border border-[var(--paper-border)] bg-[var(--paper-bg)] p-2"
+      role="img"
+      aria-label={`${item.name} preview`}
+    >
+      <MentellCharacter
+        pose="idle"
+        appearance={defaultCharacterAppearance()}
+        characterAccessories={[previewItem]}
+        className="h-full w-full"
+      />
+    </div>
+  )
+}
+
 function ShopItemPreview({ item, preview }: { item: ShopCatalogItem; preview: string | null }) {
   if (item.type === 'theme') return <ThemePreview item={item} />
   if (item.type === 'cursor') return <CursorHoverPreview item={item} />
+  if (item.type === 'characterAccessory') return <CharacterAccessoryPreview item={item} />
   if (!preview) return null
   return (
     <img
@@ -152,6 +191,17 @@ export function Shoppe({
     if (item.type === 'theme') return 'Theme'
     if (item.type === 'stamp') return 'Stamp'
     if (item.type === 'cursor') return 'Cursor set'
+    if (item.type === 'characterAccessory') {
+      if (item.characterAccessory.scope === 'fullBody') return 'Full-body accessory'
+      if (item.characterAccessory.scope === 'hair') return 'Hair accessory'
+      if (item.characterAccessory.scope === 'wrist') return 'Wrist accessory'
+      if (item.characterAccessory.scope === 'shirt') return 'Shirt accessory'
+      if (item.characterAccessory.scope === 'shoes') return 'Shoe accessory'
+      if (item.characterAccessory.scope === 'pants') return 'Pants accessory'
+      if (item.characterAccessory.scope === 'face') return 'Face accessory'
+      if (item.characterAccessory.scope === 'hat') return 'Hat accessory'
+      return 'Pet accessory'
+    }
     return 'Image'
   }
 
@@ -159,6 +209,9 @@ export function Shoppe({
     if (item.type === 'theme') return 'Applies different desk/paper styling in light + dark mode.'
     if (item.type === 'stamp') return 'Updates the default submit stamp artwork in the send animation.'
     if (item.type === 'cursor') return 'Applies custom default, pointer, and text cursors.'
+    if (item.type === 'characterAccessory') {
+      return 'Unlocks an accessory for the Character lab.'
+    }
     return 'Collectible image item for future gallery drops.'
   }
 
@@ -246,7 +299,13 @@ export function Shoppe({
       }
       setBalance(getScoreSnapshot().total)
       onScoreChange(-item.cost, `${item.name} unlocked`)
-      setStatus(canEquip(item) ? `${item.name} unlocked and equipped.` : `${item.name} unlocked.`)
+      setStatus(
+        item.type === 'characterAccessory'
+          ? `${item.name} unlocked. Customize it in Character lab.`
+          : canEquip(item)
+            ? `${item.name} unlocked and equipped.`
+            : `${item.name} unlocked.`,
+      )
     } finally {
       setBusyItemId(null)
     }
@@ -304,6 +363,7 @@ export function Shoppe({
           {catalog.items.map((item) => {
             const owned = itemOwned(item.id)
             const equippable = canEquip(item)
+            const accessory = item.type === 'characterAccessory'
             const equipped = equippable && equippedId(item.type) === item.id
             const preview = itemPreview(item)
             return (
@@ -346,7 +406,7 @@ export function Shoppe({
                   )}
                   {owned ? (
                     <span className="rounded-full border border-[var(--paper-border)] px-2 py-1 text-[11px] font-semibold uppercase tracking-wide opacity-75">
-                      {equipped ? 'Equipped' : 'Unlocked'}
+                      {equipped ? 'Equipped' : accessory ? 'Owned' : 'Unlocked'}
                     </span>
                   ) : null}
                 </div>
