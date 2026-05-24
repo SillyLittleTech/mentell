@@ -80,10 +80,29 @@ function isRendered(el: SVGGraphicsElement) {
   return getComputedStyle(el).display !== 'none'
 }
 
+function normalizeLookup(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/_(toggle|iii|dni).*$/i, '')
+    .replace(/[^a-z0-9]+/g, '')
+}
+
+function resolveGraphics(svg: SVGSVGElement, key: string) {
+  const byId = svg.getElementById(key)
+  if (byId instanceof SVGGraphicsElement) return [byId]
+  const normalized = normalizeLookup(key)
+  return Array.from(svg.querySelectorAll('*')).filter((el): el is SVGGraphicsElement => {
+    if (!(el instanceof SVGGraphicsElement)) return false
+    const label = el.getAttribute('inkscape:label') ?? ''
+    return normalizeLookup(label) === normalized
+  })
+}
+
 export function useArmPoseAnimation(
   svgRef: React.RefObject<SVGSVGElement | null>,
   pose: ArmPose,
   svgGeneration = 0,
+  anchoredIds?: { armL?: readonly string[]; armR?: readonly string[] },
 ) {
   const prevPose = useRef(pose)
 
@@ -121,11 +140,20 @@ export function useArmPoseAnimation(
       pivot: pivotRLocal,
     }
 
-    const leftSleeves = charManifest.arms.armL.sleeveIds
-      .map((id) => svg.getElementById(id))
+    const leftSleeveIds = [
+      ...charManifest.arms.armL.sleeveIds,
+      ...(anchoredIds?.armL ?? []),
+    ]
+    const rightSleeveIds = [
+      ...charManifest.arms.armR.sleeveIds,
+      ...(anchoredIds?.armR ?? []),
+    ]
+
+    const leftSleeves = leftSleeveIds
+      .flatMap((id) => resolveGraphics(svg, id))
       .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement && isRendered(el))
-    const rightSleeves = charManifest.arms.armR.sleeveIds
-      .map((id) => svg.getElementById(id))
+    const rightSleeves = rightSleeveIds
+      .flatMap((id) => resolveGraphics(svg, id))
       .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement && isRendered(el))
 
     const leftSleeveNodes: RotatingNode[] = leftSleeves.map((el) => {
@@ -195,5 +223,5 @@ export function useArmPoseAnimation(
       controlsL.stop()
       controlsR.stop()
     }
-  }, [svgRef, pose.armL, pose.armR, svgGeneration])
+  }, [svgRef, pose.armL, pose.armR, svgGeneration, anchoredIds])
 }

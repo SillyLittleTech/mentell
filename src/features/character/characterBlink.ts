@@ -8,20 +8,32 @@ function setLayerVisible(svg: SVGSVGElement, id: string, show: boolean) {
   el.style.display = show ? 'inline' : 'none'
 }
 
+function blinkLayerIds(svg: SVGSVGElement) {
+  const openLayerIds = new Set<string>(charManifest.blink?.openLayerIds ?? [])
+  const closedLayerIds = new Set<string>(
+    charManifest.blink ? [charManifest.blink.closedLayerId] : [],
+  )
+  svg.querySelectorAll<SVGElement>('*').forEach((el) => {
+    const label = el.getAttribute('inkscape:label') ?? ''
+    if (!el.id) return
+    if (label === 'BLK') closedLayerIds.add(el.id)
+    else if (label.endsWith('_BLK')) openLayerIds.add(el.id)
+  })
+  return { openLayerIds: [...openLayerIds], closedLayerIds: [...closedLayerIds] }
+}
+
 /** Default: open-eye *_BLK layers on, closed-eye BLK layer off. */
 export function applyBlinkOpenState(svg: SVGSVGElement) {
-  const blink = charManifest.blink
-  if (!blink) return
-  for (const id of blink.openLayerIds) setLayerVisible(svg, id, true)
-  setLayerVisible(svg, blink.closedLayerId, false)
+  const { openLayerIds, closedLayerIds } = blinkLayerIds(svg)
+  for (const id of openLayerIds) setLayerVisible(svg, id, true)
+  for (const id of closedLayerIds) setLayerVisible(svg, id, false)
 }
 
 /** Blink frame: hide *_BLK, show BLK overlay. */
 export function applyBlinkClosedState(svg: SVGSVGElement) {
-  const blink = charManifest.blink
-  if (!blink) return
-  for (const id of blink.openLayerIds) setLayerVisible(svg, id, false)
-  setLayerVisible(svg, blink.closedLayerId, true)
+  const { openLayerIds, closedLayerIds } = blinkLayerIds(svg)
+  for (const id of openLayerIds) setLayerVisible(svg, id, false)
+  for (const id of closedLayerIds) setLayerVisible(svg, id, true)
 }
 
 export function useCharacterBlink(

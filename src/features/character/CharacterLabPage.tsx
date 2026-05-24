@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MentellCharacter } from './MentellCharacter'
 import { charManifest } from './charManifest'
 import { POSE_LABELS } from './characterPoses'
@@ -11,10 +11,41 @@ import {
 import { OptionDial } from './lab/OptionDial'
 import { LabSwitch } from './lab/LabSwitch'
 import { useCharacterAppearance } from './useCharacterAppearance'
+import {
+  equipCharacterAccessoryItem,
+  loadShopInventory,
+  setCharacterAccessoryChoice,
+  subscribeShopInventory,
+  type ShopInventory,
+} from '../shop/shopInventory'
+import {
+  loadShopCatalog,
+  type CharacterAccessoryItem,
+  type ShopCatalogItem,
+} from '../shop/shopCatalog'
+import { accessoryChoiceId, exclusiveAccessoryIdsFor } from '../shop/shopCharacterAccessories'
+
+function isCharacterAccessory(item: ShopCatalogItem): item is CharacterAccessoryItem {
+  return item.type === 'characterAccessory'
+}
 
 export function CharacterLabPage() {
   const { appearance, setAppearance, resetAppearance, ready } = useCharacterAppearance()
   const [pose, setPose] = useState<CharacterPoseId>('wave')
+  const catalog = useMemo(() => loadShopCatalog(), [])
+  const [inventory, setInventory] = useState<ShopInventory>(() => loadShopInventory())
+
+  useEffect(() => subscribeShopInventory((next) => setInventory(next)), [])
+
+  const ownedAccessories = useMemo(() => {
+    const owned = new Set(inventory.ownedItemIds)
+    return catalog.items.filter(isCharacterAccessory).filter((item) => owned.has(item.id))
+  }, [catalog.items, inventory.ownedItemIds])
+
+  const equippedAccessoryIds = useMemo(
+    () => new Set(inventory.equipped.characterAccessoryIds),
+    [inventory.equipped.characterAccessoryIds],
+  )
 
   const toggleByKey = useMemo(() => {
     const map = new Map<string, (typeof charManifest.toggleGroups)[number]>(
@@ -22,7 +53,6 @@ export function CharacterLabPage() {
     )
     return map
   }, [])
-
   function setFill(key: string, value: string) {
     setAppearance((prev) => ({
       ...prev,
@@ -46,6 +76,12 @@ export function CharacterLabPage() {
     if (fillable) return fillable.defaultFill
     const global = charManifest.globalFillGroups.find((g) => g.key === key)
     return global?.defaultFill ?? '#000000'
+  }
+
+  function toggleAccessory(item: CharacterAccessoryItem) {
+    equipCharacterAccessoryItem(item.id, {
+      exclusiveWith: exclusiveAccessoryIdsFor(item, catalog.items),
+    })
   }
 
   return (
@@ -112,6 +148,88 @@ export function CharacterLabPage() {
                 )
               })}
             </div>
+          </fieldset>
+
+          <fieldset className="space-y-4">
+            <legend className="font-paper text-lg">Shoppe accessories</legend>
+            {ownedAccessories.length === 0 ? (
+              <div className="ink-muted rounded-xl border border-[var(--paper-border)] px-3 py-2 text-sm">
+                Unlock character accessories in the Shoppe to equip and customize them here.
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {ownedAccessories.map((item) => {
+                  const equipped = equippedAccessoryIds.has(item.id)
+                  const colorKeys = item.characterAccessory.fillKeys ?? []
+                  const choices = item.characterAccessory.choices ?? []
+                  const selectedChoiceId = accessoryChoiceId(item, inventory)
+                  return (
+                    <div
+                      key={item.id}
+                      className="space-y-3 rounded-xl border border-[var(--paper-border)] p-3"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-medium">{item.name}</div>
+                          <div className="ink-muted text-xs">
+                            {equipped ? 'Equipped' : 'Owned'}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className={`focus-ring rounded-xl border px-3 py-1.5 text-xs font-semibold ${
+                            equipped
+                              ? 'border-[var(--paper-ink)] bg-[var(--paper-ink)] text-[var(--paper-bg)]'
+                              : 'border-[var(--paper-border)]'
+                          }`}
+                          onClick={() => toggleAccessory(item)}
+                        >
+                          {equipped ? 'Unequip' : 'Equip'}
+                        </button>
+                      </div>
+
+                      {choices.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {choices.map((choice) => (
+                            <button
+                              key={choice.id}
+                              type="button"
+                              className={`focus-ring rounded-lg border px-2 py-1 text-xs ${
+                                selectedChoiceId === choice.id
+                                  ? 'border-[var(--paper-ink)] bg-[var(--paper-ink)] text-[var(--paper-bg)]'
+                                  : 'border-[var(--paper-border)]'
+                              }`}
+                              onClick={() => setCharacterAccessoryChoice(item.id, choice.id)}
+                            >
+                              {choice.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {colorKeys.length > 0 ? (
+                        <div className="grid gap-2">
+                          {colorKeys.map((key) => (
+                            <label
+                              key={`${item.id}-${key}`}
+                              className="flex items-center justify-between gap-3 text-sm"
+                            >
+                              <span className="ink-muted">{key.replace(/_/g, ' ')}</span>
+                              <input
+                                type="color"
+                                value={colorValue(key, defaultForColorKey(key))}
+                                onChange={(e) => setFill(key, e.target.value)}
+                                className="h-9 w-14 cursor-pointer rounded border border-[var(--paper-border)] bg-transparent"
+                              />
+                            </label>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </fieldset>
 
           <fieldset className="space-y-3">

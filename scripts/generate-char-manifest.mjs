@@ -47,6 +47,16 @@ function parseFill(style) {
   return null
 }
 
+function styleForElementId(block, id) {
+  const tagRe = /<(?:path|ellipse|rect)\b[^>]*>/gi
+  let m
+  while ((m = tagRe.exec(block)) !== null) {
+    const tag = m[0]
+    if (tag.match(ID_RE)?.[1] === id) return tag.match(STYLE_RE)?.[1] ?? null
+  }
+  return null
+}
+
 function isVisibleOpening(tag) {
   const style = tag.match(STYLE_RE)?.[1] ?? ''
   if (!style.includes('display:')) return true
@@ -85,7 +95,12 @@ function directToggleChildren(parentInner) {
       i += 3
       continue
     }
-    if (depth === 0 && parentInner.startsWith('<path', i)) {
+    if (
+      depth === 0 &&
+      (parentInner.startsWith('<path', i) ||
+        parentInner.startsWith('<ellipse', i) ||
+        parentInner.startsWith('<rect', i))
+    ) {
       const slice = parentInner.slice(i)
       const label = slice.match(/inkscape:label="([^"]+)"/)?.[1]
       const id = slice.match(/\bid="([^"]+)"/)?.[1]
@@ -121,7 +136,7 @@ function extractBalancedGroup(xml, startIndex) {
 
 function collectSolidFillPathIds(block) {
   const ids = []
-  const tagRe = /<(path|ellipse)\b[^>]*>/g
+  const tagRe = /<(path|ellipse|rect)\b[^>]*>/g
   let m
   while ((m = tagRe.exec(block)) !== null) {
     const tag = m[0]
@@ -161,14 +176,60 @@ function collectSleeveIdsBySide(xml, sleeveParentId) {
 
 /** armL / armR paths (gradient fills) tinted with skin. */
 function collectArmSkinPathIds(xml) {
+  const accessoryStart = xml.search(/<g\b[^>]*inkscape:label="accessoryengine"/i)
+  const bodyXml = accessoryStart >= 0 ? xml.slice(0, accessoryStart) : xml
   const ids = []
   const re = /<path\b[^>]*inkscape:label="arm[LR]"[^>]*>/gi
   let m
-  while ((m = re.exec(xml)) !== null) {
+  while ((m = re.exec(bodyXml)) !== null) {
     const id = m[0].match(ID_RE)?.[1]
     if (id) ids.push(id)
   }
   return [...new Set(ids)]
+}
+
+function fillKeyForToggleOption(label) {
+  return humanize(label).toLowerCase().replace(/\s+/g, '_')
+}
+
+function collectAccessoryFillables(xml, accessoryStart) {
+  if (accessoryStart < 0) return []
+  const accessoryXml = xml.slice(accessoryStart)
+  const found = []
+  const seen = new Set()
+  const tagRe = /<(g|path|ellipse|rect)\b[^>]*inkscape:label="([^"]*_TOGGLE_III)"[^>]*>/gi
+  let m
+  while ((m = tagRe.exec(accessoryXml)) !== null) {
+    const tag = m[0]
+    const tagName = m[1]
+    const label = m[2]
+    const id = tag.match(ID_RE)?.[1]
+    if (!id) continue
+    const key = fillKeyForToggleOption(label)
+    if (seen.has(key)) continue
+    const absoluteIndex = accessoryStart + m.index
+    const block = tagName.toLowerCase() === 'g' ? extractBalancedGroup(xml, absoluteIndex) : tag
+    if (!block) continue
+    const targetIds = collectSolidFillPathIds(block)
+    const tagFill = parseFill(tag.match(STYLE_RE)?.[1])
+    if (!targetIds.length && tagFill) targetIds.push(id)
+    if (!targetIds.length) continue
+    const defaultFill =
+      targetIds
+        .map((targetId) => {
+          return parseFill(styleForElementId(block, targetId))
+        })
+        .find(Boolean) ?? tagFill ?? '#261b4f'
+    seen.add(key)
+    found.push({
+      id,
+      key,
+      label: humanize(label),
+      defaultFill,
+      targetIds,
+    })
+  }
+  return found
 }
 
 /** All path/ellipse under togglehair (layer16) with a solid hex fill. */
@@ -217,10 +278,7 @@ function extractAppearanceFromSvg(xml) {
       extractBalancedGroup(xml, xml.search(/<g\b[^>]*id="layer16"/i)) ?? ''
     const hairColor = hairFillIds
       .map((id) => {
-        const m = block.match(
-          new RegExp(`<(?:path|ellipse)\\b[^>]*id="${id}"[^>]*style="([^"]*)"`, 'i'),
-        )
-        const fill = m ? parseFill(m[1]) : null
+        const fill = parseFill(styleForElementId(block, id))
         return fill && fill.toLowerCase() !== '#ffffff' ? fill : null
       })
       .find(Boolean)
@@ -243,10 +301,7 @@ function extractAppearanceFromSvg(xml) {
       const targetIds = collectSolidFillPathIds(block)
       const color = targetIds
         .map((id) => {
-          const m = block.match(
-            new RegExp(`<(?:path|ellipse)\\b[^>]*id="${id}"[^>]*style="([^"]*)"`, 'i'),
-          )
-          return m ? parseFill(m[1]) : null
+          return parseFill(styleForElementId(block, id))
         })
         .find(Boolean)
       if (color) fills[key] = color
@@ -291,7 +346,9 @@ function collectBlinkLayers(xml) {
 }
 
 function applyHeadshotDefaults(structure, headshotDefaults) {
+  const baseFillKeys = new Set(['path45', 'path65', 'hair_fill'])
   for (const f of structure.fillables) {
+    if (!baseFillKeys.has(f.key)) continue
     const fromHeadshot = headshotDefaults.fills[f.key]
     if (fromHeadshot) f.defaultFill = fromHeadshot
   }
@@ -326,6 +383,7 @@ async function main() {
   const globalFillGroups = []
   const toggleGroups = []
   const globalFillParentIds = new Set()
+  const accessoryStart = xml.search(/<g\b[^>]*inkscape:label="accessoryengine"/i)
 
   const viewBoxMatch = xml.match(/viewBox="([^"]+)"/)
   const viewBox = viewBoxMatch?.[1] ?? '0 0 296 374'
@@ -372,10 +430,7 @@ async function main() {
     const defaultFill =
       hairFillIds
         .map((id) => {
-          const m = block.match(
-            new RegExp(`<(?:path|ellipse)\\b[^>]*id="${id}"[^>]*style="([^"]*)"`, 'i'),
-          )
-          const fill = m ? parseFill(m[1]) : null
+          const fill = parseFill(styleForElementId(block, id))
           return fill && fill.toLowerCase() !== '#ffffff' ? fill : null
         })
         .find(Boolean) ?? '#311e00'
@@ -387,6 +442,12 @@ async function main() {
       defaultFill,
       targetIds: hairFillIds,
     })
+  }
+
+  for (const fillable of collectAccessoryFillables(xml, accessoryStart)) {
+    if (!fillables.some((entry) => entry.key === fillable.key)) {
+      fillables.push(fillable)
+    }
   }
 
   const parentRe = /<g\b[^>]*inkscape:label="([^"]*)"[^>]*>/gi
@@ -406,10 +467,7 @@ async function main() {
       const defaultFill =
         targetIds
           .map((id) => {
-            const m = block.match(
-              new RegExp(`<(?:path|ellipse)\\b[^>]*id="${id}"[^>]*style="([^"]*)"`, 'i'),
-            )
-            return m ? parseFill(m[1]) : null
+            return parseFill(styleForElementId(block, id))
           })
           .find(Boolean) ?? '#261b4f'
 
@@ -423,6 +481,38 @@ async function main() {
     }
 
     const children = directToggleChildren(inner)
+    const isAccessoryParent = accessoryStart >= 0 && tm.index > accessoryStart
+    for (const child of isAccessoryParent ? children : []) {
+      if (!/_III$/i.test(child.label)) continue
+      const childMatch = new RegExp(
+        `<(?:g|path|ellipse|rect)\\b[^>]*id="${child.id}"[^>]*`,
+        'i',
+      ).exec(block)
+      if (!childMatch) continue
+      const childBlock = block.startsWith('<g', childMatch.index)
+        ? extractBalancedGroup(block, childMatch.index)
+        : childMatch[0]
+      if (!childBlock) continue
+      const targetIds = collectSolidFillPathIds(childBlock)
+      const childFill = parseFill(childMatch[0].match(STYLE_RE)?.[1])
+      if (!targetIds.length && child.id && childFill) targetIds.push(child.id)
+      if (!targetIds.length) continue
+      const defaultFill =
+        targetIds
+          .map((id) => {
+            return parseFill(styleForElementId(childBlock, id))
+          })
+          .find(Boolean) ?? childFill ?? '#261b4f'
+      const key = fillKeyForToggleOption(child.label)
+      if (fillables.some((entry) => entry.key === key)) continue
+      fillables.push({
+        id: child.id,
+        key,
+        label: humanize(child.label),
+        defaultFill,
+        targetIds,
+      })
+    }
     if (children.length < 2) continue
     const defaultOption = children.find((c) => c.visible)?.id ?? children[0].id
     toggleGroups.push({

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import charSvg from '../../../asset/char/charprod.svg?raw'
 import headshotSvg from '../../../asset/char/headshot.svg?raw'
 import { applyCharacterAppearance } from './applyCharacterAppearance'
@@ -15,7 +15,10 @@ import type { CharacterPoseId } from './charManifest'
 import { CHARACTER_POSES } from './characterPoses'
 import { useCharacterBlink } from './characterBlink'
 import { useArmPoseAnimation } from './useArmPoseAnimation'
+import { usePetAccessoryAnimation } from './usePetAccessoryAnimation'
 import { useCharacterAppearance } from './useCharacterAppearance'
+import { useEquippedCharacterAccessories } from '../shop/shopCharacterAccessories'
+import type { CharacterAccessoryItem } from '../shop/shopCatalog'
 
 const DEFAULT_APPEARANCE = defaultCharacterAppearance()
 
@@ -23,6 +26,42 @@ const SVG_SOURCE = {
   character: charSvg,
   headshot: headshotSvg,
 } as const
+
+let nextPaintServerInstanceId = 0
+
+function namespaceSvgPaintServers(svg: SVGSVGElement) {
+  nextPaintServerInstanceId += 1
+  const suffix = `mentell-svg-${nextPaintServerInstanceId}`
+  const idMap = new Map<string, string>()
+  svg.querySelectorAll<SVGElement>('defs [id]').forEach((el) => {
+    const id = el.id
+    if (!id) return
+    const nextId = `${id}-${suffix}`
+    idMap.set(id, nextId)
+    el.id = nextId
+  })
+  if (!idMap.size) return
+
+  const replaceRefs = (value: string) =>
+    value
+      .replace(/url\(#([^)]+)\)/g, (match, id: string) => {
+        const nextId = idMap.get(id)
+        return nextId ? `url(#${nextId})` : match
+      })
+      .replace(/^#(.+)$/, (match, id: string) => {
+        const nextId = idMap.get(id)
+        return nextId ? `#${nextId}` : match
+      })
+
+  svg.querySelectorAll<SVGElement>('*').forEach((el) => {
+    for (const attr of ['style', 'fill', 'stroke', 'filter', 'href', 'xlink:href']) {
+      const value = el.getAttribute(attr)
+      if (!value) continue
+      const nextValue = replaceRefs(value)
+      if (nextValue !== value) el.setAttribute(attr, nextValue)
+    }
+  })
+}
 
 export type CharacterAsset = keyof typeof SVG_SOURCE
 
@@ -32,6 +71,7 @@ export type MentellCharacterProps = {
   appearance?: CharacterAppearance
   className?: string
   title?: string
+  characterAccessories?: CharacterAccessoryItem[]
 }
 
 export function MentellCharacter({
@@ -40,15 +80,26 @@ export function MentellCharacter({
   appearance: appearanceProp,
   className,
   title,
+  characterAccessories,
 }: MentellCharacterProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const [svgGeneration, setSvgGeneration] = useState(0)
   const { appearance: storedAppearance } = useCharacterAppearance()
+  const equippedAccessories = useEquippedCharacterAccessories(characterAccessories === undefined)
+  const accessories = characterAccessories ?? equippedAccessories
   const appearance = appearanceProp ?? storedAppearance ?? DEFAULT_APPEARANCE
   const appearanceKey = JSON.stringify(appearance)
+  const accessoryKey = JSON.stringify(accessories.map((item) => item.id))
   const armPose = CHARACTER_POSES[pose]
   const isBody = asset === 'character'
+  const anchoredIds = useMemo(
+    () => ({
+      armL: accessories.flatMap((item) => item.characterAccessory.anchoredIds?.armL ?? []),
+      armR: accessories.flatMap((item) => item.characterAccessory.anchoredIds?.armR ?? []),
+    }),
+    [accessories],
+  )
 
   useLayoutEffect(() => {
     const host = hostRef.current
@@ -67,12 +118,19 @@ export function MentellCharacter({
     } else {
       fixHeadshotPaintOrder(svg)
     }
-    applyCharacterAppearance(svg, appearance)
+    namespaceSvgPaintServers(svg)
+    applyCharacterAppearance(svg, appearance, accessories)
     setSvgGeneration((g) => g + 1)
-  }, [appearanceKey, asset])
+  }, [appearance, appearanceKey, accessories, accessoryKey, asset])
 
-  useArmPoseAnimation(svgRef, isBody ? armPose : { armL: 0, armR: 0 }, svgGeneration)
+  useArmPoseAnimation(
+    svgRef,
+    isBody ? armPose : { armL: 0, armR: 0 },
+    svgGeneration,
+    anchoredIds,
+  )
   useCharacterBlink(svgRef, isBody ? svgGeneration : -1)
+  usePetAccessoryAnimation(svgRef, isBody ? svgGeneration : -1)
 
   const viewBox =
     asset === 'headshot' ? charManifest.headshotViewBox : charManifest.viewBox

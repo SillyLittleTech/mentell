@@ -8,6 +8,8 @@ export type EquippedShopItems = {
   themeId: string | null
   stampId: string | null
   cursorId: string | null
+  characterAccessoryIds: string[]
+  characterAccessoryChoices: Record<string, string>
 }
 
 export type ShopInventory = {
@@ -27,6 +29,8 @@ const DEFAULT_SHOP_INVENTORY: ShopInventory = {
     themeId: null,
     stampId: null,
     cursorId: null,
+    characterAccessoryIds: [],
+    characterAccessoryChoices: {},
   },
   updatedAt: 0,
 }
@@ -48,6 +52,21 @@ function sanitizeInventory(input: unknown): ShopInventory {
       themeId: typeof equippedRow?.themeId === 'string' ? equippedRow.themeId : null,
       stampId: typeof equippedRow?.stampId === 'string' ? equippedRow.stampId : null,
       cursorId: typeof equippedRow?.cursorId === 'string' ? equippedRow.cursorId : null,
+      characterAccessoryIds: Array.isArray(equippedRow?.characterAccessoryIds)
+        ? [
+            ...new Set(
+              equippedRow.characterAccessoryIds.filter(
+                (id): id is string => typeof id === 'string',
+              ),
+            ),
+          ]
+        : [],
+      characterAccessoryChoices: Object.fromEntries(
+        Object.entries(asRecord(equippedRow?.characterAccessoryChoices) ?? {}).filter(
+          (entry): entry is [string, string] =>
+            typeof entry[0] === 'string' && typeof entry[1] === 'string',
+        ),
+      ),
     },
     updatedAt: Number.isFinite(updatedAtRaw) ? Math.max(0, Math.trunc(updatedAtRaw)) : 0,
   }
@@ -107,6 +126,47 @@ export function equipShopItem(kind: 'theme' | 'stamp' | 'cursor', itemId: string
       ...(kind === 'theme' ? { themeId: clean } : null),
       ...(kind === 'stamp' ? { stampId: clean } : null),
       ...(kind === 'cursor' ? { cursorId: clean } : null),
+    },
+  }))
+}
+
+export function equipCharacterAccessoryItem(
+  itemId: string,
+  options?: { exclusiveWith?: string[] },
+) {
+  const clean = itemId.trim()
+  if (!clean) return loadShopInventory()
+  const exclusiveWith = new Set(options?.exclusiveWith ?? [])
+  return updateShopInventory((current) => {
+    const currentlyEquipped = current.equipped.characterAccessoryIds.includes(clean)
+    const nextIds = currentlyEquipped
+      ? current.equipped.characterAccessoryIds.filter((id) => id !== clean)
+      : [
+          ...current.equipped.characterAccessoryIds.filter((id) => !exclusiveWith.has(id)),
+          clean,
+        ]
+    return {
+      ...current,
+      equipped: {
+        ...current.equipped,
+        characterAccessoryIds: nextIds,
+      },
+    }
+  })
+}
+
+export function setCharacterAccessoryChoice(itemId: string, choiceId: string) {
+  const cleanItem = itemId.trim()
+  const cleanChoice = choiceId.trim()
+  if (!cleanItem || !cleanChoice) return loadShopInventory()
+  return updateShopInventory((current) => ({
+    ...current,
+    equipped: {
+      ...current.equipped,
+      characterAccessoryChoices: {
+        ...current.equipped.characterAccessoryChoices,
+        [cleanItem]: cleanChoice,
+      },
     },
   }))
 }
