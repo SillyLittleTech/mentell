@@ -95,7 +95,7 @@ In-app page: [`src/features/legal/PrivacyPolicyPage.tsx`](src/features/legal/Pri
 
 ### Debug mode Firebase
 
-- [`DebugAuthProvider`](src/shared/firebase/DebugAuthProvider.tsx): in-memory auth, signs out any prod session, auto sandbox sign-in (anonymous + displayName `DEBUGGER`, or `VITE_DEBUG_FIREBASE_CUSTOM_TOKEN` for fixed uid `DEBUGGER`). Standard sign-in UI is hidden.
+- [`DebugAuthProvider`](src/shared/firebase/DebugAuthProvider.tsx): in-memory auth, signs out any prod session, and only signs in with `VITE_DEBUG_FIREBASE_CUSTOM_TOKEN` for fixed uid `DEBUGGER`. If no debug custom token is set, Firebase/cloud features are disabled in debug mode. Standard sign-in UI is hidden.
 - See [`docs/FIREBASE.md`](docs/FIREBASE.md) for optional custom token setup.
 
 ### Notifications and package delivery

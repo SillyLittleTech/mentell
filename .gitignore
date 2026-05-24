@@ -32,3 +32,4 @@ worker/.wrangler
 *.njsproj
 *.sln
 *.sw?
+/scripts/emergency
