@@ -37,6 +37,7 @@ export function DebugAuthProvider({ children }: { children: ReactNode }) {
     }
     const auth = getFirebaseAuth()
     if (!auth) {
+      setLoading(false)
       return
     }
 
