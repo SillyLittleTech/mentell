@@ -56,11 +56,20 @@ export type PackageRow = {
   openedScoreDelta?: number
 }
 
+/** Singleton row (`id` is always `default`) for desk character customization. */
+export type CharacterAppearanceRow = {
+  id: 'default'
+  updatedAt: number
+  fills: Record<string, string>
+  toggles: Record<string, string>
+}
+
 export class MentellDB extends Dexie {
   entries!: Table<EntryRow, string>
   notes!: Table<NoteRow, string>
   stickies!: Table<StickyRow, string>
   packages!: Table<PackageRow, string>
+  characterAppearance!: Table<CharacterAppearanceRow, string>
 
   constructor(name: string) {
     super(name)
@@ -123,6 +132,14 @@ export class MentellDB extends Dexie {
           if (!row.coordSpace) row.coordSpace = 'board'
         })
       })
+
+    this.version(5).stores({
+      entries: '&id, dateKey, createdAt, updatedAt, sentiment, warningLevel',
+      notes: '&id, createdAt, updatedAt, tag',
+      stickies: '&id, createdAt, updatedAt, zIndex',
+      packages: '&id, kind, periodKey, createdAt, updatedAt, openedAt',
+      characterAppearance: '&id, updatedAt',
+    })
   }
 }
 

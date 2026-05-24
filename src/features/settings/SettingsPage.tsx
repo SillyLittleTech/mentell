@@ -7,6 +7,7 @@ import { browserTimezone } from '../../shared/settings/appSettings'
 import { AccountSyncSection } from './AccountSyncSection'
 import { SettingsAccountFeatures } from './SettingsAccountFeatures'
 import { SettingsDebugCloudSection } from './SettingsDebugCloudSection'
+import { DeskCharacterLayout } from '../character/DeskCharacterLayout'
 
 const WEEKDAY_OPTIONS = [
   { value: 0, label: 'Sunday' },
@@ -48,6 +49,7 @@ export function SettingsPage() {
   }, [settings.globalName, settings.globalNameManuallySet])
 
   return (
+    <DeskCharacterLayout>
     <div className="space-y-4">
       <section className="paper rounded-3xl p-6">
         <div className="font-paper text-2xl">Settings</div>
@@ -192,5 +194,6 @@ export function SettingsPage() {
         </label>
       </section>
     </div>
+    </DeskCharacterLayout>
   )
 }

@@ -1,10 +1,11 @@
 {
   "name": "mentell",
   "private": true,
-  "version": "1.7.2",
+  "version": "1.9.5",
   "type": "module",
   "scripts": {
     "sync:assets": "node scripts/sync-assets.mjs",
+    "pose:lab": "elixir scripts/pose_lab.exs",
     "dev": "vite",
     "dev:debug": "vite --mode debug",
     "build": "npm run sync:assets && tsc -b && vite build",

@@ -28,8 +28,15 @@ import { ShareDashboardPage } from './features/share/ShareDashboardPage'
 import { SyncOnboardingBanner } from './features/settings/SyncOnboardingBanner'
 import { AppLegalFooter } from './components/AppLegalFooter'
 import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage'
+import { CharacterLabPage } from './features/character/CharacterLabPage'
+import { CharacterNavIcon } from './features/character/CharacterNavIcon'
+import { DeskCharacterLayout } from './features/character/DeskCharacterLayout'
+import { LeftDeskMascot } from './features/character/LeftDeskMascot'
+import { MobileHeaderMascot } from './features/character/MobileHeaderMascot'
+import { CharacterTabIconSync } from './features/character/CharacterTabIconSync'
 import { isFirebaseSyncEnabled, isShareLinksEnabled } from './shared/features/featureFlags'
 import { useAuthOptional } from './shared/firebase/AuthProvider'
+import { ShopCosmeticEffects } from './features/shop/shopCosmetics'
 
 type ScoreChangeOptions = { deferOverlay?: boolean }
 
@@ -106,7 +113,10 @@ function App() {
 
   return (
     <div className="desk px-4 py-6">
+      <CharacterTabIconSync />
+      <ShopCosmeticEffects />
       <TopBar score={score} incomingHint={incomingHint} />
+      <LeftDeskMascot />
       <StickyLayer />
       <main className="mx-auto mt-6 w-full max-w-4xl">
         <AnimatedRoutes>
@@ -126,6 +136,7 @@ function App() {
             element={<ShopPlaceholder onScoreChange={handleScoreChange} />}
           />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/character-lab" element={<CharacterLabPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           {isShareLinksEnabled() ? (
             <Route path="/share/:code" element={<ShareDashboardPage />} />
@@ -198,8 +209,13 @@ function TopBar({
             {!settings.disablePoints ? (
               <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
                 <ScoreTicker total={score.total} streak={score.streak} hint={incomingHint} />
+                <MobileHeaderMascot />
               </div>
-            ) : null}
+            ) : (
+              <div className="paper flex items-center rounded-2xl px-2 py-1 md:hidden">
+                <MobileHeaderMascot />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
@@ -222,6 +238,7 @@ function TopBar({
           <DeskLink to="/notes" label="Notepad" subtitle="Notes" />
           <DeskLink to="/shop" label="Shoppe" subtitle="Shop" />
           <DeskLink to="/settings" label="Settings" subtitle="Prefs" />
+          <DeskLink to="/character-lab" label="Character" subtitle="Lab" />
           <ThemeToggleButton mode={mode} onToggle={toggle} className="ml-2" />
         </nav>
       </header>
@@ -292,6 +309,13 @@ function TopBar({
                 onNavigate={() => setMobileMenuOpen(false)}
                 className="w-full"
               />
+              <DeskLink
+                to="/character-lab"
+                label="Character"
+                subtitle="Lab"
+                onNavigate={() => setMobileMenuOpen(false)}
+                className="w-full"
+              />
               <div className="mt-2 flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-2">
                 <span className="text-sm font-medium">Appearance</span>
                 <ThemeToggleButton
@@ -350,6 +374,7 @@ const NAV_ICONS: Record<string, string> = {
   Notepad: '/asset/notepad.png',
   Shoppe: '/asset/shoppe.png',
   Settings: '/asset/setting.png',
+
 }
 
 function navIconFor(label: string) {
@@ -371,6 +396,7 @@ function DeskLink({
   className?: string
 }) {
   const icon = navIconFor(label)
+  const isCharacter = label === 'Character'
   return (
     <Link
       className={`focus-ring group rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left hover:-translate-y-[1px] hover:shadow-[0_12px_22px_rgba(0,0,0,0.12)] ${className ?? 'w-full md:w-auto'}`}
@@ -378,7 +404,9 @@ function DeskLink({
       onClick={onNavigate}
     >
       <div className="flex items-center gap-2">
-        {icon ? (
+        {isCharacter ? (
+          <CharacterNavIcon className="-my-0.5 h-9 w-9 shrink-0 select-none" />
+        ) : icon ? (
           <img alt="" src={icon} draggable={false} className="h-8 w-8 shrink-0 select-none object-contain" />
         ) : null}
         <div>
@@ -434,6 +462,7 @@ function HomePlaceholder({
       title="Draft today’s letter"
       subtitle="Draft it like stationery — then review and submit."
     >
+      <DeskCharacterLayout>
       <SyncOnboardingBanner shakeKey={shakeBanner} />
       <div
         className="relative"
@@ -474,20 +503,27 @@ function HomePlaceholder({
           onSubmitAnimationDone()
         }}
       />
+      </DeskCharacterLayout>
     </PaperSection>
   )
 }
 
 function WeekPlaceholder() {
-  return <WeeklyProjector />
+  return (
+    <DeskCharacterLayout>
+      <WeeklyProjector />
+    </DeskCharacterLayout>
+  )
 }
 
 function NotesPlaceholder() {
   return (
-    <div className="space-y-4">
-      <Notepad />
-      <StickyDock />
-    </div>
+    <DeskCharacterLayout>
+      <div className="space-y-4">
+        <Notepad />
+        <StickyDock />
+      </div>
+    </DeskCharacterLayout>
   )
 }
 
@@ -497,11 +533,13 @@ function ShopPlaceholder({
   onScoreChange: (delta: number, hint: string | null) => void
 }) {
   return (
-    <Shoppe
-      onScoreChange={(delta, hint) => {
-        onScoreChange(delta, hint)
-      }}
-    />
+    <DeskCharacterLayout>
+      <Shoppe
+        onScoreChange={(delta, hint) => {
+          onScoreChange(delta, hint)
+        }}
+      />
+    </DeskCharacterLayout>
   )
 }
 

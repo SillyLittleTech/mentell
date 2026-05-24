@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
-import { publicUrl } from '../../shared/publicUrl'
 import { RopeWrap } from './RopeWrap'
+import { useEquippedStampAsset } from '../shop/shopStampAsset'
 
 type Phase = 'stamp' | 'rope' | 'mailbox'
 
@@ -16,11 +16,10 @@ export function SubmitAnimation({
   const [phase, setPhase] = useState<Phase>('stamp')
   const [stampLanded, setStampLanded] = useState(false)
   const reduced = shouldReduceMotion()
+  const stamp = useEquippedStampAsset()
 
   useEffect(() => {
     if (!open) return
-    setPhase('stamp')
-    setStampLanded(false)
 
     const d = (ms: number) => motionDuration(ms) || (reduced ? 50 : ms)
 
@@ -92,9 +91,13 @@ export function SubmitAnimation({
                   {stampLanded ? (
                     <img
                       alt=""
-                      src={publicUrl('/asset/stamp.png')}
+                      src={stamp.src}
                       draggable={false}
-                      className="pointer-events-none absolute left-1/2 top-1/2 h-[45%] w-[45%] min-h-[100px] min-w-[100px] -translate-x-1/2 -translate-y-1/2 select-none object-contain opacity-[0.22]"
+                      className="pointer-events-none absolute left-1/2 top-1/2 h-[45%] w-[45%] min-h-[100px] min-w-[100px] -translate-x-1/2 -translate-y-1/2 select-none object-contain"
+                      style={{
+                        opacity: stamp.isCustom ? 0.56 : 0.34,
+                        filter: `drop-shadow(0 9px 16px color-mix(in oklab, ${stamp.outline} 40%, transparent))`,
+                      }}
                       aria-hidden
                     />
                   ) : null}
@@ -125,11 +128,11 @@ export function SubmitAnimation({
                       >
                         <motion.img
                           alt=""
-                          src={publicUrl('/asset/stamp.png')}
+                          src={stamp.src}
                           draggable={false}
                           className="h-[200px] w-[200px] max-w-[min(45vw,220px)] select-none object-contain"
                           style={{
-                            filter: 'drop-shadow(0 18px 30px rgba(0,0,0,0.22))',
+                            filter: `drop-shadow(0 18px 30px color-mix(in oklab, ${stamp.outline} 48%, transparent))`,
                           }}
                           initial={reduced ? {} : { scaleY: 1 }}
                           animate={

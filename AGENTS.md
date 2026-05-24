@@ -10,7 +10,7 @@ An **optional** Cloudflare Worker (`worker/`) provides weekly AI summaries via W
 
 **GitHub Pages base path:** Production URL is `https://projects.sillylittle.tech/mentell/`. CI sets `VITE_BASE=/mentell/` in `.github/workflows/gh-pages.yml`. Local dev uses `base: /`. Use `publicUrl()` for static assets under `public/`.
 
-**UI assets:** Edit PNGs in [`asset/`](asset/) (source), then run `npm run sync:assets` to copy into `public/asset/`. Production builds run sync automatically. Reference assets in React via `publicUrl('/asset/…')`.
+**UI assets:** Edit PNGs in [`asset/`](asset/) (source), then run `npm run sync:assets` to copy into `public/asset/`. Character SVGs live in [`asset/char/`](asset/char/) (also synced to `public/asset/char/`); `sync:assets` regenerates [`src/features/character/charManifest.generated.ts`](src/features/character/charManifest.generated.ts) from `charprod.svg` inkscape labels (DNI / III / TOGGLE). Test customization at `/character-lab`. Production builds run sync automatically. Reference PNGs in React via `publicUrl('/asset/…')`.
 
 ### Development commands
 

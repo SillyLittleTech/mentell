@@ -13,6 +13,7 @@ import {
 import { clearWeeklyAiCache } from '../compilation/weeklyAiCache'
 import { ensurePackage } from '../packages/packageService'
 import { clearCatCollection } from '../shop/catCollection'
+import { clearShopInventory } from '../shop/shopInventory'
 import { notifyScoreChanged } from '../score/scoreEvents'
 import {
   debugForegroundNotification,
@@ -106,7 +107,7 @@ export function DebugPanel() {
     if (notifSnap.serviceWorkerState !== 'installing' && !notifSnap.serviceWorkerRegistered) return
     const id = window.setInterval(() => void refreshNotifications(), 2000)
     return () => window.clearInterval(id)
-  }, [open, notifSnap?.serviceWorkerReady, notifSnap?.serviceWorkerState, notifSnap?.serviceWorkerRegistered])
+  }, [open, notifSnap])
 
   async function runNotifAction(
     label: string,
@@ -678,6 +679,8 @@ export function DebugPanel() {
                   await database.notes.clear()
                   await database.stickies.clear()
                   await database.packages.clear()
+                  await database.characterAppearance.clear()
+                  clearShopInventory()
                   localStorage.removeItem(scopedStorageKey('mentell.score.total'))
                   localStorage.removeItem(scopedStorageKey('mentell.score.streak'))
                   localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))
@@ -759,4 +762,3 @@ export function DebugPanel() {
     </>
   )
 }
-
