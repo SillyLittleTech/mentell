@@ -208,7 +208,12 @@ function TopBar({
 
             {!settings.disablePoints ? (
               <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
-                <ScoreTicker total={score.total} streak={score.streak} hint={incomingHint} />
+                <ScoreTicker
+                  total={score.total}
+                  streak={score.streak}
+                  streakFreezes={score.streakFreezes}
+                  hint={incomingHint}
+                />
                 <MobileHeaderMascot />
               </div>
             ) : (

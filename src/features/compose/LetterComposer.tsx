@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { ProgressLight, type ProgressState } from '../../components/ProgressLight'
 import { SentimentPills, type SentimentValue } from '../../components/SentimentPills'
 import { dateKeyForLocalDay } from '../../shared/dates'
-import { flagConcerningLanguage } from '../safety/flagTerms'
-import type { EntryEmotion } from '../../db/schema'
+import { assessLocalRisk, assessRisk, type RiskAssessment } from '../safety/riskAssessment'
+import { CrisisResourcePanel } from '../safety/CrisisResourcePanel'
+import type { EntryEmotion, RiskLevel } from '../../db/schema'
 
 type Draft = {
   dateKey: string
@@ -14,6 +15,8 @@ type Draft = {
   details: string
   flaggedTerms: string[]
   warningLevel: 'none' | 'warn'
+  riskScore: number
+  riskLevel: RiskLevel
 }
 
 const EMOTION_OPTIONS: Array<{ value: EntryEmotion; label: string }> = [
@@ -40,18 +43,44 @@ export function LetterComposer({
   const [details, setDetails] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitState, setSubmitState] = useState<'idle' | 'done' | 'error'>('idle')
+  const [draftRisk, setDraftRisk] = useState<RiskAssessment | null>(null)
+  const [submittedRisk, setSubmittedRisk] = useState<RiskAssessment | null>(null)
   const dateKey = useMemo(() => dateKeyForLocalDay(new Date()), [])
 
-  const flag = useMemo(() => flagConcerningLanguage(`${situation}\n${details}`), [details, situation])
+  const riskInput = useMemo(
+    () => ({
+      dateKey,
+      sentiment,
+      emotion,
+      emotionNote,
+      situation,
+      details,
+    }),
+    [dateKey, details, emotion, emotionNote, sentiment, situation],
+  )
+
+  useEffect(() => {
+    let active = true
+    const id = window.setTimeout(() => {
+      void assessLocalRisk(riskInput).then((next) => {
+        if (active) setDraftRisk(next)
+      })
+    }, 180)
+    return () => {
+      active = false
+      window.clearTimeout(id)
+    }
+  }, [riskInput])
 
   const progressState: ProgressState =
-    flag.warningLevel === 'warn' ? 'warn' : step === 'review' ? 'review' : 'write'
+    draftRisk?.warningLevel === 'warn' ? 'warn' : step === 'review' ? 'review' : 'write'
 
   async function handleSubmit() {
     if (disabled || isSubmitting) return
     setIsSubmitting(true)
     setSubmitState('idle')
     try {
+      const finalRisk = await assessRisk(riskInput)
       await onSubmit({
         dateKey,
         sentiment,
@@ -59,8 +88,10 @@ export function LetterComposer({
         emotionNote: emotion === 'other' ? emotionNote.trim() : '',
         situation: situation.trim(),
         details: details.trim(),
-        flaggedTerms: flag.flaggedTerms,
-        warningLevel: flag.warningLevel,
+        flaggedTerms: finalRisk.flaggedTerms,
+        warningLevel: finalRisk.warningLevel,
+        riskScore: finalRisk.riskScore,
+        riskLevel: finalRisk.riskLevel,
       })
 
       // Clear inputs after successful submit to make completion obvious.
@@ -71,6 +102,9 @@ export function LetterComposer({
       setSituation('')
       setDetails('')
       setSubmitState('done')
+      if (finalRisk.warningLevel === 'warn' || finalRisk.responseKind) {
+        setSubmittedRisk(finalRisk)
+      }
       window.setTimeout(() => setSubmitState('idle'), 2200)
     } catch {
       setSubmitState('error')
@@ -153,13 +187,8 @@ export function LetterComposer({
               <div className="font-medium" style={{ color: 'var(--danger)' }}>
                 Submit failed. Please try again.
               </div>
-            ) : flag.warningLevel === 'warn' ? (
-              <div className="space-y-1">
-                <div className="font-medium" style={{ color: 'var(--danger)' }}>
-                  I noticed some heavy words — please take care.
-                </div>
-                <div>Flagged: {flag.flaggedTerms.join(', ')}</div>
-              </div>
+            ) : draftRisk?.warningLevel === 'warn' ? (
+              <DraftRiskNotice risk={draftRisk} />
             ) : step === 'write' ? (
               'When you’re ready, review it like a sealed note.'
             ) : (
@@ -203,6 +232,99 @@ export function LetterComposer({
           </div>
         </footer>
       </section>
+      {submittedRisk ? (
+        <RiskResultModal risk={submittedRisk} onClose={() => setSubmittedRisk(null)} />
+      ) : null}
+    </div>
+  )
+}
+
+function DraftRiskNotice({ risk }: { risk: RiskAssessment }) {
+  return (
+    <div className="space-y-1">
+      <div className="font-medium" style={{ color: 'var(--danger)' }}>
+        I noticed this feels heavy. You are cared about.
+      </div>
+      <div>
+        When you submit, Mentell can show support resources or a gentler note for what you wrote.
+      </div>
+      <div className="font-mono text-[11px] uppercase opacity-70">
+        Risk {risk.riskScore.toFixed(2)} · local
+      </div>
+    </div>
+  )
+}
+
+function SupportNotice({ risk }: { risk: RiskAssessment }) {
+  const celebration = risk.responseKind === 'celebration'
+  return (
+    <div className="space-y-2">
+      <div className="font-medium" style={{ color: 'var(--success)' }}>
+        {celebration ? 'This deserves a little confetti' : 'A small note for this moment'}
+      </div>
+      <div>{risk.supportiveMessage}</div>
+      <div className="font-mono text-[11px] uppercase opacity-70">
+        Risk {risk.riskScore.toFixed(2)} · {risk.source}
+      </div>
+    </div>
+  )
+}
+
+function RiskNotice({ risk }: { risk: RiskAssessment }) {
+  const crisis = risk.riskLevel === 'crisis'
+  return (
+    <div className="space-y-2">
+      <div className="font-medium" style={{ color: 'var(--danger)' }}>
+        {crisis
+          ? 'You matter, and you do not have to sit with this alone.'
+          : 'I noticed this feels heavy. You are cared about.'}
+      </div>
+      <div>
+        {risk.supportiveMessage ??
+          (crisis
+            ? 'If you might be in immediate danger, please contact emergency services or a crisis line now.'
+            : 'Consider sharing these feelings with someone you trust or a mental health professional.')}
+      </div>
+      <div className="font-mono text-[11px] uppercase opacity-70">
+        Risk {risk.riskScore.toFixed(2)} · {risk.source}
+      </div>
+      {risk.reasons.length ? <div>Signals: {risk.reasons.join(', ')}</div> : null}
+      <CrisisResourcePanel compact />
+    </div>
+  )
+}
+
+function RiskResultModal({ risk, onClose }: { risk: RiskAssessment; onClose: () => void }) {
+  const elevated = risk.warningLevel === 'warn'
+  const celebration = risk.responseKind === 'celebration'
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+      <div className="paper max-h-[min(90dvh,42rem)] w-full max-w-xl overflow-y-auto rounded-3xl p-6 shadow-lg">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="font-paper text-2xl">
+              {elevated ? 'You are not alone' : celebration ? 'Look at you go' : 'A note for you'}
+            </div>
+            <div className="ink-muted mt-1 text-sm">
+              {elevated
+                ? 'Mentell noticed this entry may need extra care.'
+                : celebration
+                  ? 'Mentell noticed a bright patch worth celebrating.'
+                  : 'Mentell found a supportive note after reading your entry.'}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm font-semibold"
+            onClick={onClose}
+          >
+            Close
+          </button>
+        </div>
+        <div className="mt-5 rounded-2xl border border-[var(--paper-border)] p-4">
+          {elevated ? <RiskNotice risk={risk} /> : <SupportNotice risk={risk} />}
+        </div>
+      </div>
     </div>
   )
 }
@@ -215,4 +337,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   )
 }
-

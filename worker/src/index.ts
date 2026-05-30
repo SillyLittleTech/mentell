@@ -8,6 +8,7 @@ import {
   handlePushUnsubscribe,
 } from './pushHandlers'
 import { runPushCron } from './pushCron'
+import { handleRiskAssessment } from './riskAssessment'
 import { handleWeeklySummary } from './weeklySummary'
 
 export type { Env } from './env'
@@ -20,6 +21,8 @@ export default {
     switch (url.pathname) {
       case '/weekly-summary':
         return handleWeeklySummary(request, env)
+      case '/risk-assessment':
+        return handleRiskAssessment(request, env)
       case '/push/subscribe':
         return handlePushSubscribe(request, env)
       case '/push/unsubscribe':

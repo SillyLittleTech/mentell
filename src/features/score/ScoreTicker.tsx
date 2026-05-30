@@ -6,10 +6,12 @@ import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 export function ScoreTicker({
   total,
   streak,
+  streakFreezes,
   hint,
 }: {
   total: number
   streak: number
+  streakFreezes?: number
   hint: string | null
 }) {
   const reduced = shouldReduceMotion()
@@ -31,6 +33,12 @@ export function ScoreTicker({
       </div>
 
       <StreakFlame streak={streak} reducedMotion={reduced} pulse={streakPulse} />
+      {streakFreezes !== undefined && streakFreezes > 0 ? (
+        <div className="rounded-2xl border border-[var(--paper-border)] px-3 py-2">
+          <div className="font-mono text-[11px] uppercase opacity-70">freezes</div>
+          <div className="font-mono text-lg font-bold">{streakFreezes}</div>
+        </div>
+      ) : null}
     </div>
   )
 }

@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { format } from 'date-fns'
-import { getScoreSnapshot, spendScore } from '../score/scoreService'
+import {
+  buyStreakFreeze,
+  buyStreakRestore,
+  getScoreSnapshot,
+  spendScore,
+  STREAK_FREEZE_COST,
+  STREAK_FREEZE_MAX,
+  STREAK_RESTORE_COST,
+  type StreakRestoreCandidate,
+} from '../score/scoreService'
 import {
   addCollectedCat,
   loadCatCollection,
@@ -158,13 +167,22 @@ export function Shoppe({
   const [collection, setCollection] = useState<CollectedCat[]>(() => loadCatCollection())
   const [selectedCat, setSelectedCat] = useState<CollectedCat | null>(null)
   const [balance, setBalance] = useState(() => getScoreSnapshot().total)
+  const [freezeCount, setFreezeCount] = useState(() => getScoreSnapshot().streakFreezes)
+  const [restoreCandidate, setRestoreCandidate] = useState<StreakRestoreCandidate | null>(
+    () => getScoreSnapshot().streakRestore,
+  )
 
   useEffect(() => {
     return subscribeShopInventory((next) => setInventory(next))
   }, [])
 
   useEffect(() => {
-    const refreshScore = () => setBalance(getScoreSnapshot().total)
+    const refreshScore = () => {
+      const next = getScoreSnapshot()
+      setBalance(next.total)
+      setFreezeCount(next.streakFreezes)
+      setRestoreCandidate(next.streakRestore)
+    }
     window.addEventListener(SCORE_CHANGED_EVENT, refreshScore)
     return () => window.removeEventListener(SCORE_CHANGED_EVENT, refreshScore)
   }, [])
@@ -269,6 +287,48 @@ export function Shoppe({
     }
   }
 
+  function buyFreeze() {
+    if (busy || !pointsOn) return
+    setError(null)
+    setStatus(null)
+    const result = buyStreakFreeze()
+    setBalance(result.nextTotal)
+    setFreezeCount(result.nextFreezes)
+    if (!result.ok) {
+      if (result.reason === 'max') {
+        setError(`You can hold up to ${STREAK_FREEZE_MAX} streak freezes.`)
+      } else if (result.reason === 'insufficient') {
+        setError(`You need ${STREAK_FREEZE_COST - result.nextTotal} more points for a streak freeze.`)
+      } else {
+        setError('Cannot buy a streak freeze while points are disabled.')
+      }
+      return
+    }
+    onScoreChange(-STREAK_FREEZE_COST, 'Streak freeze stocked')
+    setStatus(`Streak freeze stocked (${result.nextFreezes}/${STREAK_FREEZE_MAX}).`)
+  }
+
+  function buyRestore() {
+    if (busy || !pointsOn) return
+    setError(null)
+    setStatus(null)
+    const result = buyStreakRestore()
+    setBalance(result.nextTotal)
+    setRestoreCandidate(getScoreSnapshot().streakRestore)
+    if (!result.ok) {
+      if (result.reason === 'none') {
+        setError('No recent broken streak is available to restore.')
+      } else if (result.reason === 'insufficient') {
+        setError(`You need ${STREAK_RESTORE_COST - result.nextTotal} more points to restore it.`)
+      } else {
+        setError('Cannot restore a streak while points are disabled.')
+      }
+      return
+    }
+    onScoreChange(-STREAK_RESTORE_COST, `Streak restored to ${result.restoredStreak}`)
+    setStatus(`Streak restored to ${result.restoredStreak}.`)
+  }
+
   async function buyShopItem(item: ShopCatalogItem) {
     if (busy || busyItemId || !pointsOn) return
     setError(null)
@@ -343,6 +403,12 @@ export function Shoppe({
                 <div className="font-mono text-2xl font-bold">{balance}</div>
               </div>
             ) : null}
+            {pointsOn ? (
+              <div className="rounded-2xl border border-[var(--paper-border)] px-3 py-2">
+                <div className="font-mono text-[11px] uppercase opacity-70">freezes</div>
+                <div className="font-mono text-2xl font-bold">{freezeCount}</div>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>
@@ -415,6 +481,63 @@ export function Shoppe({
           })}
         </div>
       </section>
+
+      <section className="paper rounded-3xl p-6">
+        <div className="rounded-3xl border border-[var(--paper-border)] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="font-medium">Streak freeze</div>
+              <div className="ink-muted text-sm">
+                Saves a streak after exactly one missed day. Hold up to {STREAK_FREEZE_MAX}.
+              </div>
+            </div>
+            <div className="font-mono text-lg font-bold">{STREAK_FREEZE_COST} pts</div>
+          </div>
+
+          {!pointsOn ? (
+            <div className="ink-muted mt-4 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm">
+              Points are turned off in Settings — enable the points system to buy streak freezes.
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="focus-ring mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
+              style={{ background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }}
+              disabled={freezeCount >= STREAK_FREEZE_MAX}
+              onClick={buyFreeze}
+            >
+              {freezeCount >= STREAK_FREEZE_MAX ? 'Freezer full' : 'Buy streak freeze'}
+            </button>
+          )}
+        </div>
+      </section>
+
+      {restoreCandidate ? (
+        <section className="paper rounded-3xl p-6">
+          <div className="rounded-3xl border border-[var(--paper-border)] p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="font-medium">Restore streak</div>
+                <div className="ink-muted text-sm">
+                  Restore your recent streak to {restoreCandidate.restoreTo} after{' '}
+                  {restoreCandidate.missedDays} missed day
+                  {restoreCandidate.missedDays === 1 ? '' : 's'}.
+                </div>
+              </div>
+              <div className="font-mono text-lg font-bold">{STREAK_RESTORE_COST} pts</div>
+            </div>
+            <button
+              type="button"
+              className="focus-ring mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
+              style={{ background: 'var(--success)', color: 'rgba(0,0,0,0.9)' }}
+              disabled={!pointsOn}
+              onClick={buyRestore}
+            >
+              Restore streak
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="paper rounded-3xl p-6">
         <div className="rounded-3xl border border-[var(--paper-border)] p-5">

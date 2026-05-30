@@ -11,6 +11,7 @@ import {
   setSlowMo,
 } from '../../shared/debug/debugFlags'
 import { clearWeeklyAiCache } from '../compilation/weeklyAiCache'
+import { weekKeyForDateKey } from '../compilation/weeklyStats'
 import { ensurePackage } from '../packages/packageService'
 import { clearCatCollection } from '../shop/catCollection'
 import { clearShopInventory } from '../shop/shopInventory'
@@ -30,6 +31,7 @@ import {
   type NotificationDebugSnapshot,
 } from './debugNotifications'
 import { dexieDatabaseName, scopedStorageKey } from '../../shared/storage/storageScope'
+import { normalizeEndpointUrl } from '../compilation/weeklyAiSummary'
 
 export function DebugPanel() {
   const enabled = useMemo(() => isDebugMode(), [])
@@ -42,6 +44,7 @@ export function DebugPanel() {
   const [debugStreak, setDebugStreak] = useState('')
   const [notifSnap, setNotifSnap] = useState<NotificationDebugSnapshot | null>(null)
   const [notifResult, setNotifResult] = useState<string | null>(null)
+  const [aiEndpointResult, setAiEndpointResult] = useState<string | null>(null)
   const [pushDelaySec, setPushDelaySec] = useState(30)
   const [inspector, setInspector] = useState<{
     entries: number
@@ -90,6 +93,41 @@ export function DebugPanel() {
 
   async function refreshNotifications() {
     setNotifSnap(await getNotificationDebugSnapshot())
+  }
+
+  async function ensureLatestEntryWeeklyPackage() {
+    const latestEntry = await getDb().entries.orderBy('dateKey').last()
+    const periodKey = latestEntry ? weekKeyForDateKey(latestEntry.dateKey) : `debug-W${Date.now()}`
+    await ensurePackage('weekly', periodKey)
+  }
+
+  async function checkAiEndpoint() {
+    const endpoint = import.meta.env.VITE_WEEKLY_AI_ENDPOINT
+    if (typeof endpoint !== 'string' || !endpoint.trim()) {
+      setAiEndpointResult('AI endpoint: VITE_WEEKLY_AI_ENDPOINT is not set.')
+      return
+    }
+    const normalizedEndpoint = normalizeEndpointUrl(endpoint)
+    setAiEndpointResult(`Checking ${normalizedEndpoint}…`)
+    try {
+      const response = await fetch(normalizedEndpoint, { method: 'OPTIONS' })
+      const routeHint = normalizedEndpoint.endsWith('/weekly-summary')
+        ? ''
+        : ' Expected the Worker /weekly-summary route.'
+      const normalizedHint =
+        normalizedEndpoint === endpoint ? '' : ` Normalized from ${endpoint}.`
+      const okHint =
+        response.status === 204 || response.ok
+          ? 'ok'
+          : response.status === 405
+            ? 'method not allowed; endpoint may be the wrong route'
+            : 'unexpected status'
+      setAiEndpointResult(
+        `AI endpoint ${okHint} (${response.status}).${routeHint}${normalizedHint}`,
+      )
+    } catch (e) {
+      setAiEndpointResult(`AI endpoint check failed: ${e instanceof Error ? e.message : String(e)}`)
+    }
   }
 
   useEffect(() => {
@@ -221,6 +259,23 @@ export function DebugPanel() {
                     }}
                   />
                 </label>
+
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={() => void checkAiEndpoint()}
+                >
+                  Check AI endpoint
+                  <div className="ink-muted text-xs">
+                    Verifies VITE_WEEKLY_AI_ENDPOINT and the /weekly-summary route.
+                  </div>
+                </button>
+                {aiEndpointResult ? (
+                  <div className="ink-muted rounded-2xl border border-[var(--paper-border)] px-3 py-2 font-mono text-[10px]">
+                    {aiEndpointResult}
+                  </div>
+                ) : null}
 
               </div>
             </div>
@@ -460,7 +515,7 @@ export function DebugPanel() {
                     onClick={async () => {
                       setBusy(true)
                       try {
-                        await ensurePackage('weekly', `debug-W${Date.now()}`)
+                        await ensureLatestEntryWeeklyPackage()
                         await refreshInspector()
                       } finally {
                         setBusy(false)
@@ -510,7 +565,7 @@ export function DebugPanel() {
                     // simulate “delivery” by creating unopened packages at once
                     setBusy(true)
                     try {
-                      await ensurePackage('weekly', `debug-batch-W${Date.now()}`)
+                      await ensureLatestEntryWeeklyPackage()
                       await ensurePackage('monthly', `debug-batch-M${Date.now()}`)
                       await ensurePackage('yearly', `debug-batch-Y${Date.now()}`)
                       await refreshInspector()
@@ -684,6 +739,8 @@ export function DebugPanel() {
                   localStorage.removeItem(scopedStorageKey('mentell.score.total'))
                   localStorage.removeItem(scopedStorageKey('mentell.score.streak'))
                   localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))
+                  localStorage.removeItem(scopedStorageKey('mentell.score.streakFreezes'))
+                  localStorage.removeItem(scopedStorageKey('mentell.score.streakRestore'))
                   window.location.reload()
                 } finally {
                   setBusy(false)
@@ -702,6 +759,8 @@ export function DebugPanel() {
                 localStorage.removeItem(scopedStorageKey('mentell.score.total'))
                 localStorage.removeItem(scopedStorageKey('mentell.score.streak'))
                 localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))
+                localStorage.removeItem(scopedStorageKey('mentell.score.streakFreezes'))
+                localStorage.removeItem(scopedStorageKey('mentell.score.streakRestore'))
                 await refreshInspector()
               }}
             >
@@ -729,6 +788,8 @@ export function DebugPanel() {
                     details: `Seeded details for ${dateKey}.\nA little stationery vibe.`,
                     flaggedTerms: [],
                     warningLevel: 'none' as const,
+                    riskScore: 0,
+                    riskLevel: 'none' as const,
                     scoreDelta: 100,
                     streakAtSubmit: 1,
                   })
@@ -745,6 +806,75 @@ export function DebugPanel() {
             >
               Seed sample week
               <div className="ink-muted text-xs">Adds 3 entries for quick projector testing.</div>
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+              onClick={async () => {
+                setBusy(true)
+                try {
+                  const now = Date.now()
+                  await getDb().entries.put({
+                    id: makeId('entry'),
+                    createdAt: now,
+                    updatedAt: now,
+                    dateKey: '2026-05-21',
+                    sentiment: '-' as const,
+                    emotion: 'sad' as const,
+                    emotionNote: '',
+                    situation: 'Seeded subtle risk entry',
+                    details: "I just don't think I can take it anymore. I am just going to do it.",
+                    flaggedTerms: ['take it anymore', 'going to do it'],
+                    warningLevel: 'none' as const,
+                    riskScore: 0.22,
+                    riskLevel: 'low' as const,
+                    scoreDelta: 100,
+                    streakAtSubmit: 1,
+                  })
+                  await refreshInspector()
+                } finally {
+                  setBusy(false)
+                }
+              }}
+            >
+              Seed subtle risk entry
+              <div className="ink-muted text-xs">Adds a negative entry useful for AI risk modal testing.</div>
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+              onClick={async () => {
+                setBusy(true)
+                try {
+                  const now = Date.now()
+                  await getDb().entries.put({
+                    id: makeId('entry'),
+                    createdAt: now,
+                    updatedAt: now,
+                    dateKey: '2026-05-22',
+                    sentiment: '+' as const,
+                    emotion: 'happy' as const,
+                    emotionNote: '',
+                    situation: 'Seeded exce entry',
+                    details:
+                      'Today was amazing and joyful. I felt grateful, proud, hopeful, calm, loved, and excited about a wonderful win.',
+                    flaggedTerms: [],
+                    warningLevel: 'none' as const,
+                    riskScore: 0,
+                    riskLevel: 'none' as const,
+                    scoreDelta: 100,
+                    streakAtSubmit: 1,
+                  })
+                  await refreshInspector()
+                } finally {
+                  setBusy(false)
+                }
+              }}
+            >
+              Seed exce entry
+              <div className="ink-muted text-xs">Adds a highly positive entry for celebration modal testing.</div>
             </button>
               </div>
             </div>
