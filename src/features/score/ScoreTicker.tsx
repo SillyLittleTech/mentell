@@ -9,14 +9,22 @@ export function ScoreTicker({
   streak,
   streakFreezes,
   hint,
+  streakOutcome,
 }: {
   total: number
   streak: number
   streakFreezes?: number
   hint: string | null
+  streakOutcome?:
+    | { kind: 'break'; key: number; from: number }
+    | { kind: 'freeze'; key: number; previousFreezes: number; nextFreezes: number }
+    | null
 }) {
   const reduced = shouldReduceMotion()
   const streakPulse = Boolean(hint?.toLowerCase().includes('streak'))
+  const freezeAnimation = streakOutcome?.kind === 'freeze' ? streakOutcome : null
+  const visibleFreezes =
+    freezeAnimation && !reduced ? Math.max(streakFreezes ?? 0, freezeAnimation.previousFreezes) : streakFreezes
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -33,9 +41,14 @@ export function ScoreTicker({
         </motion.div>
       </div>
 
-      <StreakFlame streak={streak} reducedMotion={reduced} pulse={streakPulse} />
-      {streakFreezes !== undefined && streakFreezes > 0 ? (
-        <StreakFreezeBadge count={streakFreezes} />
+      <StreakFlame
+        streak={streak}
+        reducedMotion={reduced}
+        pulse={streakPulse}
+        outcomeAnimation={streakOutcome}
+      />
+      {visibleFreezes !== undefined && visibleFreezes > 0 ? (
+        <StreakFreezeBadge count={visibleFreezes} consumeAnimation={freezeAnimation} />
       ) : null}
     </div>
   )

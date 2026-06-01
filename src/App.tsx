@@ -6,7 +6,7 @@ import { LetterComposer } from './features/compose/LetterComposer'
 import { SubmitAnimation } from './features/compose/SubmitAnimation'
 import { awardForSubmission, getScoreSnapshot } from './features/score/scoreService'
 import { upsertEntryFromDraft } from './features/entries/entryService'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { WeeklyProjector } from './features/compilation/WeeklyProjector'
 import { PackageAlert } from './features/packages/PackageAlert'
 import { Notepad } from './features/notes/Notepad'
@@ -37,8 +37,13 @@ import { CharacterTabIconSync } from './features/character/CharacterTabIconSync'
 import { isFirebaseSyncEnabled, isShareLinksEnabled } from './shared/features/featureFlags'
 import { useAuthOptional } from './shared/firebase/AuthProvider'
 import { ShopCosmeticEffects } from './features/shop/shopCosmetics'
+import { scrollToTop } from './shared/motion/scroll'
+import { motionDuration } from './shared/motion/useMotionPrefs'
 
-type ScoreChangeOptions = { deferOverlay?: boolean }
+type StreakOutcomeAnimation =
+  | { kind: 'break'; key: number; from: number }
+  | { kind: 'freeze'; key: number; previousFreezes: number; nextFreezes: number }
+type ScoreChangeOptions = { deferOverlay?: boolean; streakOutcome?: StreakOutcomeAnimation }
 
 function App() {
   const [score, setScore] = useState(() => getScoreSnapshot())
@@ -47,7 +52,11 @@ function App() {
   const [pendingOverlay, setPendingOverlay] = useState<{
     delta: number
     hint: string | null
+    streakOutcome?: StreakOutcomeAnimation
   } | null>(null)
+  const [streakOutcome, setStreakOutcome] = useState<StreakOutcomeAnimation | null>(null)
+  const [streakFocusActive, setStreakFocusActive] = useState(false)
+  const streakOutcomeTimer = useRef<number | null>(null)
 
   useEffect(() => {
     void runPackageDeliveryAndNotify()
@@ -84,6 +93,23 @@ function App() {
     return () => window.removeEventListener(SCORE_CHANGED_EVENT, refresh)
   }, [])
 
+  useEffect(() => {
+    if (!streakOutcome) return
+    const timeout = window.setTimeout(() => {
+      setStreakOutcome(null)
+      setStreakFocusActive(false)
+    }, 1500)
+    return () => window.clearTimeout(timeout)
+  }, [streakOutcome])
+
+  useEffect(() => {
+    return () => {
+      if (streakOutcomeTimer.current !== null) {
+        window.clearTimeout(streakOutcomeTimer.current)
+      }
+    }
+  }, [])
+
   const handleScoreChange = (
     delta: number,
     hint: string | null,
@@ -92,8 +118,11 @@ function App() {
     setScore(getScoreSnapshot())
     if (delta === 0) return
     if (options?.deferOverlay) {
-      setPendingOverlay({ delta, hint })
+      setPendingOverlay({ delta, hint, streakOutcome: options.streakOutcome })
       return
+    }
+    if (options?.streakOutcome) {
+      setStreakOutcome(options.streakOutcome)
     }
     setIncomingDelta(delta)
     setIncomingHint(hint)
@@ -101,8 +130,25 @@ function App() {
 
   const showPendingScoreOverlay = () => {
     if (!pendingOverlay) return
-    setIncomingDelta(pendingOverlay.delta)
-    setIncomingHint(pendingOverlay.hint)
+    const nextOverlay = pendingOverlay
+    if (nextOverlay.streakOutcome) {
+      if (streakOutcomeTimer.current !== null) {
+        window.clearTimeout(streakOutcomeTimer.current)
+      }
+      scrollToTop()
+      setStreakFocusActive(true)
+      const delay = motionDuration(420) || 0
+      streakOutcomeTimer.current = window.setTimeout(() => {
+        setStreakOutcome(nextOverlay.streakOutcome ?? null)
+        setIncomingDelta(nextOverlay.delta)
+        setIncomingHint(nextOverlay.hint)
+        streakOutcomeTimer.current = null
+      }, delay)
+      setPendingOverlay(null)
+      return
+    }
+    setIncomingDelta(nextOverlay.delta)
+    setIncomingHint(nextOverlay.hint)
     setPendingOverlay(null)
   }
 
@@ -115,10 +161,15 @@ function App() {
     <div className="desk px-4 py-6">
       <CharacterTabIconSync />
       <ShopCosmeticEffects />
-      <TopBar score={score} incomingHint={incomingHint} />
+      <TopBar
+        score={score}
+        incomingHint={incomingHint}
+        streakOutcome={streakOutcome}
+        focusActive={streakFocusActive}
+      />
       <LeftDeskMascot />
       <StickyLayer />
-      <main className="mx-auto mt-6 w-full max-w-4xl">
+      <main className={`mx-auto mt-6 w-full max-w-4xl ${streakFocusActive ? 'streak-focus-dim' : ''}`}>
         <AnimatedRoutes>
           <Route
             path="/"
@@ -145,7 +196,9 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </AnimatedRoutes>
       </main>
-      <AppLegalFooter />
+      <div className={streakFocusActive ? 'streak-focus-dim' : ''}>
+        <AppLegalFooter />
+      </div>
       <PackageAlert onAward={handleScoreChange} />
       <AnimatePresence>
         {incomingDelta !== null ? (
@@ -166,9 +219,13 @@ function App() {
 function TopBar({
   score,
   incomingHint,
+  streakOutcome,
+  focusActive,
 }: {
   score: ReturnType<typeof getScoreSnapshot>
   incomingHint: string | null
+  streakOutcome: StreakOutcomeAnimation | null
+  focusActive: boolean
 }) {
   const { mode, toggle } = useTheme()
   const { settings } = useAppSettings()
@@ -190,7 +247,7 @@ function TopBar({
 
   return (
     <>
-      <header className="mx-auto w-full max-w-4xl space-y-3">
+      <header className={`mx-auto w-full max-w-4xl space-y-3 ${focusActive ? 'streak-focus-target' : ''}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap items-start gap-3">
             <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3">
@@ -213,6 +270,7 @@ function TopBar({
                   streak={score.streak}
                   streakFreezes={score.streakFreezes}
                   hint={incomingHint}
+                  streakOutcome={streakOutcome}
                 />
                 <MobileHeaderMascot />
               </div>
@@ -494,7 +552,19 @@ function HomePlaceholder({
           if (!loadAppSettings().disableNotifications) {
             void maybeRequestNotificationPermission()
           }
-          onScoreChange(award.totalDelta, award.hint, { deferOverlay: true })
+          onScoreChange(award.totalDelta, award.hint, {
+            deferOverlay: true,
+            streakOutcome: award.freezeConsumed
+              ? {
+                  kind: 'freeze',
+                  key: Date.now(),
+                  previousFreezes: award.previousStreakFreezes,
+                  nextFreezes: award.nextStreakFreezes,
+                }
+              : award.streakBroken
+                ? { kind: 'break', key: Date.now(), from: award.previousStreak }
+                : undefined,
+          })
           setSubmitting(true)
         }}
         />

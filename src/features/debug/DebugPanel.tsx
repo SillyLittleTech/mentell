@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { addDays } from 'date-fns'
 import { getDb } from '../../db/schema'
 import { makeId } from '../../shared/id'
 import {
@@ -32,6 +33,8 @@ import {
 } from './debugNotifications'
 import { dexieDatabaseName, scopedStorageKey } from '../../shared/storage/storageScope'
 import { normalizeEndpointUrl } from '../compilation/weeklyAiSummary'
+import { dateKeyForLocalDay } from '../../shared/dates'
+import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
 export function DebugPanel() {
   const enabled = useMemo(() => isDebugMode(), [])
@@ -54,6 +57,8 @@ export function DebugPanel() {
     scoreTotal: string | null
     scoreStreak: string | null
     lastDay: string | null
+    streakFreezes: string | null
+    streakRestore: string | null
     recentEntries: Array<{ dateKey: string; sentiment: string; warningLevel: string }>
     recentPackages: Array<{ kind: string; periodKey: string; opened: boolean }>
   } | null>(null)
@@ -78,6 +83,8 @@ export function DebugPanel() {
       scoreTotal: localStorage.getItem(scopedStorageKey('mentell.score.total')),
       scoreStreak: localStorage.getItem(scopedStorageKey('mentell.score.streak')),
       lastDay: localStorage.getItem(scopedStorageKey('mentell.score.lastDay')),
+      streakFreezes: localStorage.getItem(scopedStorageKey('mentell.score.streakFreezes')),
+      streakRestore: localStorage.getItem(scopedStorageKey('mentell.score.streakRestore')),
       recentEntries: recentEntriesRows.map((e) => ({
         dateKey: e.dateKey,
         sentiment: e.sentiment,
@@ -619,6 +626,7 @@ export function DebugPanel() {
                       localStorage.setItem(scopedStorageKey('mentell.score.total'), String(total))
                       localStorage.setItem(scopedStorageKey('mentell.score.streak'), String(streak))
                       notifyScoreChanged()
+                      notifyLocalDataChanged()
                       setDebugScore('')
                       setDebugStreak('')
                       await refreshInspector()
@@ -628,7 +636,30 @@ export function DebugPanel() {
                   }}
                 >
                   Apply score &amp; streak
-                  <div className="ink-muted text-xs">Updates localStorage and refreshes the top bar.</div>
+                  <div className="ink-muted text-xs">Updates localStorage, top bar, and cloud sync.</div>
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={async () => {
+                    setBusy(true)
+                    try {
+                      const missedDay = dateKeyForLocalDay(addDays(new Date(), -2))
+                      localStorage.setItem(scopedStorageKey('mentell.score.lastDay'), missedDay)
+                      localStorage.removeItem(scopedStorageKey('mentell.score.streakRestore'))
+                      notifyScoreChanged()
+                      notifyLocalDataChanged()
+                      await refreshInspector()
+                    } finally {
+                      setBusy(false)
+                    }
+                  }}
+                >
+                  Simulate missed day
+                  <div className="ink-muted text-xs">
+                    Sets lastDay to two days ago; next submit tests freeze/break behavior.
+                  </div>
                 </button>
               </div>
             </div>
@@ -662,6 +693,11 @@ export function DebugPanel() {
                     </div>
                     <div className="mt-2">
                       score: {inspector.scoreTotal ?? '0'} (streak {inspector.scoreStreak ?? '0'})
+                    </div>
+                    <div className="mt-1">
+                      last day: {inspector.lastDay ?? '—'} · freezes:{' '}
+                      {inspector.streakFreezes ?? '0'} · restore:{' '}
+                      {inspector.streakRestore ? 'yes' : 'no'}
                     </div>
                     <div className="mt-2">
                       recent entries:

@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import {
   getStreakFireLevel,
   getStreakFlameCount,
@@ -16,36 +16,82 @@ export function StreakDisplay({
   variant = 'chip',
   reducedMotion = false,
   pulse = false,
+  outcomeAnimation,
 }: {
   streak: number
   variant?: 'chip' | 'card'
   reducedMotion?: boolean
   pulse?: boolean
+  outcomeAnimation?:
+    | { kind: 'break'; key: number; from: number }
+    | { kind: 'freeze'; key: number; previousFreezes: number; nextFreezes: number }
+    | null
 }) {
+  const [breakState, setBreakState] = useState<'idle' | 'cracking' | 'zero'>('idle')
+  const [breakDisplayStreak, setBreakDisplayStreak] = useState(streak)
+  const breakAnimation = outcomeAnimation?.kind === 'break' ? outcomeAnimation : null
+  const freezeAnimation = outcomeAnimation?.kind === 'freeze' ? outcomeAnimation : null
+
+  useEffect(() => {
+    if (!breakAnimation || reducedMotion || variant !== 'chip') {
+      return
+    }
+
+    const startTimer = window.setTimeout(() => {
+      setBreakDisplayStreak(Math.max(0, breakAnimation.from))
+      setBreakState('cracking')
+    }, 0)
+    const zeroTimer = window.setTimeout(() => {
+      setBreakDisplayStreak(0)
+      setBreakState('zero')
+    }, 320)
+    const doneTimer = window.setTimeout(() => {
+      setBreakState('idle')
+      setBreakDisplayStreak(streak)
+    }, 1050)
+
+    return () => {
+      window.clearTimeout(startTimer)
+      window.clearTimeout(zeroTimer)
+      window.clearTimeout(doneTimer)
+    }
+  }, [breakAnimation, reducedMotion, streak, variant])
+
+  const isBreaking = breakState !== 'idle'
+  const isFreezing = Boolean(freezeAnimation && !reducedMotion && variant === 'chip')
+  const visualStreak = isBreaking ? breakDisplayStreak : streak
   const level = getStreakFireLevel(streak)
   const displayLevel = pulse && !reducedMotion ? Math.min(6, level + 1) : level
-  const flameCount = getStreakFlameCount(displayLevel)
-  const flickerSec = streakFlickerDuration(displayLevel)
+  const breakLevel = getStreakFireLevel(breakAnimation?.from ?? streak)
+  const visualLevel = isBreaking ? breakLevel : displayLevel
+  const flameCount = getStreakFlameCount(visualLevel)
+  const flickerSec = streakFlickerDuration(visualLevel)
 
   const chipClass = [
     'streak-chip',
     variant === 'chip' ? 'rounded-2xl border border-[var(--paper-border)] px-3 py-2' : '',
     variant === 'card' ? 'rounded-3xl border border-[var(--paper-border)] p-4 sm:p-5' : '',
     pulse && !reducedMotion ? 'streak-chip--pulse' : '',
+    isBreaking ? 'streak-chip--breaking' : '',
+    isFreezing ? 'streak-chip--freezing' : '',
   ]
     .filter(Boolean)
     .join(' ')
 
   const numberClass = [
     'streak-number',
-    `streak-number--level-${displayLevel}`,
+    `streak-number--level-${visualLevel}`,
+    breakState === 'cracking' ? 'streak-number--cracking' : '',
+    breakState === 'zero' ? 'streak-number--broken-zero' : '',
     variant === 'chip' ? 'font-mono text-lg font-bold' : 'font-mono text-2xl font-black sm:text-3xl md:text-4xl',
-  ].join(' ')
+  ]
+    .filter(Boolean)
+    .join(' ')
 
   return (
     <div
       className={chipClass}
-      data-streak-level={String(displayLevel)}
+      data-streak-level={String(visualLevel)}
       style={
         !reducedMotion && flameCount > 0
           ? ({ '--streak-flicker-duration': `${flickerSec}s` } as CSSProperties)
@@ -58,7 +104,7 @@ export function StreakDisplay({
         <div className="font-mono text-[11px] uppercase opacity-70">streak</div>
       )}
       <div className={variant === 'card' ? 'mt-2' : ''}>
-        <span className={numberClass}>{streak}</span>
+        <span className={numberClass}>{visualStreak}</span>
       </div>
       {flameCount > 0
         ? FLAME_OFFSETS.slice(0, flameCount).map((pos, i) => (
@@ -72,7 +118,7 @@ export function StreakDisplay({
             </span>
           ))
         : null}
-      {displayLevel >= 3 && displayLevel < 4 ? (
+      {visualLevel >= 3 && visualLevel < 4 ? (
         <span className="streak-spark" aria-hidden>
           ✨
         </span>

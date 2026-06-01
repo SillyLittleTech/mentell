@@ -26,6 +26,10 @@ export type ScoreResult = {
   totalDelta: number
   nextTotal: number
   nextStreak: number
+  previousStreak: number
+  previousStreakFreezes: number
+  nextStreakFreezes: number
+  streakBroken: boolean
   freezeConsumed: boolean
   hint: string | null
 }
@@ -199,6 +203,10 @@ export async function awardForSubmission(dateKey: string): Promise<ScoreResult> 
       totalDelta: 0,
       nextTotal: getInt(SCORE_KEY, 0),
       nextStreak: streak,
+      previousStreak: streak,
+      previousStreakFreezes: getInt(STREAK_FREEZE_KEY, 0),
+      nextStreakFreezes: getInt(STREAK_FREEZE_KEY, 0),
+      streakBroken: false,
       freezeConsumed: false,
       hint: null,
     }
@@ -213,6 +221,7 @@ export async function awardForSubmission(dateKey: string): Promise<ScoreResult> 
   const freezes = getInt(STREAK_FREEZE_KEY, 0)
   const gap = lastDay ? dayGap(lastDay, dateKey) : null
   const freezeConsumed = Boolean(lastDay && gap === 2 && freezes > 0)
+  const nextFreezes = freezeConsumed ? freezes - 1 : freezes
 
   const nextStreak =
     lastDay && isConsecutiveDay(lastDay, dateKey)
@@ -258,6 +267,10 @@ export async function awardForSubmission(dateKey: string): Promise<ScoreResult> 
     totalDelta,
     nextTotal,
     nextStreak,
+    previousStreak: streak,
+    previousStreakFreezes: freezes,
+    nextStreakFreezes: nextFreezes,
+    streakBroken,
     freezeConsumed,
     hint,
   }
