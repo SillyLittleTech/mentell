@@ -3,6 +3,7 @@ import {
   type EntryEmotion,
   type EntryRow,
   type EntrySentiment,
+  type RiskLevel,
   type WarningLevel,
 } from '../../db/schema'
 import { makeId } from '../../shared/id'
@@ -17,6 +18,8 @@ export type EntryDraft = {
   details: string
   flaggedTerms: string[]
   warningLevel: WarningLevel
+  riskScore: number
+  riskLevel: RiskLevel
   scoreDelta: number
   streakAtSubmit: number
 }
@@ -36,6 +39,8 @@ export async function upsertEntryFromDraft(draft: EntryDraft) {
     details: draft.details,
     flaggedTerms: draft.flaggedTerms,
     warningLevel: draft.warningLevel,
+    riskScore: draft.riskScore,
+    riskLevel: draft.riskLevel,
     scoreDelta: draft.scoreDelta,
     streakAtSubmit: draft.streakAtSubmit,
   }
@@ -45,4 +50,3 @@ export async function upsertEntryFromDraft(draft: EntryDraft) {
 
   return row
 }
-

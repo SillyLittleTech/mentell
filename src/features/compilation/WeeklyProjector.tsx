@@ -1,12 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { dateKeyForLocalDay } from '../../shared/dates'
-import { getWeeklyStatsForDateKey, type WeeklyStats } from './weeklyStats'
+import { getWeeklyStatsForDateKey, getWeeklyStatsForWeekKey, type WeeklyStats } from './weeklyStats'
 import { getScoreSnapshot } from '../score/scoreService'
 import { StreakDisplay } from '../score/StreakDisplay'
 import { SCORE_CHANGED_EVENT } from '../score/scoreEvents'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
-import { hasDeliveredWeeklyPackage } from '../packages/packageService'
+import { getLatestDeliveredWeeklyPackage } from '../packages/packageService'
 import {
   buildAiSummaryMarkdown,
   downloadTextFile,
@@ -73,16 +73,25 @@ export function WeeklyProjector() {
     let active = true
 
     const refresh = async () => {
-      const [nextStats, hasDelivery] = await Promise.all([
-        getWeeklyStatsForDateKey(todayKey),
-        hasDeliveredWeeklyPackage(),
-      ])
-      if (!active) return
-      setStats(nextStats)
-      setDelivered(hasDelivery)
-      setScore(getScoreSnapshot())
-      if (aiEnabled && hasDelivery && nextStats.entries.length > 0) {
-        restoreCachedSummary(nextStats, profile, mode)
+      try {
+        const latestPackage = await getLatestDeliveredWeeklyPackage()
+        const nextStats = latestPackage
+          ? await getWeeklyStatsForWeekKey(latestPackage.periodKey)
+          : await getWeeklyStatsForDateKey(todayKey)
+        if (!active) return
+        setStats(nextStats)
+        setDelivered(Boolean(latestPackage))
+        setScore(getScoreSnapshot())
+        if (aiEnabled && latestPackage && nextStats.entries.length > 0) {
+          restoreCachedSummary(nextStats, profile, mode)
+        }
+      } catch (error) {
+        console.warn('[mentell] Weekly projector refresh failed', error)
+        const fallbackStats = await getWeeklyStatsForDateKey(todayKey)
+        if (!active) return
+        setStats(fallbackStats)
+        setDelivered(false)
+        setScore(getScoreSnapshot())
       }
     }
 
@@ -128,8 +137,9 @@ export function WeeklyProjector() {
   async function handleRawDownload() {
     setRawBusy(true)
     try {
-      const entries = await fetchEntriesForRange(rawRange, todayKey)
-      const html = buildRawReportHtml({ range: rawRange, anchorDateKey: todayKey, entries })
+      const anchorDateKey = delivered && stats?.startDateKey ? stats.startDateKey : todayKey
+      const entries = await fetchEntriesForRange(rawRange, anchorDateKey)
+      const html = buildRawReportHtml({ range: rawRange, anchorDateKey, entries })
       const suffix =
         rawRange === 'week' ? stats?.weekKey ?? 'week' : rawRange === 'last4' ? 'last4w' : 'all'
       downloadRawReportHtml(html, `mentell-raw-${suffix}.html`)
@@ -154,7 +164,7 @@ export function WeeklyProjector() {
           <div>
             <div className="font-paper text-2xl">Weekly compilation</div>
             <div className="ink-muted mt-1 text-sm">
-              {stats.weekKey} ({stats.startDateKey} → {stats.endDateKey})
+              {stats.weekKey} ({stats.startDateKey || '—'} → {stats.endDateKey || '—'})
             </div>
           </div>
 

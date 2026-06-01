@@ -22,7 +22,12 @@ import { getFirebaseFirestore } from '../firebase/firebaseApp'
 import { isFirebaseSyncEnabled } from '../features/featureFlags'
 import { loadSyncState, saveSyncState } from './syncState'
 import { loadAppSettings, type AppSettings } from '../settings/appSettings'
-import { getScoreSnapshot } from '../../features/score/scoreService'
+import {
+  getScoreSnapshot,
+  setStreakFreezesForSync,
+  setStreakRestoreForSync,
+  type StreakRestoreCandidate,
+} from '../../features/score/scoreService'
 import { loadAiProfile, type AiProfile } from '../../features/compilation/aiProfile'
 import { loadCatCollection } from '../../features/shop/catCollection'
 import {
@@ -102,6 +107,8 @@ async function pullMeta(uid: string) {
       total?: number
       streak?: number
       lastDay?: string | null
+      streakFreezes?: number
+      streakRestore?: StreakRestoreCandidate | null
     }
     if (typeof data.total === 'number') {
       localStorage.setItem(scopedStorageKey('mentell.score.total'), String(Math.trunc(data.total)))
@@ -112,6 +119,12 @@ async function pullMeta(uid: string) {
     if (data.lastDay === null || typeof data.lastDay === 'string') {
       if (data.lastDay) localStorage.setItem(scopedStorageKey('mentell.score.lastDay'), data.lastDay)
       else localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))
+    }
+    if (typeof data.streakFreezes === 'number') {
+      setStreakFreezesForSync(data.streakFreezes)
+    }
+    if (data.streakRestore === null || typeof data.streakRestore === 'object') {
+      setStreakRestoreForSync(data.streakRestore ?? null)
     }
   }
 
@@ -227,6 +240,8 @@ async function pushMeta(uid: string) {
       total: score.total,
       streak: score.streak,
       lastDay: score.lastDay,
+      streakFreezes: score.streakFreezes,
+      streakRestore: score.streakRestore,
       updatedAt: now,
     },
     { merge: true },

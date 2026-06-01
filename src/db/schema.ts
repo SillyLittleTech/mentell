@@ -3,6 +3,7 @@ import { dexieDatabaseName } from '../shared/storage/storageScope'
 
 export type EntrySentiment = '+' | '-' | '='
 export type WarningLevel = 'none' | 'warn'
+export type RiskLevel = 'none' | 'low' | 'elevated' | 'crisis'
 export type EntryEmotion = 'happy' | 'calm' | 'anxious' | 'sad' | 'angry' | 'other'
 
 export type EntryRow = {
@@ -17,6 +18,8 @@ export type EntryRow = {
   details: string
   flaggedTerms: string[]
   warningLevel: WarningLevel
+  riskScore: number
+  riskLevel: RiskLevel
   scoreDelta: number
   streakAtSubmit: number
 }
@@ -140,6 +143,21 @@ export class MentellDB extends Dexie {
       packages: '&id, kind, periodKey, createdAt, updatedAt, openedAt',
       characterAppearance: '&id, updatedAt',
     })
+
+    this.version(6)
+      .stores({
+        entries: '&id, dateKey, createdAt, updatedAt, sentiment, warningLevel, riskLevel',
+        notes: '&id, createdAt, updatedAt, tag',
+        stickies: '&id, createdAt, updatedAt, zIndex',
+        packages: '&id, kind, periodKey, createdAt, updatedAt, openedAt',
+        characterAppearance: '&id, updatedAt',
+      })
+      .upgrade(async (tx) => {
+        await tx.table('entries').toCollection().modify((row: Partial<EntryRow>) => {
+          if (typeof row.riskScore !== 'number') row.riskScore = row.warningLevel === 'warn' ? 0.5 : 0
+          if (!row.riskLevel) row.riskLevel = row.warningLevel === 'warn' ? 'elevated' : 'none'
+        })
+      })
   }
 }
 

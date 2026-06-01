@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 export const EntrySentimentSchema = z.enum(['+', '-', '='])
 export const WarningLevelSchema = z.enum(['none', 'warn'])
+export const RiskLevelSchema = z.enum(['none', 'low', 'elevated', 'crisis'])
 export const EntryEmotionSchema = z.enum(['happy', 'calm', 'anxious', 'sad', 'angry', 'other'])
 
 export const EntryRowSchema = z.object({
@@ -16,6 +17,8 @@ export const EntryRowSchema = z.object({
   details: z.string(),
   flaggedTerms: z.array(z.string()),
   warningLevel: WarningLevelSchema,
+  riskScore: z.number().min(0).max(1),
+  riskLevel: RiskLevelSchema,
   scoreDelta: z.number().int(),
   streakAtSubmit: z.number().int().nonnegative(),
 })
@@ -52,4 +55,3 @@ export const PackageRowSchema = z.object({
   updatedAt: z.number().int().nonnegative(),
   openedAt: z.number().int().nonnegative().optional(),
 })
-

@@ -1,7 +1,12 @@
 import { getDb, type PackageKind, type PackageRow } from '../../db/schema'
+import { format, parseISO } from 'date-fns'
 import { makeId } from '../../shared/id'
 import { awardForPackageOpen } from '../score/scoreService'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
+
+function weekKeyForEntryDate(dateKey: string) {
+  return format(parseISO(dateKey), "yyyy-'W'II")
+}
 
 export async function ensurePackage(kind: PackageKind, periodKey: string) {
   return (await ensurePackageWithStatus(kind, periodKey)).row
@@ -47,6 +52,17 @@ export async function getUnopenedPackages() {
 export async function hasDeliveredWeeklyPackage() {
   const count = await getDb().packages.where('kind').equals('weekly').count()
   return count > 0
+}
+
+export async function getLatestDeliveredWeeklyPackage() {
+  const [packages, entries] = await Promise.all([
+    getDb().packages.where('kind').equals('weekly').toArray(),
+    getDb().entries.toArray(),
+  ])
+  const entryWeeks = new Set(entries.map((entry) => weekKeyForEntryDate(entry.dateKey)))
+  return packages
+    .filter((pkg) => entryWeeks.has(pkg.periodKey))
+    .sort((a, b) => b.periodKey.localeCompare(a.periodKey))[0] ?? null
 }
 
 export function iconLevelForPackages(pkgs: { kind: PackageKind }[]) {

@@ -65,6 +65,14 @@ function normalizeEnvToken(raw: string | undefined) {
   return t
 }
 
+export function normalizeEndpointUrl(raw: string) {
+  const endpoint = raw.trim()
+  if (!endpoint) return endpoint
+  if (/^https?:\/\//i.test(endpoint)) return endpoint
+  if (endpoint.startsWith('/')) return endpoint
+  return `https://${endpoint}`
+}
+
 export function weeklyAiSummaryEnabled() {
   return (
     isAiEnabledLocally() &&
@@ -108,7 +116,7 @@ export async function requestWeeklyAiSummary(
     throw new Error(allowance.reason)
   }
 
-  const endpoint = import.meta.env.VITE_WEEKLY_AI_ENDPOINT as string
+  const endpoint = normalizeEndpointUrl(import.meta.env.VITE_WEEKLY_AI_ENDPOINT as string)
   const token = normalizeEnvToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
   const response = await fetch(endpoint, {
     method: 'POST',
@@ -134,7 +142,13 @@ export async function requestWeeklyAiSummary(
   })
 
   if (!response.ok) {
-    throw new Error(`AI endpoint error (${response.status}).`)
+    const detail = await readEndpointError(response)
+    if (response.status === 405) {
+      throw new Error(
+        `The AI endpoint is reachable but does not accept this request. Check that VITE_WEEKLY_AI_ENDPOINT points to the Worker /weekly-summary route.${detail ? ` ${detail}` : ''}`,
+      )
+    }
+    throw new Error(`AI endpoint error (${response.status}).${detail ? ` ${detail}` : ''}`)
   }
 
   const body = (await response.json()) as { summary?: string; error?: string }
@@ -151,6 +165,20 @@ export async function requestWeeklyAiSummary(
   })
 
   return { summary: body.summary, fromCache: false as const }
+}
+
+async function readEndpointError(response: Response) {
+  try {
+    const body = (await response.clone().json()) as { error?: unknown }
+    return typeof body.error === 'string' && body.error.trim() ? body.error.trim() : ''
+  } catch {
+    try {
+      const text = await response.clone().text()
+      return text.trim().slice(0, 180)
+    } catch {
+      return ''
+    }
+  }
 }
 
 export function buildAiSummaryMarkdown(input: {
