@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { motionDuration } from '../../shared/motion/useMotionPrefs'
 import { StreakFlame } from './StreakFlame'
 import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
+import { StreakFreezeBadge } from './StreakFreezeBadge'
 
 export function ScoreTicker({
   total,
@@ -34,10 +35,7 @@ export function ScoreTicker({
 
       <StreakFlame streak={streak} reducedMotion={reduced} pulse={streakPulse} />
       {streakFreezes !== undefined && streakFreezes > 0 ? (
-        <div className="rounded-2xl border border-[var(--paper-border)] px-3 py-2">
-          <div className="font-mono text-[11px] uppercase opacity-70">freezes</div>
-          <div className="font-mono text-lg font-bold">{streakFreezes}</div>
-        </div>
+        <StreakFreezeBadge count={streakFreezes} />
       ) : null}
     </div>
   )

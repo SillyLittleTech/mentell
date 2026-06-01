@@ -100,8 +100,9 @@ function parseRiskLevel(value: unknown): RiskLevel | null {
 }
 
 async function assessWithAi(env: Env, body: RequestBody) {
-  const localRiskScore = clamp01(Number(body.localRiskScore))
-  const localRiskLevel = body.localRiskLevel ?? levelFor(localRiskScore)
+  const rawLocalRiskScore = clamp01(Number(body.localRiskScore))
+  const localRiskLevel = parseRiskLevel(body.localRiskLevel) ?? levelFor(rawLocalRiskScore)
+  const localRiskScore = Math.max(rawLocalRiskScore, minimumScoreForLevel(localRiskLevel))
   const journalJson = JSON.stringify({
     localRiskScore,
     localRiskLevel,

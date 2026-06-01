@@ -91,6 +91,7 @@ export function WeeklyProjector() {
         if (!active) return
         setStats(fallbackStats)
         setDelivered(false)
+        setScore(getScoreSnapshot())
       }
     }
 

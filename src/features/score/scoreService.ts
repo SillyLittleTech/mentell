@@ -110,6 +110,31 @@ function writeRestoreCandidate(candidate: StreakRestoreCandidate | null) {
   localStorage.setItem(STREAK_RESTORE_KEY, JSON.stringify(candidate))
 }
 
+function sanitizeRestoreCandidate(candidate: StreakRestoreCandidate | null) {
+  if (!candidate) return null
+  if (
+    typeof candidate.streak !== 'number' ||
+    typeof candidate.restoreTo !== 'number' ||
+    typeof candidate.lastDay !== 'string' ||
+    typeof candidate.brokenDateKey !== 'string' ||
+    typeof candidate.brokenAt !== 'number' ||
+    typeof candidate.missedDays !== 'number'
+  ) {
+    return null
+  }
+  if (Date.now() - candidate.brokenAt > STREAK_RESTORE_WINDOW_MS) {
+    return null
+  }
+  return {
+    streak: Math.max(0, Math.trunc(candidate.streak)),
+    restoreTo: Math.max(0, Math.trunc(candidate.restoreTo)),
+    lastDay: candidate.lastDay,
+    brokenDateKey: candidate.brokenDateKey,
+    brokenAt: Math.trunc(candidate.brokenAt),
+    missedDays: Math.max(1, Math.trunc(candidate.missedDays)),
+  }
+}
+
 function isConsecutiveDay(prevDateKey: string, nextDateKey: string) {
   try {
     const prev = parseISO(prevDateKey)
@@ -275,7 +300,7 @@ export function setStreakFreezesForSync(count: number) {
 }
 
 export function setStreakRestoreForSync(candidate: StreakRestoreCandidate | null) {
-  writeRestoreCandidate(candidate)
+  writeRestoreCandidate(sanitizeRestoreCandidate(candidate))
 }
 
 export function buyStreakFreeze(): BuyStreakFreezeResult {

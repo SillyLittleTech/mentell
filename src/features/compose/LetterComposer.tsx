@@ -177,8 +177,8 @@ export function LetterComposer({
           </Field>
         </div>
 
-        <footer className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <div className="ink-muted text-sm">
+        <footer className="mt-6 flex flex-wrap items-start justify-between gap-3">
+          <div className="ink-muted min-w-0 flex-1 text-sm">
             {submitState === 'done' ? (
               <div className="font-medium" style={{ color: 'var(--success)' }}>
                 Submitted and cleared. Ready for your next entry.
@@ -196,7 +196,7 @@ export function LetterComposer({
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {step === 'review' ? (
               <button
                 type="button"
@@ -297,12 +297,18 @@ function RiskNotice({ risk }: { risk: RiskAssessment }) {
 function RiskResultModal({ risk, onClose }: { risk: RiskAssessment; onClose: () => void }) {
   const elevated = risk.warningLevel === 'warn'
   const celebration = risk.responseKind === 'celebration'
+  const titleId = 'risk-result-modal-title'
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-      <div className="paper max-h-[min(90dvh,42rem)] w-full max-w-xl overflow-y-auto rounded-3xl p-6 shadow-lg">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="paper max-h-[min(90dvh,42rem)] w-full max-w-xl overflow-y-auto rounded-3xl p-6 shadow-lg"
+      >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="font-paper text-2xl">
+            <div id={titleId} className="font-paper text-2xl">
               {elevated ? 'You are not alone' : celebration ? 'Look at you go' : 'A note for you'}
             </div>
             <div className="ink-muted mt-1 text-sm">

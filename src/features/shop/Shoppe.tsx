@@ -37,6 +37,7 @@ import {
 } from './shopCatalog'
 import { renderCursorCssValue } from './shopCursorAsset'
 import { renderStampPreviewForItem } from './shopStampAsset'
+import { StreakFreezeBadge } from '../score/StreakFreezeBadge'
 
 const CAT_COST = 250
 
@@ -404,10 +405,7 @@ export function Shoppe({
               </div>
             ) : null}
             {pointsOn ? (
-              <div className="rounded-2xl border border-[var(--paper-border)] px-3 py-2">
-                <div className="font-mono text-[11px] uppercase opacity-70">freezes</div>
-                <div className="font-mono text-2xl font-bold">{freezeCount}</div>
-              </div>
+              <StreakFreezeBadge count={freezeCount} variant="card" />
             ) : null}
           </div>
         </div>
@@ -485,10 +483,13 @@ export function Shoppe({
       <section className="paper rounded-3xl p-6">
         <div className="rounded-3xl border border-[var(--paper-border)] p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <div className="font-medium">Streak freeze</div>
-              <div className="ink-muted text-sm">
-                Saves a streak after exactly one missed day. Hold up to {STREAK_FREEZE_MAX}.
+            <div className="flex items-center gap-3">
+              <StreakFreezeBadge count={freezeCount} />
+              <div>
+                <div className="font-medium">Streak freeze</div>
+                <div className="ink-muted text-sm">
+                  Saves a streak after exactly one missed day. Hold up to {STREAK_FREEZE_MAX}.
+                </div>
               </div>
             </div>
             <div className="font-mono text-lg font-bold">{STREAK_FREEZE_COST} pts</div>

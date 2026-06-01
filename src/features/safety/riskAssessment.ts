@@ -341,51 +341,54 @@ export async function refineRiskWithWorker(
 
   try {
     const controller = new AbortController()
-    const timeout = window.setTimeout(() => controller.abort(), 7000)
     const supportMemories = await recentSupportMemories(input.dateKey)
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        localRiskScore: local.riskScore,
-        localRiskLevel: local.riskLevel,
-        localExceScore: local.exceScore,
-        reasons: local.reasons,
-        entry: {
-          sentiment: input.sentiment,
-          emotion: input.emotionNote || input.emotion,
-          situation: input.situation,
-          details: input.details,
+    const timeout = window.setTimeout(() => controller.abort(), 7000)
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token,
         },
-        supportMemories,
-      }),
-    })
-    window.clearTimeout(timeout)
-    if (!response.ok) return local
-    const parsed = parseWorkerRisk((await response.json()) as WorkerRiskResponse)
-    if (!parsed) return local
-    const riskScore = Math.max(
-      local.riskScore,
-      parsed.riskScore,
-      minimumScoreForLevel(parsed.riskLevel),
-    )
-    const riskLevel = riskLevelForScore(riskScore)
-    return {
-      ...local,
-      riskScore,
-      riskLevel,
-      warningLevel: riskScore >= 0.35 ? 'warn' : 'none',
-      reasons: unique([...local.reasons, ...parsed.reasons]),
-      supportiveMessage: parsed.supportiveMessage,
-      responseKind:
-        riskScore >= 0.35
-          ? 'risk'
-          : parsed.responseKind ?? (local.exceScore >= EXCE_AI_THRESHOLD ? 'celebration' : 'support'),
-      source: 'hybrid',
+        body: JSON.stringify({
+          localRiskScore: local.riskScore,
+          localRiskLevel: local.riskLevel,
+          localExceScore: local.exceScore,
+          reasons: local.reasons,
+          entry: {
+            sentiment: input.sentiment,
+            emotion: input.emotionNote || input.emotion,
+            situation: input.situation,
+            details: input.details,
+          },
+          supportMemories,
+        }),
+      })
+      if (!response.ok) return local
+      const parsed = parseWorkerRisk((await response.json()) as WorkerRiskResponse)
+      if (!parsed) return local
+      const riskScore = Math.max(
+        local.riskScore,
+        parsed.riskScore,
+        minimumScoreForLevel(parsed.riskLevel),
+      )
+      const riskLevel = riskLevelForScore(riskScore)
+      return {
+        ...local,
+        riskScore,
+        riskLevel,
+        warningLevel: riskScore >= 0.35 ? 'warn' : 'none',
+        reasons: unique([...local.reasons, ...parsed.reasons]),
+        supportiveMessage: parsed.supportiveMessage,
+        responseKind:
+          riskScore >= 0.35
+            ? 'risk'
+            : parsed.responseKind ?? (local.exceScore >= EXCE_AI_THRESHOLD ? 'celebration' : 'support'),
+        source: 'hybrid',
+      }
+    } finally {
+      window.clearTimeout(timeout)
     }
   } catch {
     return local
