@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { LOCAL_DATA_CHANGED_EVENT } from '../../shared/sync/localDataEvents'
 import { getWeekTimelineDays, type WeekTimelineDay } from './weekTimeline'
 
 function dotStyle(status: WeekTimelineDay['status']) {
@@ -32,9 +33,11 @@ export function WeekTimelineCard() {
     }
     refresh()
     const id = window.setInterval(refresh, 3000)
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, refresh)
     return () => {
       active = false
       window.clearInterval(id)
+      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, refresh)
     }
   }, [])
 

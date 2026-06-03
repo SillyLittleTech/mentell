@@ -45,7 +45,19 @@ export function LetterComposer({
   const [submitState, setSubmitState] = useState<'idle' | 'done' | 'error'>('idle')
   const [draftRisk, setDraftRisk] = useState<RiskAssessment | null>(null)
   const [submittedRisk, setSubmittedRisk] = useState<RiskAssessment | null>(null)
-  const dateKey = useMemo(() => dateKeyForLocalDay(new Date()), [])
+  const [dateKey, setDateKey] = useState(() => dateKeyForLocalDay(new Date()))
+
+  useEffect(() => {
+    const refreshDateKey = () => setDateKey(dateKeyForLocalDay(new Date()))
+    const intervalId = window.setInterval(refreshDateKey, 60_000)
+    window.addEventListener('focus', refreshDateKey)
+    document.addEventListener('visibilitychange', refreshDateKey)
+    return () => {
+      window.clearInterval(intervalId)
+      window.removeEventListener('focus', refreshDateKey)
+      document.removeEventListener('visibilitychange', refreshDateKey)
+    }
+  }, [])
 
   const riskInput = useMemo(
     () => ({

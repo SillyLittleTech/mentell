@@ -20,6 +20,7 @@ import { MentellCharacter } from '../character/MentellCharacter'
 import { defaultCharacterAppearance } from '../character/characterAppearance'
 import { useAppSettings } from '../../shared/settings/useAppSettings'
 import { publicUrl } from '../../shared/publicUrl'
+import { pushLocalChangesNow } from '../../shared/sync/syncService'
 import { SCORE_CHANGED_EVENT } from '../score/scoreEvents'
 import {
   equipShopItem,
@@ -281,6 +282,7 @@ export function Shoppe({
       setBalance(getScoreSnapshot().total)
       onScoreChange(-CAT_COST, 'Cat photo collected')
       setStatus('Mystery cat collected.')
+      void pushLocalChangesNow()
     } catch {
       setError('Failed to reach cat photo service.')
     } finally {
@@ -307,6 +309,7 @@ export function Shoppe({
     }
     onScoreChange(-STREAK_FREEZE_COST, 'Streak freeze stocked')
     setStatus(`Streak freeze stocked (${result.nextFreezes}/${STREAK_FREEZE_MAX}).`)
+    void pushLocalChangesNow()
   }
 
   function buyRestore() {
@@ -328,6 +331,7 @@ export function Shoppe({
     }
     onScoreChange(-STREAK_RESTORE_COST, `Streak restored to ${result.restoredStreak}`)
     setStatus(`Streak restored to ${result.restoredStreak}.`)
+    void pushLocalChangesNow()
   }
 
   async function buyShopItem(item: ShopCatalogItem) {
@@ -367,6 +371,7 @@ export function Shoppe({
             ? `${item.name} unlocked and equipped.`
             : `${item.name} unlocked.`,
       )
+      void pushLocalChangesNow()
     } finally {
       setBusyItemId(null)
     }

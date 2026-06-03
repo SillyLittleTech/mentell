@@ -42,6 +42,7 @@ const PUSH_DEBOUNCE_MS = 1200
 
 let currentUid: string | null = null
 let pushTimer: ReturnType<typeof setTimeout> | null = null
+let pushInFlight: Promise<void> | null = null
 let unsubs: Unsubscribe[] = []
 
 function fs() {
@@ -381,23 +382,47 @@ export function disableSync() {
   }
 }
 
+function canPushToCloud() {
+  return Boolean(currentUid && loadSyncState().enabled && isFirebaseSyncEnabled())
+}
+
+async function pushCurrentLocalToCloud() {
+  if (!currentUid || !canPushToCloud()) return
+  if (pushTimer) {
+    clearTimeout(pushTimer)
+    pushTimer = null
+  }
+  if (pushInFlight) return pushInFlight
+
+  const uid = currentUid
+  pushInFlight = pushLocalToCloud(uid)
+    .then(() => {
+      saveSyncState({ lastSyncedAt: Date.now(), lastError: null })
+      scheduleSharePayloadRefresh()
+    })
+    .catch((e) => {
+      saveSyncState({
+        lastError: e instanceof Error ? e.message : 'Push failed',
+      })
+    })
+    .finally(() => {
+      pushInFlight = null
+    })
+  return pushInFlight
+}
+
 export function scheduleSyncPush() {
-  if (!currentUid || !loadSyncState().enabled || !isFirebaseSyncEnabled()) return
+  if (!canPushToCloud()) return
   if (pushTimer) clearTimeout(pushTimer)
   pushTimer = setTimeout(() => {
     pushTimer = null
-    if (!currentUid) return
-    void pushLocalToCloud(currentUid)
-      .then(() => {
-        saveSyncState({ lastSyncedAt: Date.now(), lastError: null })
-        scheduleSharePayloadRefresh()
-      })
-      .catch((e) => {
-        saveSyncState({
-          lastError: e instanceof Error ? e.message : 'Push failed',
-        })
-      })
+    void pushCurrentLocalToCloud()
   }, PUSH_DEBOUNCE_MS)
+}
+
+/** Pushes known-fresh local changes immediately when sync is active; otherwise no-ops. */
+export async function pushLocalChangesNow() {
+  await pushCurrentLocalToCloud()
 }
 
 export { notifyLocalDataChanged } from './localDataEvents'
