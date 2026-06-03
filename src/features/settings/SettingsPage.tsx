@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { loadAiProfile } from '../compilation/aiProfile'
 import { useAppSettings } from '../../shared/settings/useAppSettings'
 import { notificationPermission, maybeRequestNotificationPermission } from '../../pwa/notifications'
@@ -8,6 +8,7 @@ import { AccountSyncSection } from './AccountSyncSection'
 import { SettingsAccountFeatures } from './SettingsAccountFeatures'
 import { SettingsDebugCloudSection } from './SettingsDebugCloudSection'
 import { DeskCharacterLayout } from '../character/DeskCharacterLayout'
+import { pushLocalChangesNow } from '../../shared/sync/syncService'
 
 const WEEKDAY_OPTIONS = [
   { value: 0, label: 'Sunday' },
@@ -21,11 +22,26 @@ const WEEKDAY_OPTIONS = [
 
 export function SettingsPage() {
   const { settings, updateSettings } = useAppSettings()
-  const [nameDraft, setNameDraft] = useState(settings.globalName)
+  const [nameDraftOverride, setNameDraftOverride] = useState<string | null>(null)
+  const settingsDirtyRef = useRef(false)
   const perm = notificationPermission()
+
+  const updateSettingsAndMarkDirty: typeof updateSettings = (patch) => {
+    const next = updateSettings(patch)
+    if (JSON.stringify(next) !== JSON.stringify(settings)) {
+      settingsDirtyRef.current = true
+    }
+    return next
+  }
 
   useEffect(() => {
     void maybeRequestNotificationPermission()
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (settingsDirtyRef.current) void pushLocalChangesNow()
+    }
   }, [])
 
   useEffect(() => {
@@ -39,9 +55,7 @@ export function SettingsPage() {
     settings.timezone,
   ])
 
-  useEffect(() => {
-    setNameDraft(settings.globalName)
-  }, [settings.globalName])
+  const nameDraft = nameDraftOverride ?? settings.globalName
 
   const aiNameFallback = useMemo(() => {
     if (settings.globalNameManuallySet || settings.globalName.trim()) return ''
@@ -68,7 +82,7 @@ export function SettingsPage() {
           <input
             type="checkbox"
             checked={settings.reducedMotion}
-            onChange={(e) => updateSettings({ reducedMotion: e.target.checked })}
+            onChange={(e) => updateSettingsAndMarkDirty({ reducedMotion: e.target.checked })}
           />
         </label>
       </section>
@@ -84,7 +98,7 @@ export function SettingsPage() {
             <input
               type="checkbox"
               checked={settings.disableAi}
-              onChange={(e) => updateSettings({ disableAi: e.target.checked })}
+              onChange={(e) => updateSettingsAndMarkDirty({ disableAi: e.target.checked })}
             />
           </label>
           <label className="flex items-center justify-between gap-3 text-sm">
@@ -95,7 +109,7 @@ export function SettingsPage() {
             <input
               type="checkbox"
               checked={settings.disablePoints}
-              onChange={(e) => updateSettings({ disablePoints: e.target.checked })}
+              onChange={(e) => updateSettingsAndMarkDirty({ disablePoints: e.target.checked })}
             />
           </label>
           <label className="flex items-center justify-between gap-3 text-sm">
@@ -109,7 +123,7 @@ export function SettingsPage() {
               type="checkbox"
               checked={settings.disableNotifications}
               onChange={(e) => {
-                updateSettings({ disableNotifications: e.target.checked })
+                updateSettingsAndMarkDirty({ disableNotifications: e.target.checked })
                 if (e.target.checked) void unsubscribePush()
               }}
             />
@@ -132,7 +146,7 @@ export function SettingsPage() {
               <select
                 className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
                 value={settings.deliveryWeekday}
-                onChange={(e) => updateSettings({ deliveryWeekday: Number(e.target.value) })}
+                onChange={(e) => updateSettingsAndMarkDirty({ deliveryWeekday: Number(e.target.value) })}
               >
                 {WEEKDAY_OPTIONS.map((d) => (
                   <option key={d.value} value={d.value}>
@@ -147,7 +161,7 @@ export function SettingsPage() {
                 type="time"
                 className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
                 value={settings.deliveryTimeLocal}
-                onChange={(e) => updateSettings({ deliveryTimeLocal: e.target.value })}
+                onChange={(e) => updateSettingsAndMarkDirty({ deliveryTimeLocal: e.target.value })}
               />
             </label>
             <label className="grid gap-1 text-sm">
@@ -157,7 +171,7 @@ export function SettingsPage() {
                 readOnly
                 className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 opacity-80"
                 value={settings.timezone}
-                onFocus={() => updateSettings({ timezone: browserTimezone() })}
+                onFocus={() => updateSettingsAndMarkDirty({ timezone: browserTimezone() })}
               />
               <span className="ink-muted text-xs">
                 Detected from your device. Focus this field to refresh.
@@ -181,10 +195,11 @@ export function SettingsPage() {
             placeholder={aiNameFallback || 'e.g. Kiya'}
             maxLength={40}
             value={nameDraft}
-            onChange={(e) => setNameDraft(e.target.value)}
-            onBlur={() =>
-              updateSettings({ globalName: nameDraft, globalNameManuallySet: true })
-            }
+            onChange={(e) => setNameDraftOverride(e.target.value)}
+            onBlur={() => {
+              updateSettingsAndMarkDirty({ globalName: nameDraft, globalNameManuallySet: true })
+              setNameDraftOverride(null)
+            }}
           />
           <div className="ink-muted text-xs">
             {aiNameFallback

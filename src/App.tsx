@@ -15,6 +15,8 @@ import { StickyLayer } from './features/stickies/StickyLayer'
 import { DebugPanel } from './features/debug/DebugPanel'
 import { runPackageDeliveryAndNotify } from './features/packages/runPackageDelivery'
 import { maybeRequestNotificationPermission } from './pwa/notifications'
+import { dateKeyForLocalDay } from './shared/dates'
+import { pushLocalChangesNow } from './shared/sync/syncService'
 import { isWebPushConfigured, syncPushSubscription } from './pwa/pushSubscribe'
 import { loadAppSettings } from './shared/settings/appSettings'
 import { ScoreTicker } from './features/score/ScoreTicker'
@@ -541,32 +543,35 @@ function HomePlaceholder({
         <LetterComposer
           disabled={composerLocked}
           onSubmit={async (draft) => {
-          const award = await awardForSubmission(draft.dateKey)
-          await upsertEntryFromDraft({
-            ...draft,
-            scoreDelta: award.totalDelta,
-            streakAtSubmit: award.nextStreak,
-          })
+            const submitDateKey = dateKeyForLocalDay(new Date())
+            const award = await awardForSubmission(submitDateKey)
+            await upsertEntryFromDraft({
+              ...draft,
+              dateKey: submitDateKey,
+              scoreDelta: award.totalDelta,
+              streakAtSubmit: award.nextStreak,
+            })
 
-          await runPackageDeliveryAndNotify()
-          if (!loadAppSettings().disableNotifications) {
-            void maybeRequestNotificationPermission()
-          }
-          onScoreChange(award.totalDelta, award.hint, {
-            deferOverlay: true,
-            streakOutcome: award.freezeConsumed
-              ? {
-                  kind: 'freeze',
-                  key: Date.now(),
-                  previousFreezes: award.previousStreakFreezes,
-                  nextFreezes: award.nextStreakFreezes,
-                }
-              : award.streakBroken
-                ? { kind: 'break', key: Date.now(), from: award.previousStreak }
-                : undefined,
-          })
-          setSubmitting(true)
-        }}
+            await runPackageDeliveryAndNotify()
+            void pushLocalChangesNow()
+            if (!loadAppSettings().disableNotifications) {
+              void maybeRequestNotificationPermission()
+            }
+            onScoreChange(award.totalDelta, award.hint, {
+              deferOverlay: true,
+              streakOutcome: award.freezeConsumed
+                ? {
+                    kind: 'freeze',
+                    key: Date.now(),
+                    previousFreezes: award.previousStreakFreezes,
+                    nextFreezes: award.nextStreakFreezes,
+                  }
+                : award.streakBroken
+                  ? { kind: 'break', key: Date.now(), from: award.previousStreak }
+                  : undefined,
+            })
+            setSubmitting(true)
+          }}
         />
       </div>
 
