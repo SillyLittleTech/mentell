@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { MentellCharacter } from './MentellCharacter'
 import { charManifest } from './charManifest'
 import { POSE_LABELS } from './characterPoses'
@@ -24,6 +24,8 @@ import {
   type ShopCatalogItem,
 } from '../shop/shopCatalog'
 import { accessoryChoiceId, exclusiveAccessoryIdsFor } from '../shop/shopCharacterAccessories'
+import { flushPendingCharacterAppearanceSave } from './characterAppearanceService'
+import { pushLocalChangesNow } from '../../shared/sync/syncService'
 
 function isCharacterAccessory(item: ShopCatalogItem): item is CharacterAccessoryItem {
   return item.type === 'characterAccessory'
@@ -34,8 +36,16 @@ export function CharacterLabPage() {
   const [pose, setPose] = useState<CharacterPoseId>('wave')
   const catalog = useMemo(() => loadShopCatalog(), [])
   const [inventory, setInventory] = useState<ShopInventory>(() => loadShopInventory())
+  const dirtyRef = useRef(false)
 
   useEffect(() => subscribeShopInventory((next) => setInventory(next)), [])
+
+  useEffect(() => {
+    return () => {
+      if (!dirtyRef.current) return
+      void flushPendingCharacterAppearanceSave().then(() => pushLocalChangesNow())
+    }
+  }, [])
 
   const ownedAccessories = useMemo(() => {
     const owned = new Set(inventory.ownedItemIds)
@@ -54,6 +64,8 @@ export function CharacterLabPage() {
     return map
   }, [])
   function setFill(key: string, value: string) {
+    if (colorValue(key, defaultForColorKey(key)) === value) return
+    dirtyRef.current = true
     setAppearance((prev) => ({
       ...prev,
       fills: { ...prev.fills, [key]: value },
@@ -61,6 +73,9 @@ export function CharacterLabPage() {
   }
 
   function setToggle(groupKey: string, optionId: string) {
+    const current = appearance.toggles[groupKey] ?? toggleByKey.get(groupKey)?.defaultOption
+    if (current === optionId) return
+    dirtyRef.current = true
     setAppearance((prev) => ({
       ...prev,
       toggles: { ...prev.toggles, [groupKey]: optionId },
@@ -79,9 +94,16 @@ export function CharacterLabPage() {
   }
 
   function toggleAccessory(item: CharacterAccessoryItem) {
+    dirtyRef.current = true
     equipCharacterAccessoryItem(item.id, {
       exclusiveWith: exclusiveAccessoryIdsFor(item, catalog.items),
     })
+  }
+
+  function chooseAccessoryChoice(item: CharacterAccessoryItem, choiceId: string) {
+    if (accessoryChoiceId(item, inventory) === choiceId) return
+    dirtyRef.current = true
+    setCharacterAccessoryChoice(item.id, choiceId)
   }
 
   return (
@@ -199,7 +221,7 @@ export function CharacterLabPage() {
                                   ? 'border-[var(--paper-ink)] bg-[var(--paper-ink)] text-[var(--paper-bg)]'
                                   : 'border-[var(--paper-border)]'
                               }`}
-                              onClick={() => setCharacterAccessoryChoice(item.id, choice.id)}
+                              onClick={() => chooseAccessoryChoice(item, choice.id)}
                             >
                               {choice.label}
                             </button>
@@ -273,7 +295,10 @@ export function CharacterLabPage() {
           <button
             type="button"
             className="focus-ring rounded-xl border border-[var(--paper-border)] px-4 py-2 text-sm font-medium"
-            onClick={() => void resetAppearance()}
+            onClick={() => {
+              dirtyRef.current = true
+              void resetAppearance()
+            }}
           >
             Reset to defaults
           </button>

@@ -68,6 +68,13 @@ export function scheduleSaveCharacterAppearance(appearance: CharacterAppearance)
   }, 400)
 }
 
+export async function flushPendingCharacterAppearanceSave() {
+  if (saveTimer === undefined) return
+  clearTimeout(saveTimer)
+  saveTimer = undefined
+  await saveCharacterAppearance(cache ?? defaultCharacterAppearance())
+}
+
 export async function resetCharacterAppearance(): Promise<CharacterAppearance> {
   const next = defaultCharacterAppearance()
   if (saveTimer !== undefined) {
