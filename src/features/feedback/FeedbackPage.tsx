@@ -156,9 +156,17 @@ export function FeedbackPage() {
   const selectedBugFeature = summarizeOtherAwareChoice(brFeature, brFeatureOther)
   const selectedFeedbackPrompt = summarizeOtherAwareChoice(fbPrompt, fbPromptOther)
 
+  const getCurrentTurnstileResponse = () => {
+    const domTurnstileResponse =
+      formRef.current
+        ?.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')
+        ?.value.trim() ?? ''
+
+    return domTurnstileResponse || turnstileResponseRef.current.trim() || turnstileResponse.trim()
+  }
+
   const validationError = () => {
-    const currentTurnstileResponse =
-      turnstileResponseRef.current.trim() || turnstileResponse.trim()
+    const currentTurnstileResponse = getCurrentTurnstileResponse()
 
     if (!title.trim()) return 'Add a title for your submission.'
 
@@ -258,8 +266,7 @@ export function FeedbackPage() {
       return
     }
 
-    const currentTurnstileResponse =
-      turnstileResponseRef.current.trim() || turnstileResponse.trim()
+    const currentTurnstileResponse = getCurrentTurnstileResponse()
 
     const payload: FeedbackFormInput = {
       title,
