@@ -11,10 +11,12 @@ import { ContactForQuestions } from '../legal/contactEmails'
 import { scrollToTop } from '../../shared/motion/scroll'
 import {
   feedbackFormConfigured,
+  feedbackTurnstileSiteKey,
   submitFeedbackForm,
   type FeedbackFormInput,
   type FeedbackSubmissionType,
 } from './feedbackSubmission'
+import { FeedbackTurnstile } from './FeedbackTurnstile'
 
 const SUBMISSION_TYPES: Array<{
   value: FeedbackSubmissionType
@@ -118,12 +120,14 @@ export function FeedbackPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [turnstileResponse, setTurnstileResponse] = useState('')
 
   useEffect(() => {
     scrollToTop()
   }, [pathname])
 
   const endpointReady = feedbackFormConfigured()
+  const turnstileSiteKey = feedbackTurnstileSiteKey()
   const showPrivacyFields = submissionType === 'Privacy Inquiry'
   const showBugFields = submissionType === 'Bug Report'
   const showFeedbackFields = submissionType === 'Feedback'
@@ -168,6 +172,10 @@ export function FeedbackPage() {
         return 'Describe the other privacy request.'
       }
       if (!signatureDataUrl) return 'Draw your signature before submitting the privacy request.'
+    }
+
+    if (!turnstileResponse.trim()) {
+      return 'Complete the Cloudflare verification before submitting.'
     }
 
     return null
@@ -244,7 +252,7 @@ export function FeedbackPage() {
       prOther,
       genOpEmail,
       prSigBox: signatureDataUrl,
-      turnstileResponse: '',
+      turnstileResponse,
     }
 
     setIsSubmitting(true)
@@ -794,6 +802,17 @@ export function FeedbackPage() {
             <div className="ink-muted text-xs">
               {showPrivacyFields ? 'Signature required.' : 'Optional reply email available.'}
             </div>
+          </div>
+
+          <div className="mt-5">
+            <FeedbackTurnstile
+              key={turnstileSiteKey}
+              siteKey={turnstileSiteKey}
+              onTokenChange={(token) => {
+                setTurnstileResponse(token)
+                if (token) setError(null)
+              }}
+            />
           </div>
 
           {error ? (

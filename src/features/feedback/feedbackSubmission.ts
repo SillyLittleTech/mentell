@@ -29,6 +29,8 @@ export type FeedbackFormInput = {
   turnstileResponse: string
 }
 
+const DEFAULT_TURNSTILE_SITE_KEY = '0x4AAAAAADfOpVgdUWD5E_c1'
+
 export function normalizeEndpointUrl(raw: string) {
   const endpoint = raw.trim()
   if (!endpoint) return endpoint
@@ -44,6 +46,10 @@ export function feedbackFormEndpoint() {
 
 export function feedbackFormConfigured() {
   return feedbackFormEndpoint().length > 0
+}
+
+export function feedbackTurnstileSiteKey() {
+  return import.meta.env.VITE_FEEDBACK_TURNSTILE_SITE_KEY?.trim() || DEFAULT_TURNSTILE_SITE_KEY
 }
 
 function trimOrEmpty(value: string) {
@@ -183,6 +189,9 @@ export async function submitFeedbackForm(input: FeedbackFormInput, dateStamp: st
   const endpoint = feedbackFormEndpoint()
   if (!endpoint) {
     throw new Error('Configure VITE_FEEDBACK_FORM_ENDPOINT to enable feedback submissions.')
+  }
+  if (!input.turnstileResponse.trim()) {
+    throw new Error('Complete the Cloudflare verification before submitting.')
   }
 
   const response = await fetch(endpoint, {
