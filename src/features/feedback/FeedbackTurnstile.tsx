@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 
 type TurnstileStatus = 'loading' | 'ready' | 'solved' | 'error'
 
@@ -15,8 +15,13 @@ type TurnstileRenderOptions = {
 
 type TurnstileApi = {
   render: (container: HTMLElement, options: TurnstileRenderOptions) => string | number
+  getResponse: (widgetId?: string | number) => string
   reset: (widgetId?: string | number) => void
   remove?: (widgetId?: string | number) => void
+}
+
+export type FeedbackTurnstileHandle = {
+  getResponse: () => string
 }
 
 declare global {
@@ -58,13 +63,13 @@ function loadTurnstileScript() {
   return turnstileScriptPromise
 }
 
-export function FeedbackTurnstile({
-  siteKey,
-  onTokenChange,
-}: {
-  siteKey: string
-  onTokenChange: (token: string) => void
-}) {
+export const FeedbackTurnstile = forwardRef<
+  FeedbackTurnstileHandle,
+  {
+    siteKey: string
+    onTokenChange: (token: string) => void
+  }
+>(function FeedbackTurnstile({ siteKey, onTokenChange }, ref) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const widgetIdRef = useRef<string | number | null>(null)
   const onTokenChangeRef = useRef(onTokenChange)
@@ -80,6 +85,22 @@ export function FeedbackTurnstile({
   useEffect(() => {
     onTokenChangeRef.current = onTokenChange
   }, [onTokenChange])
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      getResponse: () => {
+        if (!window.turnstile || widgetIdRef.current === null) return ''
+
+        try {
+          return window.turnstile.getResponse(widgetIdRef.current).trim()
+        } catch {
+          return ''
+        }
+      },
+    }),
+    [],
+  )
 
   const clearRetryTimer = () => {
     if (retryTimerRef.current !== null) {
@@ -267,7 +288,7 @@ export function FeedbackTurnstile({
       ) : null}
     </section>
   )
-}
+})
 
 function normalizeTurnstileErrorCode(errorCode?: number | string) {
   if (typeof errorCode === 'number' && Number.isFinite(errorCode)) return errorCode

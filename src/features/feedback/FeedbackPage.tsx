@@ -16,7 +16,7 @@ import {
   type FeedbackFormInput,
   type FeedbackSubmissionType,
 } from './feedbackSubmission'
-import { FeedbackTurnstile } from './FeedbackTurnstile'
+import { FeedbackTurnstile, type FeedbackTurnstileHandle } from './FeedbackTurnstile'
 
 const SUBMISSION_TYPES: Array<{
   value: FeedbackSubmissionType
@@ -106,6 +106,7 @@ export function FeedbackPage() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const formRef = useRef<HTMLFormElement | null>(null)
+  const turnstileRef = useRef<FeedbackTurnstileHandle | null>(null)
   const turnstileResponseRef = useRef('')
 
   const [title, setTitle] = useState('')
@@ -157,6 +158,9 @@ export function FeedbackPage() {
   const selectedFeedbackPrompt = summarizeOtherAwareChoice(fbPrompt, fbPromptOther)
 
   const getCurrentTurnstileResponse = () => {
+    const widgetResponse = turnstileRef.current?.getResponse().trim() ?? ''
+    if (widgetResponse) return widgetResponse
+
     const domTurnstileResponse =
       formRef.current
         ?.querySelector<HTMLInputElement>('input[name="cf-turnstile-response"]')
@@ -878,6 +882,7 @@ export function FeedbackPage() {
 
           <div className="mt-5">
             <FeedbackTurnstile
+              ref={turnstileRef}
               key={turnstileSiteKey}
               siteKey={turnstileSiteKey}
               onTokenChange={handleTurnstileTokenChange}
