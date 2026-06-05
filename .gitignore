@@ -15,6 +15,7 @@ tmp
 
 .env
 .env.*
+.env.local
 !.env.example
 !.env.local.example
 
@@ -33,3 +34,4 @@ worker/.wrangler
 *.sln
 *.sw?
 /scripts/emergency
+.agents
