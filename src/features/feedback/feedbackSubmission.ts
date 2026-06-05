@@ -87,102 +87,132 @@ function priorityLabel(priority: number) {
   return `P${Math.max(0, Math.min(4, priority))}`
 }
 
-function appendText(formData: FormData, name: string, value: string) {
-  formData.set(name, trimOrEmpty(value))
+function appendHiddenInput(form: HTMLFormElement, name: string, value: string) {
+  const input = document.createElement('input')
+  input.type = 'hidden'
+  input.name = name
+  input.value = trimOrEmpty(value)
+  form.appendChild(input)
 }
 
-export function buildFeedbackFormData(input: FeedbackFormInput, dateStamp: string) {
-  const formData = new FormData()
+function appendFileInput(form: HTMLFormElement, name: string, files: File[]) {
+  if (files.length === 0) return
 
-  appendText(formData, 'title', input.title)
-  appendText(formData, 'submissionType', input.submissionType)
-  appendText(formData, 'brDetails', input.submissionType === 'Bug Report' ? input.brDetails : '')
-  appendText(
-    formData,
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.name = name
+  input.multiple = true
+
+  const transfer = new DataTransfer()
+  files.slice(0, 3).forEach((file) => {
+    transfer.items.add(file)
+  })
+  input.files = transfer.files
+  form.appendChild(input)
+}
+
+function createSubmissionForm(
+  endpoint: string,
+  input: FeedbackFormInput,
+  dateStamp: string,
+  targetName: string,
+) {
+  const form = document.createElement('form')
+  form.action = endpoint
+  form.method = 'post'
+  form.enctype =
+    input.submissionType === 'Bug Report' && input.brFiles.length > 0
+      ? 'multipart/form-data'
+      : 'application/x-www-form-urlencoded'
+  form.target = targetName
+  form.style.position = 'fixed'
+  form.style.left = '-9999px'
+  form.style.top = '0'
+  form.style.width = '1px'
+  form.style.height = '1px'
+  form.style.opacity = '0'
+  form.style.pointerEvents = 'none'
+
+  appendHiddenInput(form, 'title', input.title)
+  appendHiddenInput(form, 'submissionType', input.submissionType)
+  appendHiddenInput(form, 'brDetails', input.submissionType === 'Bug Report' ? input.brDetails : '')
+  appendHiddenInput(
+    form,
     'brFeature',
     input.submissionType === 'Bug Report'
       ? selectedFeatureLabel(input.brFeature, input.brFeatureOther)
       : '',
   )
-  appendText(
-    formData,
+  appendHiddenInput(
+    form,
     'brFrequency',
     input.submissionType === 'Bug Report' ? bugFrequencyLabel(input.brFrequency) : '',
   )
-  appendText(formData, 'fbDetails', input.submissionType === 'Feedback' ? input.fbDetails : '')
-  appendText(
-    formData,
+  appendHiddenInput(form, 'fbDetails', input.submissionType === 'Feedback' ? input.fbDetails : '')
+  appendHiddenInput(
+    form,
     'fbPrompt',
     input.submissionType === 'Feedback'
       ? selectedPromptLabel(input.fbPrompt, input.fbPromptOther)
       : '',
   )
-  appendText(
-    formData,
+  appendHiddenInput(
+    form,
     'fbSentiment',
     input.submissionType === 'Feedback' ? feedbackSentimentLabel(input.fbSentiment) : '',
   )
-  appendText(
-    formData,
+  appendHiddenInput(
+    form,
     'scPriority',
     input.submissionType === 'Security Concern' ? priorityLabel(input.scPriority) : '',
   )
-  appendText(formData, 'scTarget', input.submissionType === 'Security Concern' ? input.scTarget : '')
-  appendText(
-    formData,
+  appendHiddenInput(
+    form,
+    'scTarget',
+    input.submissionType === 'Security Concern' ? input.scTarget : '',
+  )
+  appendHiddenInput(
+    form,
     'scSensitive',
     input.submissionType === 'Security Concern' ? input.scSensitive : '',
   )
-  appendText(formData, 'prEmail', input.submissionType === 'Privacy Inquiry' ? input.prEmail : '')
-  appendText(
-    formData,
+  appendHiddenInput(form, 'prEmail', input.submissionType === 'Privacy Inquiry' ? input.prEmail : '')
+  appendHiddenInput(
+    form,
     'prType',
     input.submissionType === 'Privacy Inquiry'
       ? selectedPrivacyTypes(input.prType, input.prOther)
       : '',
   )
-  appendText(formData, 'prTarget', input.submissionType === 'Privacy Inquiry' ? input.prTarget : '')
-  appendText(
-    formData,
+  appendHiddenInput(
+    form,
+    'prTarget',
+    input.submissionType === 'Privacy Inquiry' ? input.prTarget : '',
+  )
+  appendHiddenInput(
+    form,
     'prRecipient',
     input.submissionType === 'Privacy Inquiry' ? input.prRecipient : '',
   )
-  appendText(formData, 'prOther', input.submissionType === 'Privacy Inquiry' ? input.prOther : '')
-  appendText(
-    formData,
+  appendHiddenInput(form, 'prOther', input.submissionType === 'Privacy Inquiry' ? input.prOther : '')
+  appendHiddenInput(
+    form,
     'genOpEmail',
     input.submissionType === 'Privacy Inquiry' ? '' : input.genOpEmail,
   )
-  appendText(
-    formData,
+  appendHiddenInput(
+    form,
     'prSigBox',
     input.submissionType === 'Privacy Inquiry' ? input.prSigBox : '',
   )
-  appendText(formData, 'DateStamp', dateStamp)
-  appendText(formData, 'cf-turnstile-response', input.turnstileResponse)
+  appendHiddenInput(form, 'DateStamp', dateStamp)
+  appendHiddenInput(form, 'cf-turnstile-response', input.turnstileResponse)
 
   if (input.submissionType === 'Bug Report') {
-    input.brFiles.slice(0, 3).forEach((file) => {
-      formData.append('brFile', file, file.name)
-    })
+    appendFileInput(form, 'brFile', input.brFiles)
   }
 
-  return formData
-}
-
-async function readEndpointError(response: Response) {
-  try {
-    const body = (await response.clone().json()) as { error?: unknown; message?: unknown }
-    const value = typeof body.error === 'string' ? body.error : body.message
-    return typeof value === 'string' && value.trim() ? value.trim() : ''
-  } catch {
-    try {
-      const text = await response.clone().text()
-      return text.trim().slice(0, 180)
-    } catch {
-      return ''
-    }
-  }
+  return form
 }
 
 export async function submitFeedbackForm(input: FeedbackFormInput, dateStamp: string) {
@@ -194,17 +224,34 @@ export async function submitFeedbackForm(input: FeedbackFormInput, dateStamp: st
     throw new Error('Complete the Cloudflare verification before submitting.')
   }
 
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    mode: 'cors',
-    credentials: 'omit',
-    body: buildFeedbackFormData(input, dateStamp),
-  })
+  const targetName = `feedback-submit-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  const iframe = document.createElement('iframe')
+  iframe.name = targetName
+  iframe.title = 'Feedback submission target'
+  iframe.setAttribute('aria-hidden', 'true')
+  iframe.style.position = 'fixed'
+  iframe.style.left = '-9999px'
+  iframe.style.top = '0'
+  iframe.style.width = '1px'
+  iframe.style.height = '1px'
+  iframe.style.border = '0'
+  iframe.style.opacity = '0'
+  iframe.style.pointerEvents = 'none'
 
-  if (!response.ok) {
-    const detail = await readEndpointError(response)
-    throw new Error(`Feedback endpoint error (${response.status}).${detail ? ` ${detail}` : ''}`)
+  const form = createSubmissionForm(endpoint, input, dateStamp, targetName)
+
+  document.body.appendChild(iframe)
+  document.body.appendChild(form)
+
+  try {
+    form.submit()
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 0)
+    })
+  } finally {
+    window.setTimeout(() => {
+      iframe.remove()
+      form.remove()
+    }, 1000)
   }
-
-  return response
 }

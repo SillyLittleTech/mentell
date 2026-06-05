@@ -107,6 +107,7 @@ export function FeedbackPage() {
   const navigate = useNavigate()
   const formRef = useRef<HTMLFormElement | null>(null)
   const turnstileRef = useRef<FeedbackTurnstileHandle | null>(null)
+  const turnstileFieldRef = useRef<HTMLInputElement | null>(null)
   const turnstileResponseRef = useRef('')
 
   const [title, setTitle] = useState('')
@@ -158,6 +159,9 @@ export function FeedbackPage() {
   const selectedFeedbackPrompt = summarizeOtherAwareChoice(fbPrompt, fbPromptOther)
 
   const getCurrentTurnstileResponse = () => {
+    const hiddenTurnstileValue = turnstileFieldRef.current?.value.trim() ?? ''
+    if (hiddenTurnstileValue) return hiddenTurnstileValue
+
     const widgetResponse = turnstileRef.current?.getResponse().trim() ?? ''
     if (widgetResponse) return widgetResponse
 
@@ -248,6 +252,9 @@ export function FeedbackPage() {
 
   const handleTurnstileTokenChange = (token: string) => {
     turnstileResponseRef.current = token
+    if (turnstileFieldRef.current) {
+      turnstileFieldRef.current.value = token
+    }
     setTurnstileResponse(token)
     if (token) setError(null)
   }
@@ -886,6 +893,13 @@ export function FeedbackPage() {
               key={turnstileSiteKey}
               siteKey={turnstileSiteKey}
               onTokenChange={handleTurnstileTokenChange}
+            />
+            <input
+              ref={turnstileFieldRef}
+              type="hidden"
+              name="cf-turnstile-response"
+              value={turnstileResponse}
+              readOnly
             />
           </div>
 
