@@ -110,8 +110,9 @@ Non-synced users still receive generic weekly reminders on **Eastern Time** if t
 ## Share links
 
 - Creator must be signed in with **sync enabled**.
-- Full URL: `https://projects.sillylittle.tech/mentell/share/XXXX-XXXX-XXXX-XXXX`
-- Viewers need no account; data is a sanitized snapshot in `publicShares/{code}`.
+- Snapshot URL: `https://projects.sillylittle.tech/mentell/share/XXXX-XXXX-XXXX-XXXX`
+- Snapshot links are time-limited. Viewers need no account; data is a sanitized snapshot in `publicShares/{code}`.
+- Protected permanent links use `/share/<uid>` and require a viewer code to unlock an encrypted payload. The owner can renew the same slug instead of generating a new URL.
 
 ## Privacy (operator notes — not for in-app UI)
 

@@ -3,7 +3,7 @@ import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore'
 import { getDb } from '../../db/schema'
 import { clearCharacterAppearance } from '../../features/character/characterAppearanceService'
 import { clearShopInventory } from '../../features/shop/shopInventory'
-import { formatShareCode } from '../../features/share/shareLinkUrl'
+import { shareDocIdCandidates } from '../../features/share/shareLinkUrl'
 import { SCORE_CHANGED_EVENT } from '../../features/score/scoreEvents'
 import { getFirebaseAuth, getFirebaseFirestore } from '../firebase/firebaseApp'
 import { scopedStorageKey } from '../storage/storageScope'
@@ -44,8 +44,8 @@ export async function deleteCloudAccount(uid: string) {
   const linkSnap = await getDocs(collection(fs(), 'users', uid, 'shareLinks'))
   await Promise.all(
     linkSnap.docs.map(async (d) => {
-      const code = formatShareCode(d.id)
-      await deleteDoc(doc(fs(), 'publicShares', code)).catch(() => {})
+      const codes = shareDocIdCandidates(d.id)
+      await Promise.all(codes.map((code) => deleteDoc(doc(fs(), 'publicShares', code)).catch(() => {})))
       await deleteDoc(d.ref)
     }),
   )

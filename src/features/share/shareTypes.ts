@@ -2,6 +2,8 @@ import type { EntryEmotion, EntrySentiment, WarningLevel } from '../../db/schema
 
 export type SharePreset = 'family' | 'friend' | 'professional' | 'custom'
 
+export type ShareAccessMode = 'snapshot' | 'protected'
+
 export type SharePermissions = {
   showStreak: boolean
   showScore: boolean
@@ -41,15 +43,26 @@ export type ShareDashboardPayload = {
   entries: ShareEntryPreview[]
 }
 
+export type SharePayloadEnvelope = {
+  version: 1
+  keySalt: string
+  keyIv: string
+  wrappedDataKey: string
+  payloadIv: string
+  payloadCiphertext: string
+}
+
 export type ShareLinkRecord = {
   code: string
   shareUrl: string
   label: string
   preset: SharePreset
+  mode: ShareAccessMode
   permissions: SharePermissions
   ownerDisplayName: string
   createdAt: number
   expiresAt: number
+  renewalPeriodHours: number
 }
 
 export const SHARE_PRESETS: Record<SharePreset, SharePermissions> = {
@@ -63,7 +76,7 @@ export const SHARE_PRESETS: Record<SharePreset, SharePermissions> = {
     showSituation: true,
     showEmotion: true,
     showEmotionNote: false,
-    showDetails: false,
+    showDetails: true,
     showNotes: false,
     maxDays: 14,
   },
@@ -91,7 +104,7 @@ export const SHARE_PRESETS: Record<SharePreset, SharePermissions> = {
     showSituation: true,
     showEmotion: true,
     showEmotionNote: true,
-    showDetails: false,
+    showDetails: true,
     showNotes: false,
     maxDays: 30,
   },
