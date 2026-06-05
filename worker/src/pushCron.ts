@@ -52,7 +52,7 @@ async function maybeNotifySubscriber(
   const dedupeKey = `sent:${sub.uid ?? sub.clientId ?? kvKey}:${weekKey}`
   if (await env.PUSH_KV.get(dedupeKey)) return
 
-  let title = 'Mentell'
+  const title = 'Mentell'
   let body = 'Your weekly reflection package may be ready — open Mentell to check.'
 
   if (syncUser && sub.uid && env.FIREBASE_SERVICE_ACCOUNT_JSON) {
