@@ -1,11 +1,7 @@
 {
   "name": "mentell",
   "private": true,
-<<<<<<< Updated upstream
   "version": "1.12.0",
-=======
-  "version": "1.11.8",
->>>>>>> Stashed changes
   "type": "module",
   "scripts": {
     "sync:assets": "node scripts/sync-assets.mjs",
