@@ -30,6 +30,8 @@ import { ShareDashboardPage } from './features/share/ShareDashboardPage'
 import { SyncOnboardingBanner } from './features/settings/SyncOnboardingBanner'
 import { AppLegalFooter } from './components/AppLegalFooter'
 import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage'
+import { FeedbackPage, FeedbackThankYouPage } from './features/feedback/FeedbackPage'
+import { SpeechBubbleIcon } from './components/SpeechBubbleIcon'
 import { CharacterLabPage } from './features/character/CharacterLabPage'
 import { CharacterNavIcon } from './features/character/CharacterNavIcon'
 import { DeskCharacterLayout } from './features/character/DeskCharacterLayout'
@@ -201,6 +203,8 @@ function App() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/character-lab" element={<CharacterLabPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/feedback" element={<FeedbackPage />} />
+          <Route path="/feedback/thanks" element={<FeedbackThankYouPage />} />
           {isShareLinksEnabled() ? (
             <Route path="/share/:code" element={<ShareDashboardPage />} />
           ) : null}
@@ -295,6 +299,15 @@ function TopBar({
                 <MobileHeaderMascot />
               </div>
             )}
+
+            <Link
+              to="/feedback"
+              className="paper focus-ring flex h-12 w-12 items-center justify-center rounded-2xl transition hover:-translate-y-[1px] hover:shadow-[0_16px_26px_rgba(0,0,0,0.14)]"
+              aria-label="Open feedback form"
+              title="Feedback form"
+            >
+              <SpeechBubbleIcon className="h-5 w-5" />
+            </Link>
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
