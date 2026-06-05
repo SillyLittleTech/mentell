@@ -1,4 +1,3 @@
-import type { EntryRow } from '../../db/schema'
 import { isAiEnabledLocally } from '../../shared/settings/appSettings'
 import { scopedStorageKey } from '../../shared/storage/storageScope'
 import type { AiProfile } from './aiProfile'
@@ -7,13 +6,14 @@ import {
   getCachedWeeklySummary,
   setCachedWeeklySummary,
 } from './weeklyAiCache'
+import type { AiSummaryMode, WeeklyAiSummaryEntry } from './weeklyAiTypes'
 import { weekKeyForDateKey } from './weeklyStats'
+
+export type { AiSummaryMode, WeeklyAiSummaryEntry } from './weeklyAiTypes'
 
 const HOUR_LIMIT = 24
 const DAY_LIMIT = 80
 const RATE_KEY = scopedStorageKey('mentell.ai.weekly.rate')
-
-export type AiSummaryMode = 'reflection' | 'overview'
 
 type RateState = {
   timestamps: number[]
@@ -83,7 +83,7 @@ export function weeklyAiSummaryEnabled() {
 }
 
 export async function requestWeeklyAiSummary(
-  entries: EntryRow[],
+  entries: WeeklyAiSummaryEntry[],
   options: {
     mode: AiSummaryMode
     profile: AiProfile
@@ -134,9 +134,9 @@ export async function requestWeeklyAiSummary(
       entries: entries.map((entry) => ({
         dateKey: entry.dateKey,
         sentiment: entry.sentiment,
-        emotion: entry.emotionNote || entry.emotion,
-        situation: entry.situation,
-        details: entry.details,
+        emotion: entry.emotionNote || entry.emotion || '',
+        situation: entry.situation ?? '',
+        details: entry.details ?? '',
       })),
     }),
   })
@@ -193,7 +193,7 @@ export function buildAiSummaryMarkdown(input: {
   const lines = [
     '# Mentell weekly AI summary',
     '',
-    `- Week: ${input.weekKey} (${input.startDateKey} → ${input.endDateKey})`,
+    `- Week: ${input.weekKey} (${input.startDateKey} â†’ ${input.endDateKey})`,
     `- Mode: ${input.mode === 'overview' ? 'Narrative overview' : 'Reflection'}`,
     `- Generated: ${new Date().toISOString()}`,
     '',
