@@ -19,6 +19,7 @@ interface ImportMetaEnv {
   readonly VITE_ENABLE_WEEKLY_AI_SUMMARY?: string
   readonly VITE_WEEKLY_AI_ENDPOINT?: string
   readonly VITE_WEEKLY_AI_TOKEN?: string
+  readonly VITE_FEEDBACK_FORM_ENDPOINT?: string
   readonly VITE_ENABLE_FIREBASE?: string
   readonly VITE_ENABLE_FIREBASE_SYNC?: string
   readonly VITE_ENABLE_SHARE_LINKS?: string
