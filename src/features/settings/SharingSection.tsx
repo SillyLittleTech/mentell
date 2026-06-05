@@ -1,18 +1,11 @@
-<<<<<<< Updated upstream
 import { useEffect, useState } from 'react'
-=======
-import { useCallback, useEffect, useState } from 'react'
->>>>>>> Stashed changes
 import { format } from 'date-fns'
 import { isShareLinksEnabled } from '../../shared/features/featureFlags'
 import { useAuthOptional } from '../../shared/firebase/AuthProvider'
 import {
   createShareLink,
   listShareLinks,
-<<<<<<< Updated upstream
   renewShareLink,
-=======
->>>>>>> Stashed changes
   revokeShareLink,
   type ShareLinkRecord,
 } from '../share/shareCodeService'
@@ -34,13 +27,10 @@ function presetDataWindowLabel(preset: SharePreset) {
   return `Includes entries from the last ${days} days (${preset} preset).`
 }
 
-<<<<<<< Updated upstream
 function currentTimestamp() {
   return Date.now()
 }
 
-=======
->>>>>>> Stashed changes
 export function SharingPanel() {
   const enabled = isShareLinksEnabled()
   const auth = useAuthOptional()
@@ -52,7 +42,6 @@ export function SharingPanel() {
   const [label, setLabel] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [hours, setHours] = useState(24 * 7)
-<<<<<<< Updated upstream
   const [persistentShare, setPersistentShare] = useState(false)
   const [viewerCode, setViewerCode] = useState('')
   const [permissions, setPermissions] = useState<SharePermissions>(SHARE_PRESETS.family)
@@ -82,39 +71,12 @@ export function SharingPanel() {
 
   if (!enabled || !auth) return null
 
-=======
-  const [permissions, setPermissions] = useState<SharePermissions>(SHARE_PRESETS.family)
-  const [lastCreatedUrl, setLastCreatedUrl] = useState<string | null>(null)
-
-  const refresh = useCallback(async () => {
-    if (!auth?.user) return
-    const rows = await listShareLinks(auth.user.uid)
-    setLinks(rows)
-  }, [auth?.user])
-
-  useEffect(() => {
-    void refresh()
-  }, [refresh])
-
-  useEffect(() => {
-    if (preset !== 'custom') setPermissions({ ...SHARE_PRESETS[preset] })
-  }, [preset])
-
-  if (!enabled || !auth) return null
-
-  const uid = auth.user?.uid
-
->>>>>>> Stashed changes
   if (!uid) {
     return (
       <section className="paper rounded-3xl p-6">
         <div className="font-paper text-xl">Sharing</div>
         <p className="ink-muted mt-2 text-sm">
-<<<<<<< Updated upstream
           Sign in under Settings &gt; Account to create share links.
-=======
-          Sign in under Settings → Account to create share links.
->>>>>>> Stashed changes
         </p>
       </section>
     )
@@ -125,11 +87,7 @@ export function SharingPanel() {
       <section className="paper rounded-3xl p-6">
         <div className="font-paper text-xl">Sharing</div>
         <p className="ink-muted mt-2 text-sm">
-<<<<<<< Updated upstream
           Cloud sync is off. Enable it in Settings &gt; Features, or sign in again.
-=======
-          Cloud sync is off. Enable it in Settings → Features, or sign in again.
->>>>>>> Stashed changes
         </p>
       </section>
     )
@@ -146,19 +104,12 @@ export function SharingPanel() {
         permissions,
         label: label.trim() || 'Shared view',
         ownerDisplayName: displayName.trim(),
-<<<<<<< Updated upstream
         expiresAt: currentTimestamp() + durationToMs(hours),
         mode: persistentShare ? 'protected' : 'snapshot',
         viewerCode: persistentShare ? viewerCode.trim() : undefined,
       })
       setLastCreatedUrl(record.shareUrl)
       await refreshLinks()
-=======
-        expiresAt: Date.now() + durationToMs(hours),
-      })
-      setLastCreatedUrl(record.shareUrl)
-      await refresh()
->>>>>>> Stashed changes
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not create link')
     } finally {
@@ -166,7 +117,6 @@ export function SharingPanel() {
     }
   }
 
-<<<<<<< Updated upstream
   async function handleRenew(code: string) {
     if (!uid) return
     setBusy(true)
@@ -183,19 +133,13 @@ export function SharingPanel() {
     }
   }
 
-=======
->>>>>>> Stashed changes
   async function copyUrl(url: string) {
     try {
       await navigator.clipboard.writeText(url)
       setToast('Link copied')
       window.setTimeout(() => setToast(null), 2000)
     } catch {
-<<<<<<< Updated upstream
       setToast('Copy failed - select the URL manually')
-=======
-      setToast('Copy failed — select the URL manually')
->>>>>>> Stashed changes
     }
   }
 
@@ -215,13 +159,8 @@ export function SharingPanel() {
     <section className="paper rounded-3xl p-6">
       <div className="font-paper text-xl">Sharing</div>
       <div className="ink-muted mt-1 text-sm">
-<<<<<<< Updated upstream
         Share links for family, friends, or professionals. Snapshot links expire on schedule;
         protected links keep the same slug and ask viewers for a code.
-=======
-        Time-limited links for family, friends, or professionals. Anyone with the link can
-        view selected data until it expires.
->>>>>>> Stashed changes
       </div>
 
       <div className="mt-4 grid gap-3">
@@ -248,7 +187,6 @@ export function SharingPanel() {
           <select
             className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
             value={preset}
-<<<<<<< Updated upstream
             onChange={(e) => {
               const nextPreset = e.target.value as SharePreset
               setPreset(nextPreset)
@@ -256,9 +194,6 @@ export function SharingPanel() {
                 setPermissions({ ...SHARE_PRESETS[nextPreset] })
               }
             }}
-=======
-            onChange={(e) => setPreset(e.target.value as SharePreset)}
->>>>>>> Stashed changes
           >
             <option value="family">Family</option>
             <option value="friend">Friend</option>
@@ -267,7 +202,6 @@ export function SharingPanel() {
           </select>
           <span className="ink-muted text-xs">{presetDataWindowLabel(preset)}</span>
         </label>
-<<<<<<< Updated upstream
 
         <label className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-3 text-sm">
           <span>
@@ -300,10 +234,6 @@ export function SharingPanel() {
 
         <label className="grid gap-1 text-sm">
           <span className="ink-muted">{persistentShare ? 'Renew every' : 'Link expires in'}</span>
-=======
-        <label className="grid gap-1 text-sm">
-          <span className="ink-muted">Link expires in</span>
->>>>>>> Stashed changes
           <select
             className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
             value={hours}
@@ -345,19 +275,11 @@ export function SharingPanel() {
 
       <button
         type="button"
-<<<<<<< Updated upstream
         disabled={busy || (persistentShare && !viewerCode.trim())}
         className="focus-ring mt-4 w-full rounded-2xl border border-[var(--paper-border)] bg-[rgba(42,155,88,0.12)] px-4 py-2 text-sm font-semibold disabled:opacity-60"
         onClick={() => void handleCreate()}
       >
         {persistentShare ? 'Create protected share link' : 'Create share link'}
-=======
-        disabled={busy}
-        className="focus-ring mt-4 w-full rounded-2xl border border-[var(--paper-border)] bg-[rgba(42,155,88,0.12)] px-4 py-2 text-sm font-semibold disabled:opacity-60"
-        onClick={() => void handleCreate()}
-      >
-        Create share link
->>>>>>> Stashed changes
       </button>
 
       {lastCreatedUrl ? (
@@ -368,15 +290,12 @@ export function SharingPanel() {
             className="mt-1 w-full rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-2 font-mono text-xs"
             value={lastCreatedUrl}
           />
-<<<<<<< Updated upstream
           {persistentShare ? (
             <div className="ink-muted mt-2 text-xs">
               Keep the viewer code private. The URL stays the same until you revoke it or renew
               it.
             </div>
           ) : null}
-=======
->>>>>>> Stashed changes
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
@@ -391,11 +310,7 @@ export function SharingPanel() {
                 className="focus-ring rounded-xl border border-[var(--paper-border)] px-3 py-1.5 text-xs"
                 onClick={() => void shareUrl(lastCreatedUrl)}
               >
-<<<<<<< Updated upstream
                 Share...
-=======
-                Share…
->>>>>>> Stashed changes
               </button>
             ) : null}
           </div>
@@ -412,7 +327,6 @@ export function SharingPanel() {
       {links.length > 0 ? (
         <div className="mt-6 space-y-2">
           <div className="font-mono text-xs font-bold uppercase opacity-70">Active links</div>
-<<<<<<< Updated upstream
           {links.map((l) => {
             const isExpired = l.expiresAt <= now
             return (
@@ -457,37 +371,6 @@ export function SharingPanel() {
               </div>
             )
           })}
-=======
-          {links.map((l) => (
-            <div
-              key={l.code}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
-            >
-              <div>
-                <div className="font-medium">{l.label}</div>
-                <div className="ink-muted text-xs">
-                  Expires {format(l.expiresAt, 'PPp')} · {l.preset}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  className="focus-ring rounded-xl border border-[var(--paper-border)] px-2 py-1 text-xs"
-                  onClick={() => void copyUrl(l.shareUrl)}
-                >
-                  Copy
-                </button>
-                <button
-                  type="button"
-                  className="focus-ring rounded-xl border border-[var(--paper-border)] px-2 py-1 text-xs"
-                  onClick={() => void revokeShareLink(uid, l.code).then(refresh)}
-                >
-                  Revoke
-                </button>
-              </div>
-            </div>
-          ))}
->>>>>>> Stashed changes
         </div>
       ) : null}
 

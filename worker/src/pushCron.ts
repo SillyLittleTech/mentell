@@ -52,12 +52,8 @@ async function maybeNotifySubscriber(
   const dedupeKey = `sent:${sub.uid ?? sub.clientId ?? kvKey}:${weekKey}`
   if (await env.PUSH_KV.get(dedupeKey)) return
 
-<<<<<<< Updated upstream
   const title = 'Mentell'
-=======
-  let title = 'Mentell'
->>>>>>> Stashed changes
-  let body = 'Your weekly reflection package may be ready — open Mentell to check.'
+  let body = 'Your weekly reflection package may be ready - open Mentell to check.'
 
   if (syncUser && sub.uid && env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     const hasEntries = await firestoreHasEntriesInRange(
@@ -73,7 +69,7 @@ async function maybeNotifySubscriber(
       weekKey,
     )
     if (hasPackage) return
-    body = `Your package for ${weekKey} is ready — tap to open your week.`
+    body = `Your package for ${weekKey} is ready - tap to open your week.`
   }
 
   try {

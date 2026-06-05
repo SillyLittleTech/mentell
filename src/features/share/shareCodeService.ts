@@ -9,7 +9,6 @@ import {
 } from 'firebase/firestore'
 import { getFirebaseFirestore } from '../../shared/firebase/firebaseApp'
 import { buildSharePayload } from './sharePayloadBuilder'
-<<<<<<< Updated upstream
 import {
   buildShareUrlForCode,
   buildShareUrlForSlug,
@@ -29,15 +28,6 @@ import type {
 export type { ShareLinkRecord } from './shareTypes'
 
 type PublicShareBase = {
-=======
-import { buildShareUrl, formatShareCode, generateShareCode } from './shareLinkUrl'
-import type { ShareLinkRecord, SharePermissions, SharePreset } from './shareTypes'
-
-export type { ShareLinkRecord } from './shareTypes'
-import type { ShareDashboardPayload } from './shareTypes'
-
-export type PublicShareDoc = {
->>>>>>> Stashed changes
   ownerUid: string
   createdAt: number
   expiresAt: Timestamp
@@ -46,7 +36,6 @@ export type PublicShareDoc = {
   permissions: SharePermissions
   ownerDisplayName: string
   shareUrl: string
-<<<<<<< Updated upstream
   payloadUpdatedAt: number
   mode: ShareAccessMode
 }
@@ -63,10 +52,6 @@ export type PublicShareDoc =
 
 type StoredShareLinkRecord = ShareLinkRecord & {
   dataKeyBase64?: string
-=======
-  payload: ShareDashboardPayload
-  payloadUpdatedAt: number
->>>>>>> Stashed changes
 }
 
 function fs() {
@@ -97,7 +82,6 @@ export async function createShareLink(input: {
   label: string
   ownerDisplayName: string
   expiresAt: number
-<<<<<<< Updated upstream
   mode?: ShareAccessMode
   viewerCode?: string
 }): Promise<ShareLinkRecord> {
@@ -150,13 +134,6 @@ export async function createShareLink(input: {
     )
     return baseRecord
   }
-=======
-}): Promise<ShareLinkRecord> {
-  const code = generateShareCode()
-  const shareUrl = buildShareUrl(code)
-  const payload = await buildSharePayload(input.permissions)
-  const now = Date.now()
->>>>>>> Stashed changes
 
   const publicDoc: PublicShareDoc = {
     ownerUid: input.uid,
@@ -167,7 +144,6 @@ export async function createShareLink(input: {
     permissions: input.permissions,
     ownerDisplayName: input.ownerDisplayName,
     shareUrl,
-<<<<<<< Updated upstream
     payloadUpdatedAt: now,
     mode,
     payload,
@@ -177,34 +153,6 @@ export async function createShareLink(input: {
   await setDoc(doc(fs(), 'users', input.uid, 'shareLinks', code), stripUndefined(baseRecord))
 
   return baseRecord
-=======
-    payload,
-    payloadUpdatedAt: now,
-  }
-
-  await setDoc(doc(fs(), 'publicShares', code), stripUndefined(publicDoc))
-  await setDoc(doc(fs(), 'users', input.uid, 'shareLinks', code), {
-    code,
-    shareUrl,
-    label: input.label,
-    preset: input.preset,
-    permissions: input.permissions,
-    ownerDisplayName: input.ownerDisplayName,
-    createdAt: now,
-    expiresAt: input.expiresAt,
-  })
-
-  return {
-    code,
-    shareUrl,
-    label: input.label,
-    preset: input.preset,
-    permissions: input.permissions,
-    ownerDisplayName: input.ownerDisplayName,
-    createdAt: now,
-    expiresAt: input.expiresAt,
-  }
->>>>>>> Stashed changes
 }
 
 export async function listShareLinks(uid: string): Promise<ShareLinkRecord[]> {
@@ -212,19 +160,13 @@ export async function listShareLinks(uid: string): Promise<ShareLinkRecord[]> {
   const now = Date.now()
   const rows: ShareLinkRecord[] = []
   for (const d of snap.docs) {
-<<<<<<< Updated upstream
     const data = d.data() as StoredShareLinkRecord
     if (data.mode === 'protected' || data.expiresAt > now) rows.push(data)
-=======
-    const data = d.data() as ShareLinkRecord
-    if (data.expiresAt > now) rows.push(data)
->>>>>>> Stashed changes
   }
   return rows.sort((a, b) => b.createdAt - a.createdAt)
 }
 
 export async function revokeShareLink(uid: string, code: string) {
-<<<<<<< Updated upstream
   const candidates = shareDocIdCandidates(code)
   await Promise.all(
     candidates.map(async (candidate) => {
@@ -284,24 +226,11 @@ export async function refreshShareLinkPayload(uid: string, code: string) {
     snap = await getDoc(ref)
     if (!snap.exists()) return
   }
-=======
-  const normalized = formatShareCode(code)
-  await deleteDoc(doc(fs(), 'publicShares', normalized))
-  await deleteDoc(doc(fs(), 'users', uid, 'shareLinks', normalized))
-}
-
-export async function refreshShareLinkPayload(uid: string, code: string) {
-  const normalized = formatShareCode(code)
-  const ref = doc(fs(), 'publicShares', normalized)
-  const snap = await getDoc(ref)
-  if (!snap.exists()) return
->>>>>>> Stashed changes
   const data = snap.data() as PublicShareDoc
   if (data.ownerUid !== uid) return
   if (data.expiresAt.toMillis() <= Date.now()) return
 
   const payload = await buildSharePayload(data.permissions)
-<<<<<<< Updated upstream
   if (data.mode === 'protected') {
     const linkSnap = await getDoc(doc(fs(), 'users', uid, 'shareLinks', snap.id))
     if (!linkSnap.exists()) return
@@ -323,8 +252,6 @@ export async function refreshShareLinkPayload(uid: string, code: string) {
     return
   }
 
-=======
->>>>>>> Stashed changes
   await setDoc(
     ref,
     stripUndefined({
@@ -337,7 +264,6 @@ export async function refreshShareLinkPayload(uid: string, code: string) {
 
 export async function refreshAllActiveShareLinks(uid: string) {
   const links = await listShareLinks(uid)
-<<<<<<< Updated upstream
   const now = Date.now()
   await Promise.all(links.filter((l) => l.expiresAt > now).map((l) => refreshShareLinkPayload(uid, l.code)))
 }
@@ -348,14 +274,6 @@ export async function fetchPublicShare(code: string): Promise<PublicShareDoc | n
   if (!snap.exists() && candidates[1]) {
     snap = await getDoc(doc(fs(), 'publicShares', candidates[1]))
   }
-=======
-  await Promise.all(links.map((l) => refreshShareLinkPayload(uid, l.code)))
-}
-
-export async function fetchPublicShare(code: string): Promise<PublicShareDoc | null> {
-  const normalized = formatShareCode(code)
-  const snap = await getDoc(doc(fs(), 'publicShares', normalized))
->>>>>>> Stashed changes
   if (!snap.exists()) return null
   const data = snap.data() as PublicShareDoc
   if (data.expiresAt.toMillis() <= Date.now()) return null

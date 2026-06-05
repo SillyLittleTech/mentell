@@ -1,7 +1,4 @@
-<<<<<<< Updated upstream
-=======
 import type { EntryRow } from '../../db/schema'
->>>>>>> Stashed changes
 import { isAiEnabledLocally } from '../../shared/settings/appSettings'
 import { scopedStorageKey } from '../../shared/storage/storageScope'
 import type { AiProfile } from './aiProfile'
@@ -10,25 +7,15 @@ import {
   getCachedWeeklySummary,
   setCachedWeeklySummary,
 } from './weeklyAiCache'
-<<<<<<< Updated upstream
 import type { AiSummaryMode, WeeklyAiSummaryEntry } from './weeklyAiTypes'
 import { weekKeyForDateKey } from './weeklyStats'
 
 export type { AiSummaryMode, WeeklyAiSummaryEntry } from './weeklyAiTypes'
 
-=======
-import { weekKeyForDateKey } from './weeklyStats'
-
->>>>>>> Stashed changes
 const HOUR_LIMIT = 24
 const DAY_LIMIT = 80
 const RATE_KEY = scopedStorageKey('mentell.ai.weekly.rate')
 
-<<<<<<< Updated upstream
-=======
-export type AiSummaryMode = 'reflection' | 'overview'
-
->>>>>>> Stashed changes
 type RateState = {
   timestamps: number[]
 }
@@ -69,7 +56,7 @@ function consumeRateAllowance(now: number) {
   return { ok: true as const }
 }
 
-/** Strip optional quotes; dotenv may leave them when values are quoted in .env.local */
+/** Strip optional quotes; dotenv may leave them when values are quoted in .env.local. */
 function normalizeEnvToken(raw: string | undefined) {
   if (!raw) return undefined
   const t = raw.trim()
@@ -97,11 +84,7 @@ export function weeklyAiSummaryEnabled() {
 }
 
 export async function requestWeeklyAiSummary(
-<<<<<<< Updated upstream
-  entries: WeeklyAiSummaryEntry[],
-=======
-  entries: EntryRow[],
->>>>>>> Stashed changes
+  entries: WeeklyAiSummaryEntry[] | EntryRow[],
   options: {
     mode: AiSummaryMode
     profile: AiProfile
@@ -152,15 +135,9 @@ export async function requestWeeklyAiSummary(
       entries: entries.map((entry) => ({
         dateKey: entry.dateKey,
         sentiment: entry.sentiment,
-<<<<<<< Updated upstream
         emotion: entry.emotionNote || entry.emotion || '',
         situation: entry.situation ?? '',
         details: entry.details ?? '',
-=======
-        emotion: entry.emotionNote || entry.emotion,
-        situation: entry.situation,
-        details: entry.details,
->>>>>>> Stashed changes
       })),
     }),
   })
@@ -217,11 +194,7 @@ export function buildAiSummaryMarkdown(input: {
   const lines = [
     '# Mentell weekly AI summary',
     '',
-<<<<<<< Updated upstream
-    `- Week: ${input.weekKey} (${input.startDateKey} â†’ ${input.endDateKey})`,
-=======
-    `- Week: ${input.weekKey} (${input.startDateKey} → ${input.endDateKey})`,
->>>>>>> Stashed changes
+    `- Week: ${input.weekKey} (${input.startDateKey} -> ${input.endDateKey})`,
     `- Mode: ${input.mode === 'overview' ? 'Narrative overview' : 'Reflection'}`,
     `- Generated: ${new Date().toISOString()}`,
     '',
