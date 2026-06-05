@@ -1,9 +1,8 @@
-import type { EntryRow } from '../../db/schema'
 import { getSkipAiCache, isDebugMode } from '../../shared/debug/debugFlags'
 import { scopedStorageKey } from '../../shared/storage/storageScope'
 import type { AiProfile } from './aiProfile'
 import { profileFingerprint } from './aiProfile'
-import type { AiSummaryMode } from './weeklyAiSummary'
+import type { AiSummaryMode, WeeklyAiSummaryEntry } from './weeklyAiTypes'
 
 const CACHE_KEY = scopedStorageKey('mentell.ai.weekly.cache')
 
@@ -42,16 +41,21 @@ function writeAll(entries: WeeklyAiCacheEntry[]) {
   localStorage.setItem(CACHE_KEY, JSON.stringify(entries))
 }
 
-export function entriesFingerprint(entries: EntryRow[]) {
+export function entriesFingerprint(entries: WeeklyAiSummaryEntry[]) {
   const stable = [...entries]
-    .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.createdAt - b.createdAt)
+    .sort(
+      (a, b) =>
+        a.dateKey.localeCompare(b.dateKey) ||
+        (a.createdAt ?? 0) - (b.createdAt ?? 0) ||
+        (a.id ?? '').localeCompare(b.id ?? ''),
+    )
     .map((e) => ({
-      id: e.id,
-      createdAt: e.createdAt,
+      id: e.id ?? '',
+      createdAt: e.createdAt ?? 0,
       sentiment: e.sentiment,
-      situation: e.situation,
-      details: e.details,
-      emotion: e.emotionNote || e.emotion,
+      situation: e.situation ?? '',
+      details: e.details ?? '',
+      emotion: e.emotionNote || e.emotion || '',
     }))
   return JSON.stringify(stable)
 }
@@ -59,7 +63,7 @@ export function entriesFingerprint(entries: EntryRow[]) {
 export function getCachedWeeklySummary(input: {
   weekKey: string
   mode: AiSummaryMode
-  entries: EntryRow[]
+  entries: WeeklyAiSummaryEntry[]
   profile: AiProfile
 }): string | null {
   if (isDebugMode() && getSkipAiCache()) return null
@@ -79,7 +83,7 @@ export function getCachedWeeklySummary(input: {
 export function setCachedWeeklySummary(input: {
   weekKey: string
   mode: AiSummaryMode
-  entries: EntryRow[]
+  entries: WeeklyAiSummaryEntry[]
   profile: AiProfile
   summary: string
 }) {
