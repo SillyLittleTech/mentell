@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+<<<<<<< Updated upstream
 import { format } from 'date-fns'
 import { Link, useParams } from 'react-router-dom'
 import { isShareLinksEnabled } from '../../shared/features/featureFlags'
@@ -52,11 +53,33 @@ function ShareDashboardPageInner({ code, enabled }: { code: string; enabled: boo
         setDoc(null)
       })
 
+=======
+import { useParams } from 'react-router-dom'
+import { format } from 'date-fns'
+import { fetchPublicShare, type PublicShareDoc } from './shareCodeService'
+import { isShareLinksEnabled } from '../../shared/features/featureFlags'
+
+export function ShareDashboardPage() {
+  const { code = '' } = useParams()
+  const [doc, setDoc] = useState<PublicShareDoc | null | undefined>(undefined)
+  const enabled = isShareLinksEnabled()
+
+  useEffect(() => {
+    if (!enabled || !code) {
+      setDoc(null)
+      return
+    }
+    let active = true
+    void fetchPublicShare(code).then((d) => {
+      if (active) setDoc(d)
+    })
+>>>>>>> Stashed changes
     return () => {
       active = false
     }
   }, [code, enabled])
 
+<<<<<<< Updated upstream
   async function unlockProtectedShare(docEntry: PublicShareDoc) {
     if (docEntry.mode !== 'protected') return
     const trimmed = unlockCode.trim()
@@ -122,6 +145,8 @@ function ShareDashboardPageInner({ code, enabled }: { code: string; enabled: boo
     })
   }
 
+=======
+>>>>>>> Stashed changes
   if (!enabled) {
     return (
       <div className="desk flex min-h-[100svh] items-center justify-center p-6">
@@ -136,7 +161,11 @@ function ShareDashboardPageInner({ code, enabled }: { code: string; enabled: boo
   if (doc === undefined) {
     return (
       <div className="desk flex min-h-[100svh] items-center justify-center p-6">
+<<<<<<< Updated upstream
         <div className="ink-muted font-mono text-sm">Loading shared view...</div>
+=======
+        <div className="ink-muted font-mono text-sm">Loading shared view…</div>
+>>>>>>> Stashed changes
       </div>
     )
   }
@@ -145,6 +174,7 @@ function ShareDashboardPageInner({ code, enabled }: { code: string; enabled: boo
     return (
       <div className="desk flex min-h-[100svh] items-center justify-center p-6">
         <div className="paper max-w-md rounded-3xl p-6 text-center">
+<<<<<<< Updated upstream
           <div className="font-paper text-xl">Shared view unavailable</div>
           <div className="ink-muted mt-2 text-sm">
             {loadError ?? 'This share link has been revoked or expired.'}
@@ -155,17 +185,27 @@ function ShareDashboardPageInner({ code, enabled }: { code: string; enabled: boo
           >
             Return to Mentell
           </Link>
+=======
+          <div className="font-paper text-xl">Link unavailable</div>
+          <div className="ink-muted mt-2 text-sm">
+            This share link is invalid or has expired.
+          </div>
+>>>>>>> Stashed changes
         </div>
       </div>
     )
   }
 
+<<<<<<< Updated upstream
   const resolvedPayload = doc.mode === 'snapshot' ? doc.payload : payload
   const canGenerateOverview =
     weeklyAiSummaryEnabled() &&
     doc.permissions.showRecentEntries &&
     resolvedPayload !== null &&
     resolvedPayload.entries.length > 0
+=======
+  const p = doc.payload
+>>>>>>> Stashed changes
   const expires = format(doc.expiresAt.toDate(), 'PPp')
 
   return (
@@ -177,6 +217,7 @@ function ShareDashboardPageInner({ code, enabled }: { code: string; enabled: boo
             <div className="ink-muted mt-1 text-sm">Shared by {doc.ownerDisplayName}</div>
           ) : null}
           {doc.label ? <div className="mt-2 font-medium">{doc.label}</div> : null}
+<<<<<<< Updated upstream
           <div className="ink-muted mt-2 text-xs">
             Read-only | {doc.mode === 'protected' ? 'renew by' : 'expires'} {expires}
           </div>
@@ -350,6 +391,59 @@ function ShareDashboardPageInner({ code, enabled }: { code: string; enabled: boo
                   </li>
                 )
               })}
+=======
+          <div className="ink-muted mt-2 text-xs">Read-only · expires {expires}</div>
+        </header>
+
+        <section className="paper rounded-3xl p-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            {doc.permissions.showEntryCounts ? (
+              <Stat label="Entries" value={String(p.entryCount)} />
+            ) : null}
+            {doc.permissions.showSentimentBreakdown ? (
+              <>
+                <Stat label="+" value={String(p.positives)} />
+                <Stat label="=" value={String(p.mixed)} />
+                <Stat label="-" value={String(p.negatives)} />
+              </>
+            ) : null}
+            {doc.permissions.showWarningsCount ? (
+              <Stat label="Warnings" value={String(p.warnings)} />
+            ) : null}
+            {doc.permissions.showStreak && p.streak !== undefined ? (
+              <Stat label="Streak" value={String(p.streak)} />
+            ) : null}
+            {doc.permissions.showScore && p.score !== undefined ? (
+              <Stat label="Score" value={String(p.score)} />
+            ) : null}
+          </div>
+        </section>
+
+        {doc.permissions.showRecentEntries && p.entries.length > 0 ? (
+          <section className="paper rounded-3xl p-6">
+            <div className="font-paper text-lg">Recent entries</div>
+            <ul className="mt-4 space-y-3">
+              {p.entries.map((e) => (
+                <li
+                  key={e.id}
+                  className="rounded-2xl border border-[var(--paper-border)] p-4"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-mono text-sm">{e.dateKey}</span>
+                    <span className="font-mono text-lg font-bold">{e.sentiment}</span>
+                  </div>
+                  {e.situation ? (
+                    <div className="mt-2 font-medium">{e.situation}</div>
+                  ) : null}
+                  {e.emotion ? (
+                    <div className="ink-muted mt-1 text-sm">Emotion: {e.emotion}</div>
+                  ) : null}
+                  {e.details ? (
+                    <div className="ink-muted mt-2 whitespace-pre-wrap text-sm">{e.details}</div>
+                  ) : null}
+                </li>
+              ))}
+>>>>>>> Stashed changes
             </ul>
           </section>
         ) : null}
@@ -371,6 +465,7 @@ function Stat({ label, value }: { label: string; value: string }) {
     </div>
   )
 }
+<<<<<<< Updated upstream
 
 function styleForSentiment(sentiment: '+' | '-' | '=') {
   if (sentiment === '+') {
@@ -399,3 +494,5 @@ function labelForEmotion(emotion: string) {
   if (emotion === 'angry') return 'Angry'
   return 'Other'
 }
+=======
+>>>>>>> Stashed changes

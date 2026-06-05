@@ -66,8 +66,13 @@ npm run deploy
 }
 ```
 
+<<<<<<< Updated upstream
 - `mode`: `reflection` (default) or `overview` (objective third-person narrative per day)
 - `profile`: optional; sanitized server-side. Used for reflection tone, ignored for overview objectivity.
+=======
+- `mode`: `reflection` (default) or `overview` (third-person narrative per day)
+- `profile`: optional; sanitized server-side (untrusted user context only)
+>>>>>>> Stashed changes
 
 CORS allows browser requests from:
 

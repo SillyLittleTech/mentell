@@ -1,4 +1,8 @@
+<<<<<<< Updated upstream
 import { Link, Navigate, Route, useLocation } from 'react-router-dom'
+=======
+import { Link, Navigate, Route } from 'react-router-dom'
+>>>>>>> Stashed changes
 import { AnimatedRoutes } from './shared/motion/AnimatedRoutes'
 import { AnimatePresence } from 'framer-motion'
 import { useTheme } from './shared/theme/useTheme'
@@ -48,8 +52,11 @@ type StreakOutcomeAnimation =
 type ScoreChangeOptions = { deferOverlay?: boolean; streakOutcome?: StreakOutcomeAnimation }
 
 function App() {
+<<<<<<< Updated upstream
   const location = useLocation()
   const shareRouteActive = location.pathname.startsWith('/share/')
+=======
+>>>>>>> Stashed changes
   const [score, setScore] = useState(() => getScoreSnapshot())
   const [incomingDelta, setIncomingDelta] = useState<number | null>(null)
   const [incomingHint, setIncomingHint] = useState<string | null>(null)
@@ -162,6 +169,7 @@ function App() {
   }
 
   return (
+<<<<<<< Updated upstream
     <div className={shareRouteActive ? 'min-h-[100svh]' : 'desk px-4 py-6'}>
       {!shareRouteActive ? <CharacterTabIconSync /> : null}
       {!shareRouteActive ? <ShopCosmeticEffects /> : null}
@@ -182,6 +190,20 @@ function App() {
             : `mx-auto mt-6 w-full max-w-4xl ${streakFocusActive ? 'streak-focus-dim' : ''}`
         }
       >
+=======
+    <div className="desk px-4 py-6">
+      <CharacterTabIconSync />
+      <ShopCosmeticEffects />
+      <TopBar
+        score={score}
+        incomingHint={incomingHint}
+        streakOutcome={streakOutcome}
+        focusActive={streakFocusActive}
+      />
+      <LeftDeskMascot />
+      <StickyLayer />
+      <main className={`mx-auto mt-6 w-full max-w-4xl ${streakFocusActive ? 'streak-focus-dim' : ''}`}>
+>>>>>>> Stashed changes
         <AnimatedRoutes>
           <Route
             path="/"
@@ -208,6 +230,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </AnimatedRoutes>
       </main>
+<<<<<<< Updated upstream
       {!shareRouteActive ? (
         <>
           <div className={streakFocusActive ? 'streak-focus-dim' : ''}>
@@ -228,6 +251,24 @@ function App() {
           <DebugPanel />
         </>
       ) : null}
+=======
+      <div className={streakFocusActive ? 'streak-focus-dim' : ''}>
+        <AppLegalFooter />
+      </div>
+      <PackageAlert onAward={handleScoreChange} />
+      <AnimatePresence>
+        {incomingDelta !== null ? (
+          <ScoreBurst
+            key={`${incomingDelta}-${incomingHint ?? ''}`}
+            delta={incomingDelta}
+            totalAfter={score.total}
+            hint={incomingHint}
+            onDone={clearScoreOverlay}
+          />
+        ) : null}
+      </AnimatePresence>
+      <DebugPanel />
+>>>>>>> Stashed changes
     </div>
   )
 }

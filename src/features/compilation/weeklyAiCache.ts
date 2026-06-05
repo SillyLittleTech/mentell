@@ -1,8 +1,16 @@
+<<<<<<< Updated upstream
+=======
+import type { EntryRow } from '../../db/schema'
+>>>>>>> Stashed changes
 import { getSkipAiCache, isDebugMode } from '../../shared/debug/debugFlags'
 import { scopedStorageKey } from '../../shared/storage/storageScope'
 import type { AiProfile } from './aiProfile'
 import { profileFingerprint } from './aiProfile'
+<<<<<<< Updated upstream
 import type { AiSummaryMode, WeeklyAiSummaryEntry } from './weeklyAiTypes'
+=======
+import type { AiSummaryMode } from './weeklyAiSummary'
+>>>>>>> Stashed changes
 
 const CACHE_KEY = scopedStorageKey('mentell.ai.weekly.cache')
 
@@ -41,6 +49,7 @@ function writeAll(entries: WeeklyAiCacheEntry[]) {
   localStorage.setItem(CACHE_KEY, JSON.stringify(entries))
 }
 
+<<<<<<< Updated upstream
 export function entriesFingerprint(entries: WeeklyAiSummaryEntry[]) {
   const stable = [...entries]
     .sort(
@@ -56,6 +65,18 @@ export function entriesFingerprint(entries: WeeklyAiSummaryEntry[]) {
       situation: e.situation ?? '',
       details: e.details ?? '',
       emotion: e.emotionNote || e.emotion || '',
+=======
+export function entriesFingerprint(entries: EntryRow[]) {
+  const stable = [...entries]
+    .sort((a, b) => a.dateKey.localeCompare(b.dateKey) || a.createdAt - b.createdAt)
+    .map((e) => ({
+      id: e.id,
+      createdAt: e.createdAt,
+      sentiment: e.sentiment,
+      situation: e.situation,
+      details: e.details,
+      emotion: e.emotionNote || e.emotion,
+>>>>>>> Stashed changes
     }))
   return JSON.stringify(stable)
 }
@@ -63,7 +84,11 @@ export function entriesFingerprint(entries: WeeklyAiSummaryEntry[]) {
 export function getCachedWeeklySummary(input: {
   weekKey: string
   mode: AiSummaryMode
+<<<<<<< Updated upstream
   entries: WeeklyAiSummaryEntry[]
+=======
+  entries: EntryRow[]
+>>>>>>> Stashed changes
   profile: AiProfile
 }): string | null {
   if (isDebugMode() && getSkipAiCache()) return null
@@ -83,7 +108,11 @@ export function getCachedWeeklySummary(input: {
 export function setCachedWeeklySummary(input: {
   weekKey: string
   mode: AiSummaryMode
+<<<<<<< Updated upstream
   entries: WeeklyAiSummaryEntry[]
+=======
+  entries: EntryRow[]
+>>>>>>> Stashed changes
   profile: AiProfile
   summary: string
 }) {

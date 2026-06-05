@@ -2,6 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /publicShares/{shareCode} {
+<<<<<<< Updated upstream
       function isOwner() {
         return request.auth != null && resource.data.ownerUid == request.auth.uid;
       }
@@ -27,6 +28,16 @@ service cloud.firestore {
         ])
         && (hasSnapshotPayload() || hasProtectedPayload());
       allow update, delete: if isOwner();
+=======
+      allow read: if resource.data.expiresAt > request.time;
+      allow create: if request.auth != null
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'ownerUid', 'expiresAt', 'permissions', 'payload', 'shareUrl'
+        ]);
+      allow update, delete: if request.auth != null
+        && resource.data.ownerUid == request.auth.uid;
+>>>>>>> Stashed changes
     }
 
     match /users/{userId} {
