@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { isShareLinksEnabled } from '../../shared/features/featureFlags'
+import { decryptProtectedShareEnvelope } from './shareCrypto'
+import type { ShareDashboardPayload } from './shareTypes'
 import {
   requestWeeklyAiSummary,
   weeklyAiSummaryEnabled,
@@ -11,39 +13,80 @@ import { fetchPublicShare, type PublicShareDoc } from './shareCodeService'
 
 export function ShareDashboardPage() {
   const { code = '' } = useParams()
+  const enabled = isShareLinksEnabled()
+  return <ShareDashboardPageInner key={code} code={code} enabled={enabled} />
+}
+
+function ShareDashboardPageInner({ code, enabled }: { code: string; enabled: boolean }) {
   const [doc, setDoc] = useState<PublicShareDoc | null | undefined>(undefined)
+  const [payload, setPayload] = useState<ShareDashboardPayload | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set())
   const [summary, setSummary] = useState<string | null>(null)
   const [summaryBusy, setSummaryBusy] = useState(false)
   const [summaryError, setSummaryError] = useState<string | null>(null)
-  const enabled = isShareLinksEnabled()
+  const [unlockBusy, setUnlockBusy] = useState(false)
+  const [unlockError, setUnlockError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const unlockStorageKey = code ? `mentell.share.unlock.${code}` : ''
+  const [unlockCode, setUnlockCode] = useState(() =>
+    unlockStorageKey ? sessionStorage.getItem(unlockStorageKey) ?? '' : '',
+  )
 
   useEffect(() => {
-    setSummary(null)
-    setSummaryError(null)
-    setSummaryBusy(false)
-    setExpandedIds(new Set())
-
     if (!enabled || !code) {
-      setDoc(null)
       return
     }
 
     let active = true
-    void fetchPublicShare(code).then((d) => {
-      if (active) setDoc(d)
-    })
+    void fetchPublicShare(code)
+      .then((d) => {
+        if (!active) return
+        setDoc(d)
+        if (d?.mode === 'snapshot') {
+          setPayload(d.payload)
+        }
+      })
+      .catch((error) => {
+        if (!active) return
+        setLoadError(error instanceof Error ? error.message : 'Could not load shared view.')
+        setDoc(null)
+      })
+
     return () => {
       active = false
     }
   }, [code, enabled])
 
-  async function generateOverview(docEntry: PublicShareDoc) {
-    if (!docEntry.payload.entries.length) return
+  async function unlockProtectedShare(docEntry: PublicShareDoc) {
+    if (docEntry.mode !== 'protected') return
+    const trimmed = unlockCode.trim()
+    if (!trimmed) {
+      setUnlockError('Enter the viewer code to open this protected link.')
+      return
+    }
+
+    setUnlockBusy(true)
+    setUnlockError(null)
+    try {
+      const nextPayload = await decryptProtectedShareEnvelope(docEntry.payloadEnvelope, trimmed)
+      setPayload(nextPayload)
+      if (unlockStorageKey) {
+        sessionStorage.setItem(unlockStorageKey, trimmed)
+      }
+    } catch {
+      setPayload(null)
+      setUnlockError('That code did not unlock this shared view.')
+    } finally {
+      setUnlockBusy(false)
+    }
+  }
+
+  async function generateOverview(docEntry: PublicShareDoc, currentPayload: ShareDashboardPayload) {
+    if (!currentPayload.entries.length) return
     setSummaryBusy(true)
     setSummaryError(null)
     try {
-      const entries: WeeklyAiSummaryEntry[] = docEntry.payload.entries.map((entry) => ({
+      const entries: WeeklyAiSummaryEntry[] = currentPayload.entries.map((entry) => ({
         id: entry.id,
         createdAt: entry.createdAt,
         dateKey: entry.dateKey,
@@ -102,19 +145,28 @@ export function ShareDashboardPage() {
     return (
       <div className="desk flex min-h-[100svh] items-center justify-center p-6">
         <div className="paper max-w-md rounded-3xl p-6 text-center">
-          <div className="font-paper text-xl">Link unavailable</div>
+          <div className="font-paper text-xl">Shared view unavailable</div>
           <div className="ink-muted mt-2 text-sm">
-            This share link is invalid or has expired.
+            {loadError ?? 'This share link has been revoked or expired.'}
           </div>
+          <Link
+            to="/"
+            className="focus-ring mt-4 inline-flex rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold"
+          >
+            Return to Mentell
+          </Link>
         </div>
       </div>
     )
   }
 
-  const p = doc.payload
-  const expires = format(doc.expiresAt.toDate(), 'PPp')
+  const resolvedPayload = doc.mode === 'snapshot' ? doc.payload : payload
   const canGenerateOverview =
-    weeklyAiSummaryEnabled() && doc.permissions.showRecentEntries && p.entries.length > 0
+    weeklyAiSummaryEnabled() &&
+    doc.permissions.showRecentEntries &&
+    resolvedPayload !== null &&
+    resolvedPayload.entries.length > 0
+  const expires = format(doc.expiresAt.toDate(), 'PPp')
 
   return (
     <div className="desk min-h-[100svh] px-4 py-8">
@@ -125,34 +177,81 @@ export function ShareDashboardPage() {
             <div className="ink-muted mt-1 text-sm">Shared by {doc.ownerDisplayName}</div>
           ) : null}
           {doc.label ? <div className="mt-2 font-medium">{doc.label}</div> : null}
-          <div className="ink-muted mt-2 text-xs">Read-only | expires {expires}</div>
+          <div className="ink-muted mt-2 text-xs">
+            Read-only | {doc.mode === 'protected' ? 'renew by' : 'expires'} {expires}
+          </div>
         </header>
 
-        <section className="paper rounded-3xl p-6">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {doc.permissions.showEntryCounts ? (
-              <Stat label="Entries" value={String(p.entryCount)} />
-            ) : null}
-            {doc.permissions.showSentimentBreakdown ? (
-              <>
-                <Stat label="+" value={String(p.positives)} />
-                <Stat label="=" value={String(p.mixed)} />
-                <Stat label="-" value={String(p.negatives)} />
-              </>
-            ) : null}
-            {doc.permissions.showWarningsCount ? (
-              <Stat label="Warnings" value={String(p.warnings)} />
-            ) : null}
-            {doc.permissions.showStreak && p.streak !== undefined ? (
-              <Stat label="Streak" value={String(p.streak)} />
-            ) : null}
-            {doc.permissions.showScore && p.score !== undefined ? (
-              <Stat label="Score" value={String(p.score)} />
-            ) : null}
-          </div>
-        </section>
+        {resolvedPayload ? (
+          <section className="paper rounded-3xl p-6">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {doc.permissions.showEntryCounts ? (
+                <Stat label="Entries" value={String(resolvedPayload.entryCount)} />
+              ) : null}
+              {doc.permissions.showSentimentBreakdown ? (
+                <>
+                  <Stat label="+" value={String(resolvedPayload.positives)} />
+                  <Stat label="=" value={String(resolvedPayload.mixed)} />
+                  <Stat label="-" value={String(resolvedPayload.negatives)} />
+                </>
+              ) : null}
+              {doc.permissions.showWarningsCount ? (
+                <Stat label="Warnings" value={String(resolvedPayload.warnings)} />
+              ) : null}
+              {doc.permissions.showStreak && resolvedPayload.streak !== undefined ? (
+                <Stat label="Streak" value={String(resolvedPayload.streak)} />
+              ) : null}
+              {doc.permissions.showScore && resolvedPayload.score !== undefined ? (
+                <Stat label="Score" value={String(resolvedPayload.score)} />
+              ) : null}
+            </div>
+          </section>
+        ) : null}
 
-        {canGenerateOverview ? (
+        {doc.mode === 'protected' && !resolvedPayload ? (
+          <section className="paper rounded-3xl p-6">
+            <div className="font-paper text-lg">Protected link</div>
+            <div className="ink-muted mt-1 text-sm">
+              Enter the viewer code to unlock the latest shared data.
+            </div>
+            <div className="mt-4 grid gap-2">
+              <input
+                className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
+                value={unlockCode}
+                onChange={(e) => setUnlockCode(e.target.value)}
+                placeholder="Viewer code"
+                autoComplete="off"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') void unlockProtectedShare(doc)
+                }}
+              />
+              <button
+                type="button"
+                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold"
+                disabled={unlockBusy}
+                onClick={() => void unlockProtectedShare(doc)}
+              >
+                {unlockBusy ? 'Unlocking...' : 'Unlock shared view'}
+              </button>
+            </div>
+            {unlockError ? (
+              <div className="mt-3 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm text-[var(--danger)]">
+                {unlockError}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {doc.mode === 'protected' && resolvedPayload ? (
+          <section className="paper rounded-3xl p-6">
+            <div className="font-paper text-lg">Protected view unlocked</div>
+            <div className="ink-muted mt-1 text-sm">
+              This view will keep using the same slug until it is revoked or renewed.
+            </div>
+          </section>
+        ) : null}
+
+        {canGenerateOverview && resolvedPayload ? (
           <section className="paper rounded-3xl p-6">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -165,7 +264,7 @@ export function ShareDashboardPage() {
                 type="button"
                 className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold"
                 disabled={summaryBusy}
-                onClick={() => void generateOverview(doc)}
+                onClick={() => void generateOverview(doc, resolvedPayload)}
               >
                 {summaryBusy ? 'Generating...' : summary ? 'Regenerate overview' : 'Generate overview'}
               </button>
@@ -185,11 +284,11 @@ export function ShareDashboardPage() {
           </section>
         ) : null}
 
-        {doc.permissions.showRecentEntries && p.entries.length > 0 ? (
+        {doc.permissions.showRecentEntries && resolvedPayload?.entries.length ? (
           <section className="paper rounded-3xl p-6">
             <div className="font-paper text-lg">Recent entries</div>
             <ul className="mt-4 space-y-3">
-              {p.entries.map((e) => {
+              {resolvedPayload.entries.map((e) => {
                 const expanded = expandedIds.has(e.id)
                 const warningFlagged = e.warningLevel === 'warn'
                 return (

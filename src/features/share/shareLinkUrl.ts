@@ -15,6 +15,16 @@ export function formatShareCode(raw: string) {
   return parts.join('-')
 }
 
+export function normalizeShareSlug(raw: string) {
+  return raw.trim()
+}
+
+export function shareDocIdCandidates(raw: string) {
+  const exact = normalizeShareSlug(raw)
+  const legacy = formatShareCode(raw)
+  return exact === legacy ? [exact] : [exact, legacy]
+}
+
 export function generateShareCode() {
   const bytes = new Uint8Array(16)
   crypto.getRandomValues(bytes)
@@ -25,10 +35,22 @@ export function generateShareCode() {
   return formatShareCode(raw)
 }
 
-export function buildShareUrl(code: string) {
+export function buildShareUrlForCode(code: string) {
   const normalized = formatShareCode(code)
   const origin = typeof window !== 'undefined' ? window.location.origin : ''
   const path = publicUrl(`share/${normalized}`)
   const joined = path.startsWith('/') ? path : `/${path}`
   return `${origin}${joined}`
+}
+
+export function buildShareUrlForSlug(slug: string) {
+  const normalized = normalizeShareSlug(slug)
+  const origin = typeof window !== 'undefined' ? window.location.origin : ''
+  const path = publicUrl(`share/${encodeURIComponent(normalized)}`)
+  const joined = path.startsWith('/') ? path : `/${path}`
+  return `${origin}${joined}`
+}
+
+export function buildShareUrl(code: string) {
+  return buildShareUrlForCode(code)
 }

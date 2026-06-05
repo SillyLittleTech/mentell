@@ -1,4 +1,4 @@
-import { Link, Navigate, Route } from 'react-router-dom'
+import { Link, Navigate, Route, useLocation } from 'react-router-dom'
 import { AnimatedRoutes } from './shared/motion/AnimatedRoutes'
 import { AnimatePresence } from 'framer-motion'
 import { useTheme } from './shared/theme/useTheme'
@@ -48,6 +48,8 @@ type StreakOutcomeAnimation =
 type ScoreChangeOptions = { deferOverlay?: boolean; streakOutcome?: StreakOutcomeAnimation }
 
 function App() {
+  const location = useLocation()
+  const shareRouteActive = location.pathname.startsWith('/share/')
   const [score, setScore] = useState(() => getScoreSnapshot())
   const [incomingDelta, setIncomingDelta] = useState<number | null>(null)
   const [incomingHint, setIncomingHint] = useState<string | null>(null)
@@ -160,18 +162,26 @@ function App() {
   }
 
   return (
-    <div className="desk px-4 py-6">
-      <CharacterTabIconSync />
-      <ShopCosmeticEffects />
-      <TopBar
-        score={score}
-        incomingHint={incomingHint}
-        streakOutcome={streakOutcome}
-        focusActive={streakFocusActive}
-      />
-      <LeftDeskMascot />
-      <StickyLayer />
-      <main className={`mx-auto mt-6 w-full max-w-4xl ${streakFocusActive ? 'streak-focus-dim' : ''}`}>
+    <div className={shareRouteActive ? 'min-h-[100svh]' : 'desk px-4 py-6'}>
+      {!shareRouteActive ? <CharacterTabIconSync /> : null}
+      {!shareRouteActive ? <ShopCosmeticEffects /> : null}
+      {!shareRouteActive ? (
+        <TopBar
+          score={score}
+          incomingHint={incomingHint}
+          streakOutcome={streakOutcome}
+          focusActive={streakFocusActive}
+        />
+      ) : null}
+      {!shareRouteActive ? <LeftDeskMascot /> : null}
+      {!shareRouteActive ? <StickyLayer /> : null}
+      <main
+        className={
+          shareRouteActive
+            ? 'w-full'
+            : `mx-auto mt-6 w-full max-w-4xl ${streakFocusActive ? 'streak-focus-dim' : ''}`
+        }
+      >
         <AnimatedRoutes>
           <Route
             path="/"
@@ -198,22 +208,26 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </AnimatedRoutes>
       </main>
-      <div className={streakFocusActive ? 'streak-focus-dim' : ''}>
-        <AppLegalFooter />
-      </div>
-      <PackageAlert onAward={handleScoreChange} />
-      <AnimatePresence>
-        {incomingDelta !== null ? (
-          <ScoreBurst
-            key={`${incomingDelta}-${incomingHint ?? ''}`}
-            delta={incomingDelta}
-            totalAfter={score.total}
-            hint={incomingHint}
-            onDone={clearScoreOverlay}
-          />
-        ) : null}
-      </AnimatePresence>
-      <DebugPanel />
+      {!shareRouteActive ? (
+        <>
+          <div className={streakFocusActive ? 'streak-focus-dim' : ''}>
+            <AppLegalFooter />
+          </div>
+          <PackageAlert onAward={handleScoreChange} />
+          <AnimatePresence>
+            {incomingDelta !== null ? (
+              <ScoreBurst
+                key={`${incomingDelta}-${incomingHint ?? ''}`}
+                delta={incomingDelta}
+                totalAfter={score.total}
+                hint={incomingHint}
+                onDone={clearScoreOverlay}
+              />
+            ) : null}
+          </AnimatePresence>
+          <DebugPanel />
+        </>
+      ) : null}
     </div>
   )
 }

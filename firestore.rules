@@ -2,14 +2,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /publicShares/{shareCode} {
-      allow read: if resource.data.expiresAt > request.time;
-      allow create: if request.auth != null
-        && request.resource.data.ownerUid == request.auth.uid
+      function isOwner() {
+        return request.auth != null && resource.data.ownerUid == request.auth.uid;
+      }
+
+      function isCreatingOwner() {
+        return request.auth != null && request.resource.data.ownerUid == request.auth.uid;
+      }
+
+      function hasSnapshotPayload() {
+        return request.resource.data.mode == 'snapshot'
+          && request.resource.data.keys().hasAll(['payload']);
+      }
+
+      function hasProtectedPayload() {
+        return request.resource.data.mode == 'protected'
+          && request.resource.data.keys().hasAll(['payloadEnvelope']);
+      }
+
+      allow read: if resource.data.expiresAt > request.time || isOwner();
+      allow create: if isCreatingOwner()
         && request.resource.data.keys().hasAll([
-          'ownerUid', 'expiresAt', 'permissions', 'payload', 'shareUrl'
-        ]);
-      allow update, delete: if request.auth != null
-        && resource.data.ownerUid == request.auth.uid;
+          'ownerUid', 'expiresAt', 'permissions', 'shareUrl', 'mode'
+        ])
+        && (hasSnapshotPayload() || hasProtectedPayload());
+      allow update, delete: if isOwner();
     }
 
     match /users/{userId} {
