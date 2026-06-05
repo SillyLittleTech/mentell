@@ -8,7 +8,7 @@ type TurnstileRenderOptions = {
   size?: 'normal' | 'compact' | 'flexible'
   retry?: 'auto' | 'never'
   callback?: (token: string) => void
-  'error-callback'?: (errorCode?: number) => void
+  'error-callback'?: (errorCode?: number | string) => void
   'expired-callback'?: () => void
   'timeout-callback'?: () => void
 }
@@ -139,23 +139,24 @@ export function FeedbackTurnstile({
             setMessage('Verification complete.')
             onTokenChangeRef.current(token)
           },
-          'error-callback': (errorCode?: number) => {
+          'error-callback': (errorCode?: number | string) => {
             if (!active) return
+            const normalizedCode = normalizeTurnstileErrorCode(errorCode)
 
-            if (isTurnstileConfigError(errorCode)) {
+            if (isTurnstileConfigError(normalizedCode)) {
               clearRetryTimer()
               retryCountRef.current = 0
               setStatus('error')
-              setMessage(getTurnstileConfigMessage(errorCode))
+              setMessage(getTurnstileConfigMessage(normalizedCode))
               onTokenChangeRef.current('')
               return
             }
 
-            if (errorCode === 110600 || errorCode === 110620) {
+            if (normalizedCode === 110600 || normalizedCode === 110620) {
               clearRetryTimer()
               retryCountRef.current = 0
               setStatus('error')
-              setMessage(getTurnstileTimeoutMessage(errorCode))
+              setMessage(getTurnstileTimeoutMessage(normalizedCode))
               onTokenChangeRef.current('')
               return
             }
@@ -180,7 +181,7 @@ export function FeedbackTurnstile({
             clearRetryTimer()
             retryCountRef.current = 0
             setStatus('error')
-            setMessage(getTurnstileRetryMessage(errorCode))
+            setMessage(getTurnstileRetryMessage(normalizedCode))
             onTokenChangeRef.current('')
           },
           'expired-callback': () => {
@@ -268,6 +269,15 @@ export function FeedbackTurnstile({
   )
 }
 
+function normalizeTurnstileErrorCode(errorCode?: number | string) {
+  if (typeof errorCode === 'number' && Number.isFinite(errorCode)) return errorCode
+  if (typeof errorCode === 'string') {
+    const normalized = Number.parseInt(errorCode, 10)
+    return Number.isFinite(normalized) ? normalized : undefined
+  }
+  return undefined
+}
+
 function getTurnstileConfigMessage(errorCode?: number) {
   switch (errorCode) {
     case 110100:
@@ -307,6 +317,11 @@ function getTurnstileTimeoutMessage(errorCode?: number) {
 }
 
 function getTurnstileRetryMessage(errorCode?: number) {
+  const family = getTurnstileErrorFamily(errorCode)
+  if (family === 300 || family === 600) {
+    return 'Verification failed. Turnstile likely blocked the request. Disable ad blockers, VPNs, or strict privacy settings and try again.'
+  }
+
   switch (errorCode) {
     case 200100:
       return 'Verification could not load. Check your connection or content blockers.'
@@ -317,6 +332,11 @@ function getTurnstileRetryMessage(errorCode?: number) {
     case 110620:
       return 'Interaction timed out. Please try again.'
     default:
-      return 'Verification failed. Try again.'
+      return 'Verification failed. Check extensions, VPNs, or browser privacy settings, then try again.'
   }
+}
+
+function getTurnstileErrorFamily(errorCode?: number) {
+  if (typeof errorCode !== 'number' || !Number.isFinite(errorCode)) return undefined
+  return Math.floor(errorCode / 1000)
 }

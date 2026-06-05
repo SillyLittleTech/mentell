@@ -84,10 +84,29 @@ type SignatureSnapshot = {
   hasInk: boolean
 }
 
+const selectFieldClassName =
+  'focus-ring rounded-2xl border border-[var(--paper-border)] bg-[var(--paper-bg)] px-4 py-3 text-[var(--paper-ink)]'
+
+function FieldLabel({
+  children,
+  required = false,
+}: {
+  children: ReactNode
+  required?: boolean
+}) {
+  return (
+    <span className="text-sm font-medium">
+      {children}
+      {required ? <span aria-hidden="true" className="ml-1 text-[var(--danger)]">*</span> : null}
+    </span>
+  )
+}
+
 export function FeedbackPage() {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const formRef = useRef<HTMLFormElement | null>(null)
+  const turnstileResponseRef = useRef('')
 
   const [title, setTitle] = useState('')
   const [submissionType, setSubmissionType] = useState<FeedbackSubmissionType>('Feedback')
@@ -138,6 +157,9 @@ export function FeedbackPage() {
   const selectedFeedbackPrompt = summarizeOtherAwareChoice(fbPrompt, fbPromptOther)
 
   const validationError = () => {
+    const currentTurnstileResponse =
+      turnstileResponseRef.current.trim() || turnstileResponse.trim()
+
     if (!title.trim()) return 'Add a title for your submission.'
 
     if (showBugFields) {
@@ -174,7 +196,7 @@ export function FeedbackPage() {
       if (!signatureDataUrl) return 'Draw your signature before submitting the privacy request.'
     }
 
-    if (!turnstileResponse.trim()) {
+    if (!currentTurnstileResponse) {
       return 'Complete the Cloudflare verification before submitting.'
     }
 
@@ -212,6 +234,12 @@ export function FeedbackPage() {
     )
   }
 
+  const handleTurnstileTokenChange = (token: string) => {
+    turnstileResponseRef.current = token
+    setTurnstileResponse(token)
+    if (token) setError(null)
+  }
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError(null)
@@ -229,6 +257,9 @@ export function FeedbackPage() {
       setError('Configure VITE_FEEDBACK_FORM_ENDPOINT in your local or GitHub environment.')
       return
     }
+
+    const currentTurnstileResponse =
+      turnstileResponseRef.current.trim() || turnstileResponse.trim()
 
     const payload: FeedbackFormInput = {
       title,
@@ -252,7 +283,7 @@ export function FeedbackPage() {
       prOther,
       genOpEmail,
       prSigBox: signatureDataUrl,
-      turnstileResponse,
+      turnstileResponse: currentTurnstileResponse,
     }
 
     setIsSubmitting(true)
@@ -314,7 +345,7 @@ export function FeedbackPage() {
         >
           <div className="grid gap-4">
             <label className="grid gap-2">
-              <span className="text-sm font-medium">Title</span>
+                <FieldLabel required>Title</FieldLabel>
               <input
                 type="text"
                 className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
@@ -382,7 +413,7 @@ export function FeedbackPage() {
           >
             <div className="grid gap-4">
               <label className="grid gap-2">
-                <span className="text-sm font-medium">Describe the bug</span>
+                <FieldLabel required>Describe the bug</FieldLabel>
                 <textarea
                   className="focus-ring min-h-[150px] rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
                   placeholder="Include steps to reproduce, screenshots, and error messages if you have them."
@@ -420,9 +451,9 @@ export function FeedbackPage() {
               ) : null}
 
               <div className="grid gap-2">
-                <span className="text-sm font-medium">Which feature was affected?</span>
+                <FieldLabel required>Which feature was affected?</FieldLabel>
                 <select
-                  className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
+                  className={selectFieldClassName}
                   value={brFeature}
                   required
                   onChange={(event) => {
@@ -431,22 +462,31 @@ export function FeedbackPage() {
                     if (event.target.value !== 'Other') setBrFeatureOther('')
                   }}
                 >
-                  <option value="">Select a feature</option>
+                  <option className="bg-[var(--paper-bg)] text-[var(--paper-ink)]" value="">
+                    Select a feature
+                  </option>
                   {BUG_FEATURES.map((feature) => (
-                    <option key={feature} value={feature}>
+                    <option
+                      key={feature}
+                      className="bg-[var(--paper-bg)] text-[var(--paper-ink)]"
+                      value={feature}
+                    >
                       {feature}
                     </option>
                   ))}
                 </select>
                 {brFeature === 'Other' ? (
-                  <input
-                    type="text"
-                    className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
-                    placeholder="Describe the feature"
-                    required
-                    value={brFeatureOther}
-                    onChange={(event) => setBrFeatureOther(event.target.value)}
-                  />
+                  <label className="grid gap-2">
+                    <FieldLabel required>Describe the feature</FieldLabel>
+                    <input
+                      type="text"
+                      className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
+                      placeholder="Describe the feature"
+                      required
+                      value={brFeatureOther}
+                      onChange={(event) => setBrFeatureOther(event.target.value)}
+                    />
+                  </label>
                 ) : null}
               </div>
 
@@ -491,7 +531,7 @@ export function FeedbackPage() {
           >
             <div className="grid gap-4">
               <label className="grid gap-2">
-                <span className="text-sm font-medium">Describe your feedback or suggestion</span>
+                <FieldLabel required>Describe your feedback or suggestion</FieldLabel>
                 <textarea
                   className="focus-ring min-h-[150px] rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
                   placeholder="Feature requests, rough edges, or ideas that would make the app better."
@@ -502,9 +542,9 @@ export function FeedbackPage() {
               </label>
 
               <div className="grid gap-2">
-                <span className="text-sm font-medium">What prompted your feedback?</span>
+                <FieldLabel>What prompted your feedback?</FieldLabel>
                 <select
-                  className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
+                  className={selectFieldClassName}
                   value={fbPrompt}
                   onChange={(event) => {
                     setFbPrompt(event.target.value)
@@ -512,22 +552,34 @@ export function FeedbackPage() {
                     if (event.target.value !== 'Other') setFbPromptOther('')
                   }}
                 >
-                  <option value="">Optional</option>
+                  <option className="bg-[var(--paper-bg)] text-[var(--paper-ink)]" value="">
+                    Select a prompt
+                  </option>
                   {FEEDBACK_PROMPTS.map((prompt) => (
-                    <option key={prompt} value={prompt}>
+                    <option
+                      key={prompt}
+                      className="bg-[var(--paper-bg)] text-[var(--paper-ink)]"
+                      value={prompt}
+                    >
                       {prompt}
                     </option>
                   ))}
                 </select>
-              {fbPrompt === 'Other' ? (
-                  <input
-                    type="text"
-                    className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
-                    placeholder="Describe what prompted it"
-                    required
-                    value={fbPromptOther}
-                    onChange={(event) => setFbPromptOther(event.target.value)}
-                  />
+                <span className="ink-muted text-xs">
+                  Please select an option, or leave this blank.
+                </span>
+                {fbPrompt === 'Other' ? (
+                  <label className="grid gap-2">
+                    <FieldLabel required>Describe what prompted it</FieldLabel>
+                    <input
+                      type="text"
+                      className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
+                      placeholder="Describe what prompted it"
+                      required
+                      value={fbPromptOther}
+                      onChange={(event) => setFbPromptOther(event.target.value)}
+                    />
+                  </label>
                 ) : null}
               </div>
 
@@ -588,7 +640,7 @@ export function FeedbackPage() {
             <div className="grid gap-4">
               <div className="grid gap-2">
                 <div className="flex items-end justify-between gap-3">
-                  <span className="text-sm font-medium">Priority level</span>
+                  <FieldLabel>Priority level</FieldLabel>
                   <span className="ink-muted text-xs">P{scPriority}</span>
                 </div>
                 <input
@@ -608,7 +660,7 @@ export function FeedbackPage() {
               </div>
 
               <label className="grid gap-2">
-                <span className="text-sm font-medium">Target date</span>
+                <FieldLabel>Target date</FieldLabel>
                 <input
                   type="date"
                   className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
@@ -619,7 +671,12 @@ export function FeedbackPage() {
               </label>
 
               <fieldset className="grid gap-2">
-                <legend className="text-sm font-medium">Is this issue sensitive?</legend>
+                <legend className="text-sm font-medium">
+                  Is this issue sensitive?
+                  <span aria-hidden="true" className="ml-1 text-[var(--danger)]">
+                    *
+                  </span>
+                </legend>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
                     { value: 'Yes' as const, title: 'Sensitive', description: 'Handle carefully and keep access limited.' },
@@ -672,7 +729,7 @@ export function FeedbackPage() {
           >
             <div className="grid gap-4">
               <label className="grid gap-2">
-                <span className="text-sm font-medium">Email</span>
+                <FieldLabel required>Email</FieldLabel>
                 <input
                   type="email"
                   className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
@@ -684,7 +741,12 @@ export function FeedbackPage() {
               </label>
 
               <fieldset className="grid gap-3">
-                <legend className="text-sm font-medium">Type of inquiry</legend>
+                <legend className="text-sm font-medium">
+                  Type of inquiry
+                  <span aria-hidden="true" className="ml-1 text-[var(--danger)]">
+                    *
+                  </span>
+                </legend>
                 <div className="grid gap-3">
                   {PRIVACY_TYPES.map((value) => {
                     const active = prType.includes(value)
@@ -714,7 +776,7 @@ export function FeedbackPage() {
                 <div className="grid gap-4 rounded-2xl border border-[var(--paper-border)] p-4">
                   <div className="text-sm font-medium">Migration request details</div>
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium">Target email</span>
+                    <FieldLabel required>Target email</FieldLabel>
                     <input
                       type="email"
                       className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
@@ -725,7 +787,7 @@ export function FeedbackPage() {
                     />
                   </label>
                   <label className="grid gap-2">
-                    <span className="text-sm font-medium">New account email</span>
+                    <FieldLabel required>New account email</FieldLabel>
                     <input
                       type="email"
                       className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
@@ -740,7 +802,7 @@ export function FeedbackPage() {
 
               {prType.includes('Other') ? (
                 <label className="grid gap-2">
-                  <span className="text-sm font-medium">Other inquiry</span>
+                  <FieldLabel required>Other inquiry</FieldLabel>
                   <textarea
                     className="focus-ring min-h-[130px] rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
                     placeholder="Please specify the privacy request."
@@ -751,13 +813,16 @@ export function FeedbackPage() {
                 </label>
               ) : null}
 
-              <SignaturePad
-                onChange={(snapshot) => {
-                  setSignatureDataUrl(snapshot.dataUrl)
-                  setSignatureStampedAt(snapshot.stampedAt)
-                  if (snapshot.dataUrl) setError(null)
-                }}
-              />
+              <div className="grid gap-2">
+                <FieldLabel required>Signature</FieldLabel>
+                <SignaturePad
+                  onChange={(snapshot) => {
+                    setSignatureDataUrl(snapshot.dataUrl)
+                    setSignatureStampedAt(snapshot.stampedAt)
+                    if (snapshot.dataUrl) setError(null)
+                  }}
+                />
+              </div>
             </div>
           </CollapsibleCard>
         ) : null}
@@ -808,10 +873,7 @@ export function FeedbackPage() {
             <FeedbackTurnstile
               key={turnstileSiteKey}
               siteKey={turnstileSiteKey}
-              onTokenChange={(token) => {
-                setTurnstileResponse(token)
-                if (token) setError(null)
-              }}
+              onTokenChange={handleTurnstileTokenChange}
             />
           </div>
 
@@ -823,7 +885,7 @@ export function FeedbackPage() {
 
           <button
             type="submit"
-            disabled={isSubmitting || !endpointReady}
+            disabled={isSubmitting || !endpointReady || !turnstileResponse.trim()}
             className="focus-ring mt-5 w-full rounded-2xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? 'Sending...' : 'Submit inquiry'}
