@@ -142,12 +142,20 @@ export function FeedbackTurnstile({
           'error-callback': (errorCode?: number) => {
             if (!active) return
 
-            const errorFamily = errorCode ? Math.floor(errorCode / 1000) : 0
-            if (errorFamily === 110) {
+            if (isTurnstileConfigError(errorCode)) {
               clearRetryTimer()
               retryCountRef.current = 0
               setStatus('error')
               setMessage(getTurnstileConfigMessage(errorCode))
+              onTokenChangeRef.current('')
+              return
+            }
+
+            if (errorCode === 110600 || errorCode === 110620) {
+              clearRetryTimer()
+              retryCountRef.current = 0
+              setStatus('error')
+              setMessage(getTurnstileTimeoutMessage(errorCode))
               onTokenChangeRef.current('')
               return
             }
@@ -264,11 +272,37 @@ function getTurnstileConfigMessage(errorCode?: number) {
   switch (errorCode) {
     case 110100:
     case 110110:
+    case 400020:
+    case 400070:
       return 'Cloudflare verification is misconfigured for this site key.'
     case 110200:
       return 'This hostname is not authorized for the configured site key.'
     default:
       return 'Cloudflare verification is misconfigured. Please check the site key and host settings.'
+  }
+}
+
+function isTurnstileConfigError(errorCode?: number) {
+  switch (errorCode) {
+    case 110100:
+    case 110110:
+    case 110200:
+    case 400020:
+    case 400070:
+      return true
+    default:
+      return false
+  }
+}
+
+function getTurnstileTimeoutMessage(errorCode?: number) {
+  switch (errorCode) {
+    case 110600:
+      return 'Verification timed out. Please solve it again.'
+    case 110620:
+      return 'Interaction timed out. Please try again.'
+    default:
+      return 'Verification expired. Please solve it again.'
   }
 }
 
