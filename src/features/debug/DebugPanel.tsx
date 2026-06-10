@@ -36,6 +36,30 @@ import { normalizeEndpointUrl } from '../compilation/weeklyAiSummary'
 import { dateKeyForLocalDay } from '../../shared/dates'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
+const DEBUG_AI_TESTS = [
+  {
+    id: 'CRISIS',
+    label: 'SENT_TRIGGER_CRISIS',
+    reason: 'I am afraid I might hurt myself tonight',
+    sentiment: '-' as const,
+    emotion: 'sad' as const,
+  },
+  {
+    id: 'SUPPORT',
+    label: 'SENT_TRIGGER_SUPPORT',
+    reason: 'a negative interaction made me feel overwhelmed and alone',
+    sentiment: '-' as const,
+    emotion: 'anxious' as const,
+  },
+  {
+    id: 'EXEC',
+    label: 'SENT_TRIGGER_EXEC',
+    reason: 'I nailed something important and feel proud of myself',
+    sentiment: '+' as const,
+    emotion: 'happy' as const,
+  },
+]
+
 export function DebugPanel() {
   const enabled = useMemo(() => isDebugMode(), [])
   const [open, setOpen] = useState(false)
@@ -135,6 +159,21 @@ export function DebugPanel() {
     } catch (e) {
       setAiEndpointResult(`AI endpoint check failed: ${e instanceof Error ? e.message : String(e)}`)
     }
+  }
+
+  function fillAiTest(test: (typeof DEBUG_AI_TESTS)[number]) {
+    window.dispatchEvent(
+      new CustomEvent('mentell:debug-ai-test-fill', {
+        detail: {
+          sentiment: test.sentiment,
+          emotion: test.emotion,
+          emotionNote: '',
+          situation: `${test.label}(${test.reason})`,
+          details: 'Debug AI intervention trigger. Submit this letter to exercise the worker classifier.',
+        },
+      }),
+    )
+    setOpen(false)
   }
 
   useEffect(() => {
@@ -284,6 +323,27 @@ export function DebugPanel() {
                   </div>
                 ) : null}
 
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[var(--paper-border)] p-3">
+              <div className="font-mono text-xs font-bold">AI response tests</div>
+              <div className="ink-muted mt-1 text-xs">
+                Fills the composer with debug-only sentinel input. Parentheses become the generated emotion reason.
+              </div>
+              <div className="mt-2 grid gap-2">
+                {DEBUG_AI_TESTS.map((test) => (
+                  <button
+                    key={test.id}
+                    type="button"
+                    disabled={busy}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                    onClick={() => fillAiTest(test)}
+                  >
+                    {test.label}
+                    <div className="ink-muted text-xs">({test.reason})</div>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -825,6 +885,7 @@ export function DebugPanel() {
                     flaggedTerms: [],
                     warningLevel: 'none' as const,
                     riskScore: 0,
+                    interventionScore: 0,
                     riskLevel: 'none' as const,
                     scoreDelta: 100,
                     streakAtSubmit: 1,
@@ -851,6 +912,81 @@ export function DebugPanel() {
                 setBusy(true)
                 try {
                   const now = Date.now()
+                  const memories = [
+                    {
+                      dateKey: '2026-05-24',
+                      emotion: 'calm' as const,
+                      emotionNote: 'calm after a hard interaction',
+                      situation: 'Maya helped me reset after a difficult interaction',
+                      details:
+                        'After a tense interaction at lunch, Maya walked with me to the blue bench by the library. We drank mint tea, watched the rain on the windows, and I remembered I could come back to myself.',
+                    },
+                    {
+                      dateKey: '2026-05-27',
+                      emotion: 'happy' as const,
+                      emotionNote: 'proud after a presentation',
+                      situation: 'I got through the presentation with the green note cards',
+                      details:
+                        'I was nervous about the history presentation, but I used my green note cards, took one slow breath, and Ms. Rivera said my opening story made the whole room listen.',
+                    },
+                    {
+                      dateKey: '2026-05-30',
+                      emotion: 'calm' as const,
+                      emotionNote: 'steady during a deadline',
+                      situation: 'The deadline felt possible after I broke it into tiny steps',
+                      details:
+                        'The project deadline stopped feeling overwhelming when I wrote three tiny tasks on a yellow sticky note, played the rain playlist, and finished the hardest paragraph before dinner.',
+                    },
+                    {
+                      dateKey: '2026-06-02',
+                      emotion: 'happy' as const,
+                      emotionNote: 'seen by friends',
+                      situation: 'Friends remembered the strawberry cupcake',
+                      details:
+                        'Jordan and Priya surprised me with a strawberry cupcake after rehearsal. They remembered the tiny candle joke, and I felt known in a way that stayed warm all evening.',
+                    },
+                  ]
+
+                  await getDb().entries.bulkPut(
+                    memories.map((memory, index) => ({
+                      id: makeId('entry'),
+                      createdAt: now + index,
+                      updatedAt: now + index,
+                      dateKey: memory.dateKey,
+                      sentiment: '+' as const,
+                      emotion: memory.emotion,
+                      emotionNote: memory.emotionNote,
+                      situation: memory.situation,
+                      details: memory.details,
+                      flaggedTerms: [],
+                      warningLevel: 'none' as const,
+                      riskScore: 0,
+                      interventionScore: -1.1,
+                      riskLevel: 'none' as const,
+                      scoreDelta: 100,
+                      streakAtSubmit: 1,
+                    })),
+                  )
+                  notifyLocalDataChanged()
+                  await refreshInspector()
+                } finally {
+                  setBusy(false)
+                }
+              }}
+            >
+              Seed recall memories
+              <div className="ink-muted text-xs">
+                Adds detailed positive/calm entries for support-memory recall tests.
+              </div>
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+              onClick={async () => {
+                setBusy(true)
+                try {
+                  const now = Date.now()
                   await getDb().entries.put({
                     id: makeId('entry'),
                     createdAt: now,
@@ -862,8 +998,9 @@ export function DebugPanel() {
                     situation: 'Seeded subtle risk entry',
                     details: "I just don't think I can take it anymore. I am just going to do it.",
                     flaggedTerms: ['take it anymore', 'going to do it'],
-                    warningLevel: 'none' as const,
+                    warningLevel: 'warn' as const,
                     riskScore: 0.22,
+                    interventionScore: 1.1,
                     riskLevel: 'low' as const,
                     scoreDelta: 100,
                     streakAtSubmit: 1,
@@ -899,6 +1036,7 @@ export function DebugPanel() {
                     flaggedTerms: [],
                     warningLevel: 'none' as const,
                     riskScore: 0,
+                    interventionScore: -1.3,
                     riskLevel: 'none' as const,
                     scoreDelta: 100,
                     streakAtSubmit: 1,

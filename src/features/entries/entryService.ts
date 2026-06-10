@@ -19,6 +19,7 @@ export type EntryDraft = {
   flaggedTerms: string[]
   warningLevel: WarningLevel
   riskScore: number
+  interventionScore: number
   riskLevel: RiskLevel
   scoreDelta: number
   streakAtSubmit: number
@@ -40,6 +41,7 @@ export async function upsertEntryFromDraft(draft: EntryDraft) {
     flaggedTerms: draft.flaggedTerms,
     warningLevel: draft.warningLevel,
     riskScore: draft.riskScore,
+    interventionScore: draft.interventionScore,
     riskLevel: draft.riskLevel,
     scoreDelta: draft.scoreDelta,
     streakAtSubmit: draft.streakAtSubmit,

@@ -18,6 +18,7 @@ export const EntryRowSchema = z.object({
   flaggedTerms: z.array(z.string()),
   warningLevel: WarningLevelSchema,
   riskScore: z.number().min(0).max(1),
+  interventionScore: z.number(),
   riskLevel: RiskLevelSchema,
   scoreDelta: z.number().int(),
   streakAtSubmit: z.number().int().nonnegative(),
