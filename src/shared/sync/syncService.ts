@@ -68,7 +68,11 @@ function pickNewer<T extends { id: string; updatedAt?: number; createdAt: number
 }
 
 async function mergeEntry(local: EntryRow | undefined, remote: EntryRow) {
-  const chosen = pickNewer(local, remote)
+  const normalizedRemote = {
+    ...remote,
+    interventionScore: typeof remote.interventionScore === 'number' ? remote.interventionScore : 0,
+  }
+  const chosen = pickNewer(local, normalizedRemote)
   await getDb().entries.put(chosen)
 }
 

@@ -5,6 +5,7 @@ type RiskLevel = 'none' | 'low' | 'elevated' | 'crisis'
 
 type RequestBody = {
   localRiskScore?: number
+  localInterventionScore?: number
   localRiskLevel?: RiskLevel
   localExceScore?: number
   reasons?: string[]
@@ -15,10 +16,12 @@ type RequestBody = {
     details?: string
   }
   supportMemories?: Array<{
+    id?: string
     dateKey?: string
     emotion?: string
     situation?: string
     details?: string
+    relevance?: number
   }>
 }
 
@@ -78,6 +81,30 @@ function clamp01(n: number) {
   return Math.min(1, Math.max(0, Number.isFinite(n) ? n : 0))
 }
 
+function clampInterventionScore(n: number) {
+  return Math.min(3, Math.max(-3, Number.isFinite(n) ? n : 0))
+}
+
+type ResponseKind = 'none' | 'positive' | 'support' | 'crisis'
+
+function parseResponseKind(value: unknown): ResponseKind | null {
+  if (value === 'none' || value === 'positive' || value === 'support' || value === 'crisis') {
+    return value
+  }
+  return null
+}
+
+function responseKindForIntervention(score: number): ResponseKind {
+  if (score >= 2) return 'crisis'
+  if (score > 0) return 'support'
+  if (score <= -1) return 'positive'
+  return 'none'
+}
+
+function riskScoreForIntervention(score: number) {
+  return score > 0 ? clamp01(score / 2) : 0
+}
+
 function levelFor(score: number): RiskLevel {
   if (score >= 0.75) return 'crisis'
   if (score >= 0.35) return 'elevated'
@@ -101,10 +128,12 @@ function parseRiskLevel(value: unknown): RiskLevel | null {
 
 async function assessWithAi(env: Env, body: RequestBody) {
   const rawLocalRiskScore = clamp01(Number(body.localRiskScore))
+  const localInterventionScore = clampInterventionScore(Number(body.localInterventionScore))
   const localRiskLevel = parseRiskLevel(body.localRiskLevel) ?? levelFor(rawLocalRiskScore)
   const localRiskScore = Math.max(rawLocalRiskScore, minimumScoreForLevel(localRiskLevel))
   const journalJson = JSON.stringify({
     localRiskScore,
+    localInterventionScore,
     localRiskLevel,
     localExceScore: Number.isFinite(Number(body.localExceScore))
       ? Math.max(0, Math.trunc(Number(body.localExceScore)))
@@ -118,10 +147,12 @@ async function assessWithAi(env: Env, body: RequestBody) {
     },
     supportMemories: Array.isArray(body.supportMemories)
       ? body.supportMemories.slice(0, 3).map((memory) => ({
+          id: memory.id ?? '',
           dateKey: memory.dateKey ?? '',
           emotion: memory.emotion ?? '',
           situation: memory.situation ?? '',
           details: memory.details ?? '',
+          relevance: Number.isFinite(Number(memory.relevance)) ? Number(memory.relevance) : 0,
         }))
       : [],
   })
@@ -130,18 +161,20 @@ async function assessWithAi(env: Env, body: RequestBody) {
     messages: [
       {
         role: 'system',
-        content: `You are a conservative safety classifier for a private journaling app.
+        content: `You are a context-aware safety and encouragement classifier for a private journaling app.
 Return JSON only. Do not include markdown.
-Schema: {"riskScore":number,"riskLevel":"none"|"low"|"elevated"|"crisis","reasons":string[],"supportiveMessage":string}
-You may also include "responseKind":"risk"|"support"|"celebration".
-The score is 0.0 to 1.0. Never lower the provided local risk below its current level unless clearly false positive.
-Use "crisis" for imminent self-harm, suicide intent, overdose, or immediate danger language.
-Treat statements like "I don't want to live", "I can't take it anymore", or "I'm going to do it" as crisis unless the text clearly grounds the phrase in a non-self-harm meaning.
-If a statement mentions not wanting to live without a specific non-self-harm grounding statement, bump it to at least "elevated" and usually "crisis".
-Use "elevated" for strong distress where professional or trusted support should be encouraged.
-If localExceScore is 5 or higher and there is no safety concern, return riskLevel "none", riskScore 0, responseKind "celebration", and write a short congratulatory supportiveMessage like a proud friend.
-If the message is distressed but not self-harm or crisis, riskLevel may be "low"; write a grounded motivational supportiveMessage. When supportMemories are present, mention one concrete good or calm moment from them in a "remember when..." style without overpromising.
-Do not diagnose or provide medical advice. The supportive message must be warm, short, and encourage trusted support or emergency/crisis support when appropriate.`,
+Schema: {"interventionScore":number,"responseKind":"none"|"positive"|"support"|"crisis","riskScore":number,"riskLevel":"none"|"low"|"elevated"|"crisis","reasons":string[],"supportiveMessage":string}
+Use interventionScore as the final decision score: <= -1 means positive encouragement, > 0 and < 2 means support, >= 2 means crisis, otherwise none.
+Classify by intent and context, not keywords alone. You may lower localInterventionScore when local flags are clearly false positives.
+Examples: "I killed this test", "I killed it", or "I'm killing it" should be positive or none, not crisis.
+Examples: "I want to kill myself", "I can't stay safe", suicide intent, overdose intent, or immediate danger must be crisis with interventionScore >= 2.
+Sad, anxious, lonely, or overwhelmed messages without self-harm should usually be support with interventionScore between 0.5 and 1.8.
+Strong achievement, gratitude, joy, relief, or excitement should usually be positive with interventionScore <= -1.
+If localExceScore is 5 or higher and there is no safety concern, prefer positive encouragement.
+For support responses, supportMemories are ranked by relevance. If a memory fits, mention one concrete detail from the first relevant memory in a gentle "remember when..." style. Use at most one memory, and do not force a memory if it feels unrelated.
+For crisis responses, supportiveMessage must keep safety first while helping de-escalate. Include direct guidance to reach trusted support, emergency services, or a crisis line if immediate safety may be at risk; include one short grounding or next-step suggestion; and include one context-appropriate "hang in there" or future-oriented reassurance.
+Tune crisis tone to severity: imminent danger should be brief, direct, action-first, and use minimal optimism; severe distress without an immediate plan can be warmer and stabilizing with gentle hope; ambiguous high-intensity language should stay validating, calm, and non-alarming.
+For responseKind "none", supportiveMessage may be an empty string. Otherwise write a warm short message. Do not diagnose or provide medical advice. Crisis messages should encourage trusted support and emergency/crisis support when immediate safety may be at risk.`,
       },
       { role: 'user', content: journalJson },
     ],
@@ -149,33 +182,30 @@ Do not diagnose or provide medical advice. The supportive message must be warm, 
 
   const raw = extractAiText(result)
   const parsed = parseJsonObject(raw)
-  const parsedLevel = parseRiskLevel(parsed.riskLevel)
-  const score = Math.max(
-    localRiskScore,
-    clamp01(Number(parsed.riskScore)),
-    parsedLevel ? minimumScoreForLevel(parsedLevel) : 0,
-  )
-  const riskLevel = levelFor(score)
+  const parsedKind = parseResponseKind(parsed.responseKind)
+  let interventionScore = clampInterventionScore(Number(parsed.interventionScore))
+  if (parsedKind === 'crisis') interventionScore = Math.max(interventionScore, 2)
+  if (parsedKind === 'support') interventionScore = Math.min(Math.max(interventionScore, 0.5), 1.9)
+  if (parsedKind === 'positive') interventionScore = Math.min(interventionScore, -1)
+  if (parsedKind === 'none') interventionScore = Math.abs(interventionScore) < 1 ? 0 : interventionScore
+  const responseKind = parsedKind ?? responseKindForIntervention(interventionScore)
+  const score = riskScoreForIntervention(interventionScore)
+  const riskLevel = interventionScore >= 2 ? 'crisis' : levelFor(score)
   const reasons = Array.isArray(parsed.reasons)
     ? parsed.reasons.filter((row): row is string => typeof row === 'string').slice(0, 4)
     : []
   const supportiveMessage =
     typeof parsed.supportiveMessage === 'string'
       ? parsed.supportiveMessage.slice(0, 240)
-      : 'You are cared about. If this feels hard to carry, please reach out to someone you trust or a crisis support service.'
+      : responseKind === 'crisis'
+        ? 'If you may not be safe, contact emergency services, 988, or someone you trust now. Take one slow breath and stay near another person if you can. This moment can pass.'
+        : responseKind === 'support'
+          ? 'This sounds like a heavy moment. You do not have to carry it by yourself.'
+          : responseKind === 'positive'
+            ? 'That sounds like something worth noticing. Keep going.'
+            : ''
 
-  const responseKind =
-    parsed.responseKind === 'risk' ||
-    parsed.responseKind === 'support' ||
-    parsed.responseKind === 'celebration'
-      ? parsed.responseKind
-      : riskLevel === 'elevated' || riskLevel === 'crisis'
-        ? 'risk'
-        : Number(body.localExceScore) >= 5
-          ? 'celebration'
-          : 'support'
-
-  return { riskScore: score, riskLevel, reasons, supportiveMessage, responseKind }
+  return { interventionScore, riskScore: score, riskLevel, reasons, supportiveMessage, responseKind }
 }
 
 function parseJsonObject(raw: string) {

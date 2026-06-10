@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { ProgressLight, type ProgressState } from '../../components/ProgressLight'
 import { SentimentPills, type SentimentValue } from '../../components/SentimentPills'
 import { dateKeyForLocalDay } from '../../shared/dates'
+import { isDebugMode } from '../../shared/debug/debugFlags'
+import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import { assessLocalRisk, assessRisk, type RiskAssessment } from '../safety/riskAssessment'
 import { CrisisResourcePanel } from '../safety/CrisisResourcePanel'
 import type { EntryEmotion, RiskLevel } from '../../db/schema'
@@ -16,6 +19,7 @@ type Draft = {
   flaggedTerms: string[]
   warningLevel: 'none' | 'warn'
   riskScore: number
+  interventionScore: number
   riskLevel: RiskLevel
 }
 
@@ -27,6 +31,14 @@ const EMOTION_OPTIONS: Array<{ value: EntryEmotion; label: string }> = [
   { value: 'angry', label: '😠 Angry' },
   { value: 'other', label: '🤔 None of these fit' },
 ]
+
+type DebugAiTestFill = {
+  sentiment: SentimentValue
+  emotion: EntryEmotion
+  emotionNote: string
+  situation: string
+  details: string
+}
 
 export function LetterComposer({
   onSubmit,
@@ -57,6 +69,24 @@ export function LetterComposer({
       window.removeEventListener('focus', refreshDateKey)
       document.removeEventListener('visibilitychange', refreshDateKey)
     }
+  }, [])
+
+  useEffect(() => {
+    if (!isDebugMode()) return
+    const fillDebugAiTest = (event: Event) => {
+      const detail = (event as CustomEvent<DebugAiTestFill>).detail
+      if (!detail) return
+      setStep('write')
+      setSentiment(detail.sentiment)
+      setEmotion(detail.emotion)
+      setEmotionNote(detail.emotionNote)
+      setSituation(detail.situation)
+      setDetails(detail.details)
+      setDraftRisk(null)
+      setSubmitState('idle')
+    }
+    window.addEventListener('mentell:debug-ai-test-fill', fillDebugAiTest)
+    return () => window.removeEventListener('mentell:debug-ai-test-fill', fillDebugAiTest)
   }, [])
 
   const riskInput = useMemo(
@@ -103,6 +133,7 @@ export function LetterComposer({
         flaggedTerms: finalRisk.flaggedTerms,
         warningLevel: finalRisk.warningLevel,
         riskScore: finalRisk.riskScore,
+        interventionScore: finalRisk.interventionScore,
         riskLevel: finalRisk.riskLevel,
       })
 
@@ -113,8 +144,9 @@ export function LetterComposer({
       setEmotionNote('')
       setSituation('')
       setDetails('')
+      setDraftRisk(null)
       setSubmitState('done')
-      if (finalRisk.warningLevel === 'warn' || finalRisk.responseKind) {
+      if (finalRisk.responseKind !== 'none') {
         setSubmittedRisk(finalRisk)
       }
       window.setTimeout(() => setSubmitState('idle'), 2200)
@@ -244,9 +276,11 @@ export function LetterComposer({
           </div>
         </footer>
       </section>
-      {submittedRisk ? (
-        <RiskResultModal risk={submittedRisk} onClose={() => setSubmittedRisk(null)} />
-      ) : null}
+      <AnimatePresence>
+        {submittedRisk ? (
+          <RiskResultModal risk={submittedRisk} onClose={() => setSubmittedRisk(null)} />
+        ) : null}
+      </AnimatePresence>
     </div>
   )
 }
@@ -268,22 +302,27 @@ function DraftRiskNotice({ risk }: { risk: RiskAssessment }) {
 }
 
 function SupportNotice({ risk }: { risk: RiskAssessment }) {
-  const celebration = risk.responseKind === 'celebration'
+  const celebration = risk.responseKind === 'positive'
+  const message =
+    risk.supportiveMessage ??
+    (celebration
+      ? 'That sounds like something worth noticing. Keep going.'
+      : 'This sounds like a moment that deserves gentleness.')
   return (
     <div className="space-y-2">
       <div className="font-medium" style={{ color: 'var(--success)' }}>
         {celebration ? 'This deserves a little confetti' : 'A small note for this moment'}
       </div>
-      <div>{risk.supportiveMessage}</div>
+      <div>{message}</div>
       <div className="font-mono text-[11px] uppercase opacity-70">
-        Risk {risk.riskScore.toFixed(2)} · {risk.source}
+        Intervention {risk.interventionScore.toFixed(1)} · {risk.source}
       </div>
     </div>
   )
 }
 
 function RiskNotice({ risk }: { risk: RiskAssessment }) {
-  const crisis = risk.riskLevel === 'crisis'
+  const crisis = risk.responseKind === 'crisis'
   return (
     <div className="space-y-2">
       <div className="font-medium" style={{ color: 'var(--danger)' }}>
@@ -294,37 +333,49 @@ function RiskNotice({ risk }: { risk: RiskAssessment }) {
       <div>
         {risk.supportiveMessage ??
           (crisis
-            ? 'If you might be in immediate danger, please contact emergency services or a crisis line now.'
+            ? 'If you might be in immediate danger, please contact emergency services, 988, or someone you trust now. Take one slow breath and stay near another person if you can. This moment can pass.'
             : 'Consider sharing these feelings with someone you trust or a mental health professional.')}
       </div>
       <div className="font-mono text-[11px] uppercase opacity-70">
-        Risk {risk.riskScore.toFixed(2)} · {risk.source}
+        Intervention {risk.interventionScore.toFixed(1)} · {risk.source}
       </div>
       {risk.reasons.length ? <div>Signals: {risk.reasons.join(', ')}</div> : null}
-      <CrisisResourcePanel compact />
+      {crisis ? <CrisisResourcePanel compact /> : null}
     </div>
   )
 }
 
 function RiskResultModal({ risk, onClose }: { risk: RiskAssessment; onClose: () => void }) {
-  const elevated = risk.warningLevel === 'warn'
-  const celebration = risk.responseKind === 'celebration'
+  const crisis = risk.responseKind === 'crisis'
+  const support = risk.responseKind === 'support'
+  const celebration = risk.responseKind === 'positive'
   const titleId = 'risk-result-modal-title'
+  const reduced = shouldReduceMotion()
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-      <div
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4"
+      initial={reduced ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={reduced ? undefined : { opacity: 0 }}
+      transition={{ duration: motionDuration(0.2) || 0 }}
+    >
+      <motion.div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         className="paper max-h-[min(90dvh,42rem)] w-full max-w-xl overflow-y-auto rounded-3xl p-6 shadow-lg"
+        initial={reduced ? false : { scale: 0.96, y: 18 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={reduced ? undefined : { scale: 0.98, y: 10 }}
+        transition={{ duration: motionDuration(0.25) || 0 }}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
             <div id={titleId} className="font-paper text-2xl">
-              {elevated ? 'You are not alone' : celebration ? 'Look at you go' : 'A note for you'}
+              {crisis ? 'You are not alone' : celebration ? 'Look at you go' : 'A note for you'}
             </div>
             <div className="ink-muted mt-1 text-sm">
-              {elevated
+              {crisis
                 ? 'Mentell noticed this entry may need extra care.'
                 : celebration
                   ? 'Mentell noticed a bright patch worth celebrating.'
@@ -340,10 +391,10 @@ function RiskResultModal({ risk, onClose }: { risk: RiskAssessment; onClose: () 
           </button>
         </div>
         <div className="mt-5 rounded-2xl border border-[var(--paper-border)] p-4">
-          {elevated ? <RiskNotice risk={risk} /> : <SupportNotice risk={risk} />}
+          {support || crisis ? <RiskNotice risk={risk} /> : <SupportNotice risk={risk} />}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
