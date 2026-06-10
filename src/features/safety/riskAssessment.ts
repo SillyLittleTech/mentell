@@ -453,6 +453,31 @@ const EXCE_TERMS = [
   'finished the project',
 ]
 
+const MAJOR_EXCE_TERMS = [
+  'nothing could be better',
+  'best day',
+  'breakthrough',
+  'milestone',
+  'life changing',
+  'life-changing',
+  'first time',
+  'tried something new',
+  'did something new',
+  'made a new friend',
+  'made new friends',
+  'new friend',
+  'joined a group',
+  'joined a club',
+  'joined a team',
+  'opened up',
+  'stood up for myself',
+  'big step',
+  'brave step',
+  'got accepted',
+  'passed the test',
+  'finished the project',
+]
+
 const EXCE_PATTERNS = [
   /\b(?:first\s+time|for\s+the\s+first\s+time)\b.{0,80}\b(?:i\s+)?(?:tried|did|went|joined|made|talked|asked|finished|passed|started)\b/,
   /\b(?:made|met)\s+(?:a\s+)?(?:new\s+)?friends?\b/,
@@ -515,6 +540,29 @@ type WorkerRiskResponse = {
   responseKind?: unknown
   reasons?: unknown
   supportiveMessage?: unknown
+}
+
+type WorkerRiskRequest = {
+  localRiskScore: number
+  localInterventionScore: number
+  localRiskLevel: RiskLevel
+  localResponseKind: RiskAssessment['responseKind']
+  localCrisisHardLock: boolean
+  localExceScore: number
+  localLiteralSentimentLabel: RiskAssessment['literalSentimentLabel']
+  localLiteralSentimentConfidence: number
+  localLiteralSentimentScore: number
+  localSemanticRiskLabel: RiskAssessment['semanticRiskLabel']
+  localSemanticRiskConfidence: number
+  localSemanticRiskSource: RiskAssessment['semanticRiskSource']
+  reasons: string[]
+  entry: {
+    sentiment: EntrySentiment
+    emotion: string
+    situation: string
+    details: string
+  }
+  supportMemories: SupportMemory[]
 }
 
 type SupportMemory = {
@@ -748,6 +796,19 @@ function isBenignLowSignalMood(text: string) {
   return words.every((word) => allowed.has(word))
 }
 
+function hasExplicitDangerIntent(text: string) {
+  return /\b(?:suicide|suicidal|want\s+to\s+die|wish\s+i\s+(?:was|were)\s+dead|end\s+(?:my\s+life|myself|it\s+all)|can't\s+stay\s+safe|cant\s+stay\s+safe|cannot\s+stay\s+safe|not\s+safe\s+(?:alone|with\s+myself)|deserve\s+(?:pain|to\s+hurt|to\s+bleed)|punish\s+myself|make\s+myself\s+pay|want\s+to\s+see\s+blood|need\s+to\s+see\s+blood)\b/.test(text) ||
+    /\b(?:want|need|urge|urges|plan|planning|about\s+to|going\s+to|gonna|ready\s+to|might|could|will)\b.{0,56}\b(?:hurt|harm|cut|burn|scratch|pick|pull|bleed|pain|razor|blade|knife|lighter|overdose|kill|end)\b/.test(text)
+}
+
+function isBenignAccidentalInjury(text: string) {
+  const injury = /\b(?:cut|cuts|cutting|sliced|slice|nicked|nick|burned|burnt|burn|scraped|scratched|scratch|stabbed|poked)\s+(?:myself|me|my\s+(?:finger|thumb|hand|arm|skin))\b/.test(text) ||
+    /\b(?:my\s+(?:finger|thumb|hand|arm|skin))\b.{0,36}\b(?:cut|sliced|nicked|burned|burnt|scraped|scratched|poked)\b/.test(text)
+  const accidentContext =
+    /\b(?:accidentally|by\s+accident|slipped|chopping|cooking|kitchen|vegetables?|veggies|onion|knife\s+slipped|paper\s+cut|shaving|razor\s+burn|cat\s+scratched|fell|trip(?:ped)?|craft|sewing)\b/.test(text)
+  return injury && accidentContext && !hasExplicitDangerIntent(text)
+}
+
 function shouldSuppressSemanticRisk(text: string, message: ReturnType<typeof messageRisk>) {
   return !message.crisisConfirmed && (isBenignRoutineOrIdiom(text) || isBenignLowSignalMood(text))
 }
@@ -762,13 +823,18 @@ function scoreExce(input: RiskAssessmentInput) {
   if (!hasMeaningfulAssessmentText(text)) return { score: 0, hits: [] as string[] }
   let score = 0
   const hits = EXCE_TERMS.filter((term) => termMatches(text, term))
+  const majorHits = MAJOR_EXCE_TERMS.filter((term) => termMatches(text, term))
   const patternHits = EXCE_PATTERNS.some((pattern) => pattern.test(text)) ? ['positive milestone'] : []
-  score += hits.length
-  score += patternHits.length * 2
-  if (input.sentiment === '+') score += 2
-  if (input.emotion === 'happy') score += 2
-  if (input.emotion === 'calm') score += 1
-  return { score, hits: unique([...hits, ...patternHits]) }
+  const majorSignal = majorHits.length > 0 || patternHits.length > 0
+  if (majorSignal) {
+    score += majorHits.length * 2 + patternHits.length * 2 + hits.length * 0.5
+    if (input.sentiment === '+') score += 2
+    if (input.emotion === 'happy') score += 2
+    if (input.emotion === 'calm') score += 1
+  } else if (hits.length >= 4 && input.sentiment === '+' && input.emotion === 'happy') {
+    score += hits.length
+  }
+  return { score, hits: unique([...majorHits, ...patternHits, ...(score > 0 ? hits : [])]) }
 }
 
 function scoreSupport(input: RiskAssessmentInput) {
@@ -802,13 +868,14 @@ function messageRisk(input: RiskAssessmentInput) {
   const otherHarmPattern = scorePatterns(text, OTHER_HARM_PATTERNS, 'targeted harm language', 2.1)
   const selfHarmPattern = scorePatterns(text, SELF_HARM_PATTERNS, 'self-directed harm language', 2.1)
   const rashAction = scoreTerms(text, RASH_ACTION_TERMS, 1.9)
+  const suppressSelfHarm = (selfHarm.hits.length > 0 || selfHarmPattern.hits.length > 0) &&
+    isBenignAccidentalInjury(text)
   const reasons: string[] = []
 
   const crisisConfirmed =
     crisis.hits.length > 0 ||
     lifeEndingMetaphor.hits.length > 0 ||
-    selfHarm.hits.length > 0 ||
-    selfHarmPattern.hits.length > 0 ||
+    (!suppressSelfHarm && (selfHarm.hits.length > 0 || selfHarmPattern.hits.length > 0)) ||
     crisisMeds.hits.length > 0 ||
     otherHarm.hits.length > 0 ||
     otherHarmPattern.hits.length > 0 ||
@@ -816,8 +883,8 @@ function messageRisk(input: RiskAssessmentInput) {
   let interventionScore =
     crisis.score +
     lifeEndingMetaphor.score +
-    selfHarm.score +
-    selfHarmPattern.score +
+    (suppressSelfHarm ? 0 : selfHarm.score) +
+    (suppressSelfHarm ? 0 : selfHarmPattern.score) +
     crisisMeds.score +
     otherHarm.score +
     otherHarmPattern.score +
@@ -825,7 +892,7 @@ function messageRisk(input: RiskAssessmentInput) {
   if (crisisConfirmed) interventionScore = Math.max(interventionScore, 2.1)
 
   if (crisis.hits.length || lifeEndingMetaphor.hits.length) reasons.push('crisis language')
-  if (selfHarm.hits.length || selfHarmPattern.hits.length) reasons.push('self-harm language')
+  if (!suppressSelfHarm && (selfHarm.hits.length || selfHarmPattern.hits.length)) reasons.push('self-harm language')
   if (otherHarm.hits.length || otherHarmPattern.hits.length) reasons.push('other-harm language')
   if (crisisMeds.hits.length) reasons.push('overdose language')
   if (rashAction.hits.length) reasons.push('rash action language')
@@ -837,8 +904,8 @@ function messageRisk(input: RiskAssessmentInput) {
     flaggedTerms: unique([
       ...crisis.hits,
       ...lifeEndingMetaphor.hits,
-      ...selfHarm.hits,
-      ...selfHarmPattern.hits,
+      ...(suppressSelfHarm ? [] : selfHarm.hits),
+      ...(suppressSelfHarm ? [] : selfHarmPattern.hits),
       ...otherHarm.hits,
       ...otherHarmPattern.hits,
       ...crisisMeds.hits,
@@ -872,10 +939,6 @@ function applyLiteralSentiment(
   if (suppressSemanticRisk) return 0
   if (exceScore >= EXCE_AI_THRESHOLD) {
     return Math.min(-1, -0.85 - (exceScore - EXCE_AI_THRESHOLD) * 0.15)
-  }
-  if (semanticRisk.positiveScore >= 0.7 && semanticRisk.crisisScore < 0.45) return -1
-  if (literalSentiment.literalScore <= -0.85 && exceScore >= 2) {
-    return Math.min(-1, literalSentiment.literalScore)
   }
   if (supportScore >= SEMANTIC_SUPPORT_THRESHOLD) return supportScore
   if (heatScore >= 0.48 && (supportScore > 0 || semanticRisk.supportScore >= 0.6 || literalSentiment.literalScore >= 0.7)) {
@@ -919,13 +982,17 @@ function localCrisisFallbackMessage(input: RiskAssessmentInput, message: ReturnT
   return `${anchor}This sounds like a moment that needs support before action. Pause, get near someone safe, put distance between you and anything risky, and contact emergency services or 988 if anyone could be in danger.`
 }
 
-function isHardCrisisReason(reasons: string[]) {
-  return reasons.some((reason) =>
-    reason === 'self-harm language' ||
-    reason === 'other-harm language' ||
-    reason === 'overdose language' ||
-    reason === 'rash action language',
-  )
+function shouldLockLocalCrisis(local: RiskAssessment, input: RiskAssessmentInput) {
+  if (!local.crisisConfirmed) return false
+  const text = normalize(textForSentiment(input))
+  if (isBenignAccidentalInjury(text)) return false
+  if (local.reasons.some((reason) => reason === 'overdose language' || reason === 'other-harm language')) return true
+  if (local.reasons.includes('rash action language')) {
+    return /\b(?:right\s+now|tonight|today|about\s+to|going\s+to|gonna|will|empty|drain|gamble|crash|drive\s+off|max\s+out)\b/.test(text)
+  }
+  if (local.reasons.includes('self-harm language')) return hasExplicitDangerIntent(text)
+  if (local.reasons.includes('crisis language')) return hasExplicitDangerIntent(text) || local.flaggedTerms.length > 0
+  return false
 }
 
 async function recentEntries(dateKey: string) {
@@ -1208,8 +1275,30 @@ export async function refineRiskWithWorker(
   try {
     const controller = new AbortController()
     const supportMemories = await recentSupportMemories(input.dateKey, input)
-    const timeout = window.setTimeout(() => controller.abort(), 7000)
+    const timeout = window.setTimeout(() => controller.abort(), 15000)
     try {
+      const workerRequest: WorkerRiskRequest = {
+        localRiskScore: local.riskScore,
+        localInterventionScore: local.interventionScore,
+        localRiskLevel: local.riskLevel,
+        localResponseKind: local.responseKind,
+        localCrisisHardLock: shouldLockLocalCrisis(local, input),
+        localExceScore: local.exceScore,
+        localLiteralSentimentLabel: local.literalSentimentLabel,
+        localLiteralSentimentConfidence: local.literalSentimentConfidence,
+        localLiteralSentimentScore: local.literalSentimentScore,
+        localSemanticRiskLabel: local.semanticRiskLabel,
+        localSemanticRiskConfidence: local.semanticRiskConfidence,
+        localSemanticRiskSource: local.semanticRiskSource,
+        reasons: local.reasons,
+        entry: {
+          sentiment: input.sentiment,
+          emotion: input.emotionNote || input.emotion,
+          situation: input.situation,
+          details: input.details,
+        },
+        supportMemories,
+      }
       const response = await fetch(endpoint, {
         method: 'POST',
         signal: controller.signal,
@@ -1217,33 +1306,13 @@ export async function refineRiskWithWorker(
           'Content-Type': 'application/json',
           Authorization: 'Bearer ' + token,
         },
-        body: JSON.stringify({
-          localRiskScore: local.riskScore,
-          localInterventionScore: local.interventionScore,
-          localRiskLevel: local.riskLevel,
-          localResponseKind: local.responseKind,
-          localExceScore: local.exceScore,
-          localLiteralSentimentLabel: local.literalSentimentLabel,
-          localLiteralSentimentConfidence: local.literalSentimentConfidence,
-          localLiteralSentimentScore: local.literalSentimentScore,
-          localSemanticRiskLabel: local.semanticRiskLabel,
-          localSemanticRiskConfidence: local.semanticRiskConfidence,
-          localSemanticRiskSource: local.semanticRiskSource,
-          reasons: local.reasons,
-          entry: {
-            sentiment: input.sentiment,
-            emotion: input.emotionNote || input.emotion,
-            situation: input.situation,
-            details: input.details,
-          },
-          supportMemories,
-        }),
+        body: JSON.stringify(workerRequest),
       })
       if (!response.ok) return local
       const parsed = parseWorkerRisk((await response.json()) as WorkerRiskResponse)
       if (!parsed) return local
       let interventionScore = parsed.interventionScore
-      const hardLocalCrisis = local.crisisConfirmed && isHardCrisisReason(local.reasons)
+      const hardLocalCrisis = shouldLockLocalCrisis(local, input)
       const responseKind = parsed.guardSafe === false || hardLocalCrisis
         ? 'crisis'
         : parsed.responseKind === 'crisis' ||

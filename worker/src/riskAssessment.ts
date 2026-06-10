@@ -8,6 +8,7 @@ type RequestBody = {
   localInterventionScore?: number
   localRiskLevel?: RiskLevel
   localResponseKind?: ResponseKind
+  localCrisisHardLock?: boolean
   localExceScore?: number
   localLiteralSentimentLabel?: string
   localLiteralSentimentConfidence?: number
@@ -147,6 +148,7 @@ async function assessWithAi(env: Env, body: RequestBody) {
     localInterventionScore,
     localRiskLevel,
     localResponseKind: body.localResponseKind ?? '',
+    localCrisisHardLock: body.localCrisisHardLock === true,
     localLiteralSentimentLabel: body.localLiteralSentimentLabel ?? '',
     localLiteralSentimentConfidence: Number(body.localLiteralSentimentConfidence),
     localLiteralSentimentScore: Number(body.localLiteralSentimentScore),
@@ -227,12 +229,7 @@ async function generateAssessmentWithAi(
   guard: GuardResult,
   localCrisis: boolean,
 ) {
-  const hardLocalCrisis = localCrisis && Array.isArray(body.reasons) && body.reasons.some((reason) =>
-    reason === 'self-harm language' ||
-    reason === 'other-harm language' ||
-    reason === 'overdose language' ||
-    reason === 'rash action language',
-  )
+  const hardLocalCrisis = localCrisis && body.localCrisisHardLock === true
   const fallbackKind = hardLocalCrisis || localCrisis || !guard.safe
     ? 'crisis'
     : body.localResponseKind === 'support'
@@ -242,9 +239,7 @@ async function generateAssessmentWithAi(
         : Number(body.localExceScore) >= POSITIVE_EXCE_THRESHOLD &&
         literalSentiment.score <= POSITIVE_ENCOURAGEMENT_THRESHOLD
           ? 'positive'
-          : literalSentiment.score >= NEGATIVE_SUPPORT_THRESHOLD
-            ? 'support'
-            : 'none'
+          : 'none'
   const fallback =
     fallbackKind === 'none'
       ? buildAssessment('none', literalSentiment.score, '')
@@ -258,11 +253,13 @@ async function generateAssessmentWithAi(
           content: `You are a context-aware safety, support, and encouragement classifier for a private journaling app.
 Return JSON only. Do not include markdown.
 Schema: {"responseKind":"none"|"positive"|"support"|"crisis","supportiveMessage":"string"}
-The safety lane always wins over sentiment. Use crisis for self-harm, suicide, overdose, violence toward others, major rash financial actions, immediate danger, or other harmful actions the writer seems close to taking and may regret. Self-harm includes wanting/planning to cut, burn, scratch, pick skin, pull hair, bleed, feel pain, punish themselves, make themselves bleed, use a blade/razor/lighter, or hurt themselves in any way. This includes veiled, metaphorical, coded, euphemistic, or indirect intent when the likely meaning is harm or imminent danger. Use support only when the writer is clearly collapsing into self-worth distress, feeling useless/worthless/weak/unlovable, hating themselves, feeling like a burden/failure, being made fun of or humiliated, doubting their ability in a way that turns into self-worth, struggling with body image, feeling unsupported, or describing a truly terrible day without actionable danger. Ordinary sadness, sickness, tiredness, frustration, stress, disappointment, or mixed feelings should usually be none. Use positive only for strongly positive entries without danger, especially rare milestones like trying something new, making friends, opening up, big achievements, relief, gratitude, pride, or joy.
+You are the adjudicator, not a rubber stamp. You may upgrade or downgrade localSuggestedResponseKind. Use crisis for self-harm, suicide, overdose, violence toward others, immediate danger, or major rash actions the writer seems close to taking. Upgrade support or positive to crisis when actionable danger appears. Downgrade crisis to support or none when the wording is accidental, medical, fictional, quoted, or idiomatic, such as "I cut myself chopping veggies" with no unsafe intent. Downgrade positive/support to none when the entry is ordinary, mildly good, mildly bad, or only uses a flagged word casually. Switch positive to support when the entry is actually a hard negative self-worth moment. Switch support to positive when it is actually a rare good milestone.
+Use support only for major negative moments without actionable danger: social humiliation, being made fun of, sharp self-worth collapse, body-image spirals, feeling abandoned/unsupported, or a genuinely terrible day. Use positive only for major positive moments: making friends, trying something new, opening up, breakthroughs, acceptance, big achievements, relief after something hard, or life-changing joy. Ordinary sadness, sickness, tiredness, frustration, stress, disappointment, normal happy days, or mixed feelings should be none.
 Classify by intent and context, not keywords alone. "I killed this test", "I killed it", and "I'm killing it" are positive or none. "I'm going to kill someone", "I want to hurt myself", "I want to cut", "I might use a razor", "I deserve to bleed", "I can't stay safe", threats toward others, overdose intent, or immediate danger are crisis. Phrases like "snuff him out", "take him out tonight", "this breath will be his last", "ending the story that is my life", "I can't take this anymore" with unsafe context, or "they won't see tomorrow" are crisis unless the entry clearly makes them fictional, quoted, or idiomatic.
-For crisis, generate a de-escalation note. Name the specific harmful action or urge in plain words, such as cutting, burning, using a razor, overdosing, hurting someone, or making a rash financial decision. Slow the moment down and suggest healthy alternatives matched to the situation. For violence, suggest leaving the scene, cold water, movement, breathing, writing the unsent message, or contacting a safe person. For self-harm, suggest getting near someone safe, moving means away, grounding, and one personally enjoyable or comforting action from the entry if available. For rash financial actions, suggest a 24-hour pause, moving the app/card out of reach, writing the decision down without acting, and asking a trusted person to sit with the decision. Encourage trusted support/emergency/crisis help if anyone may be in danger. Keep crisis responses stabilizing and action-oriented, not reflective or memory-heavy.
-For support, generate a reflection-and-reassurance note. Directly meet the self-worth, body-image, unsupported, mocked, humiliated, or bad-day content without treating it as crisis. Do not merely quote the entry. If the writer calls themselves worthless/useless/weak, gently separate that feeling from their identity. If they doubt skill or capability, affirm that the struggle is about a hard moment or learnable skill, not their worth. If the writer attacks their body or appearance, respond with body-image support and suggest taking space from comparison, mirrors, or harsh comments. If the writer mentions no support, feeling alone, ignored, abandoned, or unsupported, explicitly offer a sense of being accompanied in the note and name one small way to seek steadiness without asking for a reply. When supportMemories include any relevant positive/calm memory, explicitly recall one concrete detail from the best memory as evidence that this hard moment is not the whole picture; skip memory only if none fits at all. The note should feel like a steady shoulder with memory and reflection, not a warning.
-For positive, generate an encouragement note only for genuine achievements, relief, gratitude, pride, joy, making friends, trying something new, or life-changing positive moments. Mention the concrete achievement/content and encourage the writer to savor or remember it rather than giving generic praise.
+For crisis, generate a calm de-escalation note. Name the specific harmful action or urge in plain words, such as cutting, burning, using a razor, overdosing, hurting someone, or making a rash financial decision. Avoid canned grounding scripts and do not reuse a fixed phrase like "name five objects." Choose 2-3 alternatives that fit the entry: move the means away, change rooms, get near another person, put a barrier between the writer and the action, cool the body with water or ice, write without sending, pause money/apps/cards, or contact a trusted person/988/emergency help when danger is close. Keep it direct, natural, and not generic.
+Do not use generic filler like "take a deep breath", "focus on your surroundings", or "try grounding" unless you tie it to the specific situation in fresh language.
+For support, generate a natural reflection-and-reassurance note. Directly meet the self-worth, body-image, unsupported, mocked, humiliated, or bad-day content without treating it as crisis. If the writer doubts skill or capability, keep worth separate from today's performance. When supportMemories include any relevant positive/calm memory, recall one concrete detail in a natural sentence; do not force awkward quoted fragments. The note should feel like a steady shoulder with memory and reflection, not a warning.
+For positive, generate a natural encouragement note only for major achievements, relief, gratitude, pride, joy, making friends, trying something new, or life-changing positive moments. Mention the concrete event in normal grammar and make it feel personal, not like a template label.
 This is not a chat interface. Never ask the user a follow-up question, never invite a reply, and never write "tell me", "can you", "would you", "do you want", or similar response-seeking language. Write as a finished supportive note.
 For none, supportiveMessage must be empty.`,
         },
@@ -282,7 +279,7 @@ For none, supportiveMessage must be empty.`,
           }),
         },
       ],
-      max_tokens: 220,
+      max_tokens: 320,
       temperature: 0.2,
       response_format: { type: 'json_object' },
     })
@@ -295,14 +292,17 @@ For none, supportiveMessage must be empty.`,
     const responseKind =
       !guard.safe || hardLocalCrisis
         ? 'crisis'
-        : fallbackKind !== 'none' && fallbackKind !== 'crisis' && (parsedKind === 'none' || parsedKind === null)
+        : fallbackKind !== 'none' && fallbackKind !== 'crisis' && parsedKind === null
           ? fallbackKind
         : parsedKind === 'positive' && !canEncourage
           ? 'none'
           : (parsedKind ?? fallbackKind)
     const generatedMessage =
-      typeof parsed.supportiveMessage === 'string' ? parsed.supportiveMessage.trim().slice(0, 520) : ''
-    if (responseKind !== 'none' && (!generatedMessage || asksForReply(generatedMessage))) {
+      typeof parsed.supportiveMessage === 'string' ? parsed.supportiveMessage.trim().slice(0, 700) : ''
+    if (
+      responseKind !== 'none' &&
+      (!generatedMessage || asksForReply(generatedMessage) || (responseKind === 'crisis' && hasCannedCrisisLanguage(generatedMessage)))
+    ) {
       const fallbackMessage = supportMessageFor(responseKind, body)
       return fallbackMessage
         ? buildAssessment(responseKind, literalSentiment.score, fallbackMessage)
@@ -338,6 +338,10 @@ function asksForReply(message: string) {
     message.includes('?') ||
     /\b(?:tell\s+me|can\s+you|could\s+you|would\s+you|do\s+you\s+want|will\s+you|want\s+to\s+share|if\s+you\s+want\s+to\s+talk)\b/i.test(message)
   )
+}
+
+function hasCannedCrisisLanguage(message: string) {
+  return /\b(?:name\s+five\s+objects|take\s+(?:a\s+few\s+)?deep\s+breaths?|focus\s+on\s+your\s+surroundings|try\s+grounding|grounding\s+techniques?)\b/i.test(message)
 }
 
 async function scoreSentimentWithAi(
@@ -500,8 +504,13 @@ function bestSupportMemory(body: RequestBody) {
 function memorySentence(body: RequestBody) {
   const memory = bestSupportMemory(body)
   if (!memory) return ''
-  const detail = compactText(memory.situation || memory.details || memory.emotion, 130)
-  return detail ? ` Remember "${detail}" as proof that this hard moment is not the whole picture.` : ''
+  const situation = compactText(memory.situation, 110)
+  const details = compactText(memory.details, 150)
+  if (situation && details) {
+    return ` Keep this nearby too: ${situation}. ${details} That memory does not erase today, but it does push back against the harsh verdict.`
+  }
+  const detail = situation || details || compactText(memory.emotion, 100)
+  return detail ? ` Keep this nearby too: ${detail}. It does not erase today, but it does push back against the harsh verdict.` : ''
 }
 
 function selfHarmActionPhrase(text: string) {
@@ -519,31 +528,30 @@ function selfHarmActionPhrase(text: string) {
 
 function supportMessageFor(kind: ResponseKind, body: RequestBody) {
   const text = entryText(body)
-  const anchor = text ? `This sounds urgent around "${text.slice(0, 120)}." ` : ''
   if (kind === 'crisis') {
     if (
       /\b(?:kill|murder|hurt|harm|attack|stab|shoot|beat)\s+(?:someone|somebody|them|him|her|people|others|person)\b/i.test(text) ||
       /\b(?:snuff|wipe|erase)\s+(?:him|her|them|someone|somebody|[a-z][a-z'-]{1,24})\s+out\b/i.test(text) ||
       /\b(?:this|their|his|her)\s+breath\s+(?:will\s+be\s+)?(?:(?:his|her|their)\s+|the\s+)?(?:last|final)\b/i.test(text)
     ) {
-      return `${anchor}Because it points toward hurting someone else, put distance between you and the person or place before doing anything else. Step away, get cold water on your hands or face, move your body hard for a minute, write the message you will not send, and contact a safe person now. If anyone may be in immediate danger, call emergency services.`
+      return `Because this points toward hurting someone else, distance matters first. Step away from the person or place, put your hands under cold water, write the message without sending it, and contact a safe person now. If anyone may be in immediate danger, call emergency services.`
     }
     if (
       /\b(?:suicide|suicidal|kill\s+(?:myself|me)|hurt\s+(?:myself|me)|harm\s+(?:myself|me)|cut\s+(?:myself|me)?|burn\s+(?:myself|me)?|scratch\s+(?:myself|me)?|razor|blade|overdose|want\s+to\s+die|wish\s+i\s+(?:was|were)\s+dead|end\s+(?:my\s+life|myself|it\s+all)|not\s+safe)\b/i.test(text) ||
       /\b(?:end|ending|close|closing|finish|finishing)\s+(?:the\s+)?(?:story|book|chapter)\s+(?:that\s+is\s+)?(?:my\s+)?life\b/i.test(text)
     ) {
       const action = selfHarmActionPhrase(text)
-      return `${anchor}Because it points toward ${action}, move closer to another person and farther from anything you could use to act on this. Put the tool or trigger in another room, hold ice or a cold cloth, name five objects nearby, and contact 988 or a trusted person before acting.`
+      return `Because this points toward ${action}, create distance before the urge gets any louder. Put the tool or trigger in another room, move into a shared or brighter space, and contact 988 or a trusted person before acting.`
     }
-    return `${anchor}Slow the next few minutes down before taking action. Delay the decision, leave the trigger if you can, write down what you want to do without doing it, and ask one steady person to stay with you. If anyone could be in danger, contact emergency services or 988.`
+    return `Slow the next few minutes down before taking action. Leave the trigger if you can, write down the choice without doing it, and ask one steady person to stay close while the intensity drops. If anyone could be in danger, contact emergency services or 988.`
   }
   if (kind === 'support') {
     const memory = memorySentence(body)
     if (/\b(?:made\s+fun\s+of|mocked|laughed\s+at|teased|ridiculed|humiliated|embarrassed|called\s+me)\b/i.test(text)) {
-      return `Being mocked or laughed at can make one cruel moment feel like the whole room is judging you. That treatment is not a measure of your worth; step away from the comment, soften your body, and let one steady action come before any conclusion about yourself.${memory}`
+      return `Being mocked can make one cruel moment feel much bigger than it deserves to be. That treatment is not a measure of your intelligence or worth; let the sting settle before accepting any verdict about yourself.${memory}`
     }
     if (/\b(?:suck|bad\s+at|terrible\s+at|failed|not\s+smart\s+enough|not\s+talented\s+enough|not\s+cut\s+out|incapable|incompetent)\b/i.test(text)) {
-      return `Struggling with a skill or situation is not proof that you are incapable. It means this part is hard right now; take the next small repeatable step, let the harsh verdict cool down, and keep your worth separate from today's performance.${memory}`
+      return `A hard attempt is not proof that you are incapable. It means this part is hard right now; let the harsh verdict cool down and keep your worth separate from today's performance.${memory}`
     }
     if (/\b(?:body|face|looks|appearance|ugly|fat|gross|disgusting|unattractive|hideous|repulsive)\b/i.test(text)) {
       return `The harsh body-image voice is loud here, but it does not get to define your body or your day. Create a little distance from mirrors, comparisons, or cruel comments, then choose one caring action that helps your body feel less like an enemy.${memory}`
@@ -556,9 +564,9 @@ function supportMessageFor(kind: ResponseKind, body: RequestBody) {
   if (kind === 'positive') {
     const focus = compactText(body.entry?.situation || body.entry?.details || 'this bright moment', 130)
     if (/\b(?:new\s+friend|made\s+(?:a\s+)?(?:new\s+)?friends?|joined|first\s+time|tried\s+something\s+new|opened\s+up)\b/i.test(text)) {
-      return `This is worth keeping: ${focus}. Reaching toward something new or letting connection happen is not small; let yourself savor the proof that your world can widen.`
+      return `${focus} is the kind of bright step worth letting sink in. Trying something new and finding connection is not small; let it count as evidence that your world can widen.`
     }
-    return `This bright moment is worth marking: ${focus}. Let the pride, relief, or joy have a little room so it becomes evidence you can return to later.`
+    return `${focus} is worth marking. Let the pride, relief, or joy have a little room so it becomes evidence you can return to later.`
   }
   return ''
 }
