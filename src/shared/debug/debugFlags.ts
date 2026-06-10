@@ -3,7 +3,7 @@ const FORCE_PACKAGES_KEY = 'mentell.debug.forcePackages'
 const SKIP_AI_CACHE_KEY = 'mentell.debug.skipAiCache'
 
 export function isDebugMode() {
-  return import.meta.env.MODE === 'debug'
+  return (import.meta as ImportMeta & { env?: { MODE?: string } }).env?.MODE === 'debug'
 }
 
 export function getSlowMo() {

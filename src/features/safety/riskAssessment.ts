@@ -111,7 +111,26 @@ const SELF_HARM_TERMS = [
   'feels good to be hurt',
   'make myself hurt',
   'make it hurt',
-  'make it stop',
+  'punish myself',
+  'want to punish myself',
+  'need to punish myself',
+  'make myself pay',
+  'deserve pain',
+  'deserve to hurt',
+  'deserve to bleed',
+  'want to see blood',
+  'need to see blood',
+  'use the razor',
+  'use a razor',
+  'use the blade',
+  'use a blade',
+  'grab the razor',
+  'grab a blade',
+  'open my skin',
+  'carve into my skin',
+  'cut until',
+  'scratch until',
+  'pick until',
 ]
 
 const CRISIS_MEDICATION_TERMS = ['overdose', 'overdosing', 'took too many', 'take too many pills']
@@ -189,10 +208,17 @@ const SELF_HARM_PATTERNS = [
   /\b(?:hurt|harm|cut|burn|scratch|pick|bleed|kill|end)\s+(?:myself|me|my\s+skin)\b/,
   /\b(?:pull|pulling)\s+(?:my\s+)?hair\b/,
   /\b(?:cutting|burning|scratching|picking|pulling)\s+(?:myself|my\s+skin|my\s+hair|again|tonight|now)\b/,
-  /\b(?:i\s+am|i'm|im|i\s+feel|feeling|felt|want|need|urge|urges|thoughts?|thinking)\b.{0,56}\b(?:pain|hurt|hurting|cutting|cut|burning|burn|scratching|scratch|picking|pick|pulling|pull|bleeding|bleed)\b/,
+  /\b(?:want|need|urge|urges|thoughts?|thinking)\b.{0,56}\b(?:pain|hurt|hurting|cutting|cut|burning|burn|scratching|scratch|picking|pick|pulling|pull|bleeding|bleed)\b/,
+  /\b(?:i\s+am|i'm|im|i\s+feel|feeling|felt)\b.{0,56}\b(?:cutting|burning|scratching|picking|pulling|bleeding)\b/,
   /\b(?:pain|hurt(?:ing)?|bleeding|burning|cutting|scratching|picking|pulling)\s+(?:feels?|felt)\s+good\b/,
   /\b(?:feels?|felt)\s+good\s+to\s+(?:hurt|bleed|burn|cut|scratch|pick|pull)\b/,
   /\b(?:razor|blade|knife|lighter|cigarette|needle)\b.*\b(?:cut|hurt|harm|bleed|burn|scratch|myself)\b/,
+  /\b(?:cut|burn|scratch|pick|pull|bleed|hurt|harm|injure|slice|carve|punish)\b.{0,48}\b(?:myself|me|my\s+skin|my\s+arm|my\s+wrist|my\s+leg|my\s+body)\b/,
+  /\b(?:myself|me|my\s+skin|my\s+arm|my\s+wrist|my\s+leg|my\s+body)\b.{0,48}\b(?:cut|burn|scratch|pick|pull|bleed|hurt|harm|injure|slice|carve|punish)\b/,
+  /\b(?:razor|blade|knife|lighter|cigarette|needle)\b.{0,80}\b(?:myself|my\s+skin|my\s+arm|my\s+wrist|hurt|harm|cut|burn|scratch|bleed|tonight|now|use\s+it)\b/,
+  /\b(?:cut|burn|scratch|pick|pull|bleed|hurt|harm)\b.{0,80}\b(?:razor|blade|knife|lighter|cigarette|needle)\b/,
+  /\b(?:want|need|deserve|crave|looking\s+for)\b.{0,48}\b(?:pain|hurt|punishment|blood|to\s+bleed|to\s+hurt)\b/,
+  /\b(?:want|need|going|gonna|about|ready|plan|planning)\b.{0,48}\b(?:erase|disappear|vanish)\s+(?:myself|me)\b/,
 ]
 const INTENSITY_TERMS = [
   'can’t do this',
@@ -298,6 +324,27 @@ const SUPPORT_TERMS = [
   'falling apart',
   'cant catch a break',
   "can't catch a break",
+  'made fun of me',
+  'making fun of me',
+  'laughed at me',
+  'mocked me',
+  'teased me',
+  'ridiculed me',
+  'humiliated me',
+  'embarrassed me',
+  'everyone laughed',
+  'people laughed',
+  'i suck',
+  'i suck at this',
+  'bad at everything',
+  'terrible at everything',
+  'not cut out for this',
+  'not smart enough',
+  'not talented enough',
+  'not capable',
+  'incapable',
+  'incompetent',
+  'i failed again',
 ]
 
 const SUPPORT_PATTERNS = [
@@ -309,6 +356,11 @@ const SUPPORT_PATTERNS = [
   /\b(?:no\s+one|nobody)\s+(?:supports|cares|listens|understands)\s+(?:about\s+)?(?:me)?\b/,
   /\b(?:i\s+feel|feeling|felt)\s+(?:so\s+|really\s+|very\s+)?(?:unsupported|ignored|alone|abandoned)\b/,
   /\b(?:everything|all\s+of\s+this)\s+(?:is\s+)?(?:my\s+fault|falling\s+apart)\b/,
+  /\b(?:someone|they|everyone|people|classmates|coworkers|friends?)\b.{0,64}\b(?:made\s+fun\s+of|mocked|laughed\s+at|teased|ridiculed|humiliated|embarrassed|called)\s+(?:me|my)\b/,
+  /\b(?:made\s+fun\s+of|mocked|laughed\s+at|teased|ridiculed|humiliated|embarrassed)\s+(?:me|my)\b/,
+  /\b(?:i\s+)?(?:suck|am\s+terrible|am\s+bad|failed)\s+(?:at|in)\b.{0,48}\b(?:this|school|work|class|job|project|skill|practice|everything)\b/,
+  /\b(?:i\s+am|i'm|im|i\s+feel|feeling|felt)\b.{0,32}\b(?:incapable|incompetent|not\s+capable|not\s+smart\s+enough|not\s+good\s+enough|not\s+talented\s+enough|not\s+cut\s+out)\b/,
+  /\b(?:everyone|everybody|people)\s+(?:else\s+)?(?:is|are|seems?)\s+(?:better|smarter|more\s+talented|ahead)\b.{0,64}\b(?:than\s+me|and\s+i\s+(?:am|feel|seem|look))\b/,
 ]
 
 const AI_REVIEW_TERMS = [
@@ -381,6 +433,32 @@ const EXCE_TERMS = [
   'killing it',
   'killed it',
   'killed this test',
+  'life changing',
+  'life-changing',
+  'first time',
+  'tried something new',
+  'did something new',
+  'made a new friend',
+  'made new friends',
+  'new friend',
+  'joined a group',
+  'joined a club',
+  'joined a team',
+  'opened up',
+  'stood up for myself',
+  'big step',
+  'brave step',
+  'got accepted',
+  'passed the test',
+  'finished the project',
+]
+
+const EXCE_PATTERNS = [
+  /\b(?:first\s+time|for\s+the\s+first\s+time)\b.{0,80}\b(?:i\s+)?(?:tried|did|went|joined|made|talked|asked|finished|passed|started)\b/,
+  /\b(?:made|met)\s+(?:a\s+)?(?:new\s+)?friends?\b/,
+  /\b(?:tried|did|started)\s+something\s+(?:new|scary|hard|different)\b/,
+  /\b(?:joined|went\s+to)\s+(?:a\s+)?(?:club|group|team|class|event|meetup)\b/,
+  /\b(?:opened\s+up|stood\s+up\s+for\s+myself|asked\s+for\s+help|got\s+accepted|got\s+the\s+job|passed\s+the\s+test|finished\s+the\s+project)\b/,
 ]
 
 const NEGATIVE_SUPPORT_THRESHOLD = 0.85
@@ -573,8 +651,21 @@ export function riskLevelForScore(score: number): RiskLevel {
   return 'none'
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function termMatches(normalized: string, term: string) {
+  const cleanTerm = normalize(term)
+  if (!cleanTerm) return false
+  if (/^[a-z0-9']+$/.test(cleanTerm)) {
+    return new RegExp(`(^|[^a-z0-9'])${escapeRegExp(cleanTerm)}(?=$|[^a-z0-9'])`).test(normalized)
+  }
+  return normalized.includes(cleanTerm)
+}
+
 function scoreTerms(normalized: string, terms: string[], weight: number) {
-  const hits = terms.filter((term) => normalized.includes(normalize(term)))
+  const hits = terms.filter((term) => termMatches(normalized, term))
   return { hits, score: hits.length ? Math.min(weight, hits.length * weight * 0.65) : 0 }
 }
 
@@ -670,12 +761,14 @@ function scoreExce(input: RiskAssessmentInput) {
   const text = normalize(`${input.situation}\n${input.details}\n${input.emotionNote}`)
   if (!hasMeaningfulAssessmentText(text)) return { score: 0, hits: [] as string[] }
   let score = 0
-  const hits = EXCE_TERMS.filter((term) => text.includes(normalize(term)))
+  const hits = EXCE_TERMS.filter((term) => termMatches(text, term))
+  const patternHits = EXCE_PATTERNS.some((pattern) => pattern.test(text)) ? ['positive milestone'] : []
   score += hits.length
+  score += patternHits.length * 2
   if (input.sentiment === '+') score += 2
   if (input.emotion === 'happy') score += 2
   if (input.emotion === 'calm') score += 1
-  return { score, hits: unique(hits) }
+  return { score, hits: unique([...hits, ...patternHits]) }
 }
 
 function scoreSupport(input: RiskAssessmentInput) {
@@ -794,16 +887,31 @@ function applyLiteralSentiment(
   return 0
 }
 
+function localSelfHarmActionPhrase(text: string) {
+  if (/\b(?:razor|blade|knife)\b/.test(text)) return 'using a sharp object to hurt yourself'
+  if (/\b(?:lighter|cigarette)\b/.test(text)) return 'burning yourself'
+  if (/\boverdose|too\s+many\s+pills\b/.test(text)) return 'taking too much medication'
+  if (/\b(?:cut|cutting|carve|slice)\b/.test(text)) return 'cutting yourself'
+  if (/\b(?:burn|burning)\b/.test(text)) return 'burning yourself'
+  if (/\b(?:scratch|scratching|pick|picking)\b/.test(text)) return 'scratching or picking your skin'
+  if (/\b(?:pull|pulling)\s+(?:my\s+)?hair\b/.test(text)) return 'pulling your hair'
+  if (/\b(?:blood|bleed|bleeding)\b/.test(text)) return 'making yourself bleed'
+  if (/\b(?:pain|hurt|punish)\b/.test(text)) return 'hurting or punishing yourself'
+  return 'hurting yourself'
+}
+
 function localCrisisFallbackMessage(input: RiskAssessmentInput, message: ReturnType<typeof messageRisk>) {
   if (!message.crisisConfirmed) return undefined
   const context = input.situation.trim() || input.details.trim() || input.emotionNote.trim()
   const anchor = context ? `This entry sounds urgent around "${context.slice(0, 120)}." ` : ''
   const reasonText = message.reasons.join(' ')
+  const normalizedText = normalize(textForSentiment(input))
   if (reasonText.includes('other-harm')) {
     return `${anchor}Because it mentions possibly hurting someone else, put distance between you and the situation before doing anything else. Step away, get cold water on your hands or face, move your body hard for a minute, write the message you will not send, and contact a safe person now. If anyone may be in immediate danger, call emergency services.`
   }
   if (reasonText.includes('self-harm') || reasonText.includes('crisis') || reasonText.includes('overdose')) {
-    return `${anchor}Because it points toward hurting yourself or not staying safe, move closer to another person and farther from anything you could use to act on this. Try one grounding thing you can do right now, like naming five objects nearby or putting on something comforting, and contact 988 or a trusted person if the urge is close.`
+    const action = localSelfHarmActionPhrase(normalizedText)
+    return `${anchor}Because it points toward ${action}, move closer to another person and farther from anything you could use to act on this. Try one grounding thing you can do right now, like naming five objects nearby or putting on something comforting, and contact 988 or a trusted person if the urge is close.`
   }
   if (reasonText.includes('rash action')) {
     return `${anchor}Because it sounds like you may be about to make a decision you could regret, slow the next ten minutes down. Delay the action, leave the trigger if you can, write the choice down without doing it, and ask one steady person to sit with you before you decide.`
@@ -1211,7 +1319,7 @@ export function shouldRequestLlamaGuard(local: RiskAssessment, input: RiskAssess
   }
   if (local.semanticRiskLabel === 'rash_action' && local.semanticRiskConfidence >= 0.72) return true
   if (local.responseKind === 'support' || local.responseKind === 'positive') return true
-  if (AI_REVIEW_TERMS.some((term) => text.includes(normalize(term)))) return true
+  if (AI_REVIEW_TERMS.some((term) => termMatches(text, term))) return true
   return false
 }
 
