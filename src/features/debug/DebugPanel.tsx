@@ -17,6 +17,7 @@ import { ensurePackage } from '../packages/packageService'
 import { clearCatCollection } from '../shop/catCollection'
 import { clearShopInventory } from '../shop/shopInventory'
 import { notifyScoreChanged } from '../score/scoreEvents'
+import { assessRisk } from '../safety/riskAssessment'
 import {
   debugForegroundNotification,
   debugRequestNotificationPermission,
@@ -72,6 +73,8 @@ export function DebugPanel() {
   const [notifSnap, setNotifSnap] = useState<NotificationDebugSnapshot | null>(null)
   const [notifResult, setNotifResult] = useState<string | null>(null)
   const [aiEndpointResult, setAiEndpointResult] = useState<string | null>(null)
+  const [riskProbeText, setRiskProbeText] = useState('death')
+  const [riskProbeResult, setRiskProbeResult] = useState<string | null>(null)
   const [pushDelaySec, setPushDelaySec] = useState(30)
   const [inspector, setInspector] = useState<{
     entries: number
@@ -174,6 +177,39 @@ export function DebugPanel() {
       }),
     )
     setOpen(false)
+  }
+
+  async function runRiskProbe() {
+    setBusy(true)
+    setRiskProbeResult('Running risk workflow…')
+    try {
+      const risk = await assessRisk(
+        {
+          dateKey: dateKeyForLocalDay(new Date()),
+          sentiment: '=',
+          emotion: 'other',
+          emotionNote: '',
+          situation: '',
+          details: riskProbeText,
+        },
+        { forceAi: true },
+      )
+      const lines = [
+        `literal=${risk.literalSentimentLabel} ${risk.literalSentimentConfidence.toFixed(2)} (${risk.literalSentimentScore.toFixed(2)})`,
+        `semantic=${risk.semanticRiskLabel} ${risk.semanticRiskConfidence.toFixed(2)} source=${risk.semanticRiskSource}`,
+        `response=${risk.responseKind} warning=${risk.warningLevel} risk=${risk.riskScore.toFixed(2)} level=${risk.riskLevel}`,
+        `source=${risk.source} model=${risk.sentimentModelSource} guard=${risk.guardSafe === undefined ? 'n/a' : risk.guardSafe ? 'safe' : 'unsafe'}`,
+        risk.guardCategories?.length ? `guard categories=${risk.guardCategories.join(', ')}` : '',
+        risk.flaggedTerms.length ? `flags=${risk.flaggedTerms.join(', ')}` : '',
+        risk.reasons.length ? `reasons=${risk.reasons.join(', ')}` : '',
+        risk.supportiveMessage ? `message=${risk.supportiveMessage}` : '',
+      ].filter(Boolean)
+      setRiskProbeResult(lines.join('\n'))
+    } catch (e) {
+      setRiskProbeResult(`Risk workflow failed: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setBusy(false)
+    }
   }
 
   useEffect(() => {
@@ -344,6 +380,46 @@ export function DebugPanel() {
                     <div className="ink-muted text-xs">({test.reason})</div>
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[var(--paper-border)] p-3">
+              <div className="font-mono text-xs font-bold">risk workflow probe</div>
+              <div className="mt-2 grid gap-2">
+                <textarea
+                  className="focus-ring min-h-20 w-full resize-y rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 font-paper text-sm"
+                  value={riskProbeText}
+                  onChange={(e) => setRiskProbeText(e.target.value)}
+                />
+                <div className="grid grid-cols-3 gap-2">
+                  {['death', 'kill', 'I want to kill myself'].map((sample) => (
+                    <button
+                      key={sample}
+                      type="button"
+                      disabled={busy}
+                      className="focus-ring rounded-2xl border border-[var(--paper-border)] px-2 py-2 text-xs disabled:opacity-60"
+                      onClick={() => setRiskProbeText(sample)}
+                    >
+                      {sample}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={() => void runRiskProbe()}
+                >
+                  Run risk workflow
+                  <div className="ink-muted text-xs">
+                    Uses the local sentiment model and Worker guard when configured.
+                  </div>
+                </button>
+                {riskProbeResult ? (
+                  <pre className="ink-muted whitespace-pre-wrap rounded-2xl border border-[var(--paper-border)] p-3 font-mono text-[10px]">
+                    {riskProbeResult}
+                  </pre>
+                ) : null}
               </div>
             </div>
 

@@ -4,15 +4,39 @@ import { isDebugMode } from '../../shared/debug/debugFlags'
 import { isAiEnabledLocally } from '../../shared/settings/appSettings'
 import { scopedStorageKey } from '../../shared/storage/storageScope'
 import { normalizeEndpointUrl } from '../compilation/weeklyAiSummary'
+import {
+  scoreLiteralSentiment,
+  type LiteralSentimentLabel,
+  type LiteralSentimentScore,
+} from './sentimentScorer'
+import { scoreSemanticRisk, type SemanticRiskScore } from './semanticRiskScorer'
 
 const CRISIS_TERMS = [
   'suicide',
   'suicidal',
+  'kill myself',
+  'killing myself',
+  'going to kill myself',
+  'gonna kill myself',
+  'about to kill myself',
   'end my life',
+  'end myself',
+  'ending myself',
   'end it all',
   'want to die',
+  'wanna die',
   'wish i was dead',
-  'kill myself',
+  'wish i were dead',
+  'rather be dead',
+  'not wake up',
+  'never wake up',
+  'sleep forever',
+  'go to sleep forever',
+  'final goodbye',
+  'last goodbye',
+  'goodbye forever',
+  'this is my goodbye',
+  'last note',
   'cant go on',
   "can't go on",
   'cannot go on',
@@ -25,7 +49,13 @@ const CRISIS_TERMS = [
   "i won't be here",
   'cant stay safe',
   "can't stay safe",
+  'cannot stay safe',
   'not safe with myself',
+  'not safe alone',
+  'cant be alone',
+  "can't be alone",
+  'cannot be alone',
+  'have a plan',
   'no reason to live',
 ]
 
@@ -40,16 +70,156 @@ const AMBIGUOUS_RISK_TERMS = [
 
 const SELF_HARM_TERMS = [
   'hurt myself',
+  'hurting myself',
+  'going to hurt myself',
+  'gonna hurt myself',
+  'want to hurt myself',
+  'need to hurt myself',
   'self harm',
   'self-harm',
   'cut myself',
+  'cutting myself',
+  'want to cut',
+  'need to cut',
+  'going to cut',
+  'gonna cut',
+  'cutting again',
+  'cut again',
+  'cutting urges',
+  'urge to cut',
+  'thoughts of cutting',
+  'want to bleed',
+  'make myself bleed',
   'harm myself',
-  'make it stop',
+  'harming myself',
+  'want to harm myself',
+  'need to harm myself',
+  'burn myself',
+  'scratch myself',
+  'pick my skin',
+  'picking my skin',
+  'pull my hair',
+  'pulling my hair',
+  'want pain',
+  'want to feel pain',
+  'need pain',
+  'need to feel pain',
+  'pain feels good',
+  'hurt feels good',
+  'hurting feels good',
+  'feels good to hurt',
+  'feels good to be hurt',
+  'make myself hurt',
+  'make it hurt',
+  'punish myself',
+  'want to punish myself',
+  'need to punish myself',
+  'make myself pay',
+  'deserve pain',
+  'deserve to hurt',
+  'deserve to bleed',
+  'want to see blood',
+  'need to see blood',
+  'use the razor',
+  'use a razor',
+  'use the blade',
+  'use a blade',
+  'grab the razor',
+  'grab a blade',
+  'open my skin',
+  'carve into my skin',
+  'cut until',
+  'scratch until',
+  'pick until',
 ]
 
-const CRISIS_MEDICATION_TERMS = ['overdose', 'took too many']
-const MEDICATION_TERMS = ['pills', 'meds', 'medication']
-
+const CRISIS_MEDICATION_TERMS = ['overdose', 'overdosing', 'took too many', 'take too many pills']
+const OTHER_HARM_TERMS = [
+  'kill someone',
+  'kill somebody',
+  'kill a person',
+  'kill people',
+  'kill others',
+  'hurt someone',
+  'hurt somebody',
+  'hurt others',
+  'hurt them',
+  'hurt him',
+  'hurt her',
+  'murder someone',
+  'murder somebody',
+  'murder them',
+  'murder him',
+  'murder her',
+  'harm someone',
+  'harm somebody',
+  'harm them',
+  'attack someone',
+  'attack somebody',
+  'kill him',
+  'kill her',
+  'kill them',
+  'kill my boss',
+  'kill my teacher',
+  'attack them',
+  'attack him',
+  'attack her',
+  'beat him',
+  'beat her',
+  'beat them',
+  'make them pay',
+  'bring a weapon',
+]
+const RASH_ACTION_TERMS = [
+  'do something stupid',
+  'do something i regret',
+  "do something i'll regret",
+  'make a rash decision',
+  'ruin my life',
+  'throw everything away',
+  'quit my job right now',
+  'run away tonight',
+  'drive off',
+  'crash my car',
+  'take harsh action',
+  'harsh action',
+  'move all my money',
+  'send all my money',
+  'spend all my money',
+  'empty my bank account',
+  'drain my savings',
+  'gamble everything',
+  'sell everything',
+  'max out my credit cards',
+  'quit everything',
+]
+const LIFE_ENDING_METAPHOR_PATTERNS = [
+  /\b(?:end|ending|close|closing|finish|finishing)\s+(?:the\s+)?(?:story|book|chapter)\s+(?:that\s+is\s+)?(?:my\s+)?life\b/,
+  /\b(?:my\s+)?life\s+(?:story|book|chapter)\s+(?:ends|is\s+ending|ends\s+tonight|ends\s+today)\b/,
+]
+const OTHER_HARM_PATTERNS = [
+  /\b(?:going\s+to|gonna|about\s+to|want\s+to|need\s+to|might|could|will|im\s+going\s+to|i'm\s+going\s+to)\s+(?:hurt|harm|attack|stab|shoot|beat|kill|murder)\s+(?:my\s+|a\s+|the\s+)?(?:someone|somebody|person|people|others|them|him|her|friend|partner|coworker|boss|teacher|classmate|roommate|parent|mom|dad|mother|father|sibling|brother|sister)\b/,
+  /\b(?:hurt|harm|attack|stab|shoot|beat|kill|murder)\s+(?:my\s+|a\s+|the\s+)?(?:someone|somebody|person|people|others|them|him|her|friend|partner|coworker|boss|teacher|classmate|roommate|parent|mom|dad|mother|father|sibling|brother|sister)\b/,
+  /\b(?:this|their|his|her)\s+breath\s+(?:will\s+be\s+)?(?:(?:his|her|their)\s+|the\s+)?(?:last|final)\b/,
+  /\b[a-z][a-z'-]{1,24}\s+(?:will\s+not|won't|wont)\s+(?:see|make\s+it\s+to)\s+(?:tomorrow|tonight|morning)\b/,
+]
+const SELF_HARM_PATTERNS = [
+  /\b(?:going\s+to|gonna|about\s+to|want\s+to|need\s+to|might|could|will|plan\s+to|planning\s+to|im\s+going\s+to|i'm\s+going\s+to)\s+(?:hurt|harm|cut|burn|scratch|pick|pull|bleed|kill|end)\s+(?:myself|me|my\s+skin|my\s+hair)?\b/,
+  /\b(?:hurt|harm|cut|burn|scratch|pick|bleed|kill|end)\s+(?:myself|me|my\s+skin)\b/,
+  /\b(?:pull|pulling)\s+(?:my\s+)?hair\b/,
+  /\b(?:cutting|burning|scratching|picking|pulling)\s+(?:myself|my\s+skin|my\s+hair|again|tonight|now)\b/,
+  /\b(?:want|need|urge|urges|thoughts?|thinking)\b.{0,56}\b(?:pain|hurt|hurting|cutting|cut|burning|burn|scratching|scratch|picking|pick|pulling|pull|bleeding|bleed)\b/,
+  /\b(?:i\s+am|i'm|im|i\s+feel|feeling|felt)\b.{0,56}\b(?:cutting|burning|scratching|picking|pulling|bleeding)\b/,
+  /\b(?:pain|hurt(?:ing)?|bleeding|burning|cutting|scratching|picking|pulling)\s+(?:feels?|felt)\s+good\b/,
+  /\b(?:feels?|felt)\s+good\s+to\s+(?:hurt|bleed|burn|cut|scratch|pick|pull)\b/,
+  /\b(?:razor|blade|knife|lighter|cigarette|needle)\b.*\b(?:cut|hurt|harm|bleed|burn|scratch|myself)\b/,
+  /\b(?:cut|burn|scratch|pick|pull|bleed|hurt|harm|injure|slice|carve|punish)\b.{0,48}\b(?:myself|me|my\s+skin|my\s+arm|my\s+wrist|my\s+leg|my\s+body)\b/,
+  /\b(?:myself|me|my\s+skin|my\s+arm|my\s+wrist|my\s+leg|my\s+body)\b.{0,48}\b(?:cut|burn|scratch|pick|pull|bleed|hurt|harm|injure|slice|carve|punish)\b/,
+  /\b(?:razor|blade|knife|lighter|cigarette|needle)\b.{0,80}\b(?:myself|my\s+skin|my\s+arm|my\s+wrist|hurt|harm|cut|burn|scratch|bleed|tonight|now|use\s+it)\b/,
+  /\b(?:cut|burn|scratch|pick|pull|bleed|hurt|harm)\b.{0,80}\b(?:razor|blade|knife|lighter|cigarette|needle)\b/,
+  /\b(?:want|need|deserve|crave|looking\s+for)\b.{0,48}\b(?:pain|hurt|punishment|blood|to\s+bleed|to\s+hurt)\b/,
+  /\b(?:want|need|going|gonna|about|ready|plan|planning)\b.{0,48}\b(?:erase|disappear|vanish)\s+(?:myself|me)\b/,
+]
 const INTENSITY_TERMS = [
   'can’t do this',
   "can't do this",
@@ -83,12 +253,125 @@ const DISTRESS_TERMS = [
   'broken',
 ]
 
+const SUPPORT_TERMS = [
+  'useless',
+  'worthless',
+  'worthlessness',
+  'worthlesness',
+  'worthelessness',
+  'worthelesness',
+  'i am a failure',
+  "i'm a failure",
+  'feel like a failure',
+  'i hate myself',
+  'hate myself',
+  'hate who i am',
+  'bad about myself',
+  'not good enough',
+  'never good enough',
+  'weak self image',
+  'weak self-image',
+  'i am weak',
+  "i'm weak",
+  'feel weak',
+  'i feel weak',
+  'pathetic',
+  'disgusting',
+  'gross',
+  'unlovable',
+  'ugly',
+  'fat',
+  'unattractive',
+  'hideous',
+  'repulsive',
+  'nobody could love me',
+  'no one could love me',
+  'no one will love me',
+  'nobody will love me',
+  'never get a boyfriend',
+  'never get a girlfriend',
+  'never get a partner',
+  'unappreciated',
+  'not appreciated',
+  'demotivated',
+  'hate my body',
+  'hate my face',
+  'bad body image',
+  'body image',
+  'ashamed of myself',
+  'cant do anything right',
+  "can't do anything right",
+  'cannot do anything right',
+  'everything is my fault',
+  'i am a burden',
+  "i'm a burden",
+  'feel like a burden',
+  'no one supports me',
+  'nobody supports me',
+  'no support',
+  'unsupported',
+  'feel unsupported',
+  'feeling unsupported',
+  'no one cares',
+  'nobody cares',
+  'ignored',
+  'abandoned',
+  'all alone',
+  'really bad day',
+  'worst day',
+  'horrible day',
+  'awful day',
+  'falling apart',
+  'cant catch a break',
+  "can't catch a break",
+  'made fun of me',
+  'making fun of me',
+  'laughed at me',
+  'mocked me',
+  'teased me',
+  'ridiculed me',
+  'humiliated me',
+  'embarrassed me',
+  'everyone laughed',
+  'people laughed',
+  'i suck',
+  'i suck at this',
+  'bad at everything',
+  'terrible at everything',
+  'not cut out for this',
+  'not smart enough',
+  'not talented enough',
+  'not capable',
+  'incapable',
+  'incompetent',
+  'i failed again',
+]
+
+const SUPPORT_PATTERNS = [
+  /\b(?:i\s+am|i'm|im|i\s+feel|feeling|felt)\s+(?:so\s+|really\s+|very\s+)?(?:useless|worthless|weak|unlovable|broken|pathetic|disgusting|gross|ugly|fat|unattractive|hideous|repulsive|hopeless)\b/,
+  /\b(?:i\s+hate|hate)\s+(?:myself|who\s+i\s+am|being\s+me)\b/,
+  /\b(?:i\s+hate|hate)\s+(?:my\s+)?(?:body|face|looks|appearance)\b/,
+  /\b(?:my\s+)?(?:body|face|looks|appearance)\s+(?:is|are|feels?|looks?)\s+(?:ugly|fat|gross|disgusting|unattractive|hideous|repulsive|awful|terrible)\b/,
+  /\b(?:my\s+)?self[-\s]?image\s+(?:is\s+)?(?:awful|terrible|weak|bad|broken)\b/,
+  /\b(?:no\s+one|nobody)\s+(?:supports|cares|listens|understands)\s+(?:about\s+)?(?:me)?\b/,
+  /\b(?:i\s+feel|feeling|felt)\s+(?:so\s+|really\s+|very\s+)?(?:unsupported|ignored|alone|abandoned)\b/,
+  /\b(?:everything|all\s+of\s+this)\s+(?:is\s+)?(?:my\s+fault|falling\s+apart)\b/,
+  /\b(?:someone|they|everyone|people|classmates|coworkers|friends?)\b.{0,64}\b(?:made\s+fun\s+of|mocked|laughed\s+at|teased|ridiculed|humiliated|embarrassed|called)\s+(?:me|my)\b/,
+  /\b(?:made\s+fun\s+of|mocked|laughed\s+at|teased|ridiculed|humiliated|embarrassed)\s+(?:me|my)\b/,
+  /\b(?:i\s+)?(?:suck|am\s+terrible|am\s+bad|failed)\s+(?:at|in)\b.{0,48}\b(?:this|school|work|class|job|project|skill|practice|everything)\b/,
+  /\b(?:i\s+am|i'm|im|i\s+feel|feeling|felt)\b.{0,32}\b(?:incapable|incompetent|not\s+capable|not\s+smart\s+enough|not\s+good\s+enough|not\s+talented\s+enough|not\s+cut\s+out)\b/,
+  /\b(?:everyone|everybody|people)\s+(?:else\s+)?(?:is|are|seems?)\s+(?:better|smarter|more\s+talented|ahead)\b.{0,64}\b(?:than\s+me|and\s+i\s+(?:am|feel|seem|look))\b/,
+]
+
 const AI_REVIEW_TERMS = [
   ...CRISIS_TERMS,
   ...AMBIGUOUS_RISK_TERMS,
   ...SELF_HARM_TERMS,
+  ...OTHER_HARM_TERMS,
+  ...RASH_ACTION_TERMS,
   ...INTENSITY_TERMS,
   ...DISTRESS_TERMS,
+  ...SUPPORT_TERMS,
   'i am done',
   "i'm done",
   'done with everything',
@@ -97,6 +380,13 @@ const AI_REVIEW_TERMS = [
   'no way out',
   'give up',
   'giving up',
+  'murder',
+  'weapon',
+  'hurt',
+  'harm',
+  'stab',
+  'shoot',
+  'cut',
 ]
 
 const EXCE_TERMS = [
@@ -115,10 +405,26 @@ const EXCE_TERMS = [
   'relieved',
   'hopeful',
   'loved',
+  'friend',
+  'friends',
+  'new friends',
+  'made friends',
+  'made new friends',
   'safe',
   'calm',
   'peaceful',
   'accomplished',
+  'finally',
+  'found',
+  'fit',
+  'clothes that fit',
+  'nothing could be better',
+  'best day',
+  'breakthrough',
+  'milestone',
+  'succeeded',
+  'success',
+  'did it',
   'win',
   'celebrate',
   'aced',
@@ -127,10 +433,62 @@ const EXCE_TERMS = [
   'killing it',
   'killed it',
   'killed this test',
+  'life changing',
+  'life-changing',
+  'first time',
+  'tried something new',
+  'did something new',
+  'made a new friend',
+  'made new friends',
+  'new friend',
+  'joined a group',
+  'joined a club',
+  'joined a team',
+  'opened up',
+  'stood up for myself',
+  'big step',
+  'brave step',
+  'got accepted',
+  'passed the test',
+  'finished the project',
 ]
 
-const AI_RISK_REVIEW_THRESHOLD = 0.2
-export const EXCE_AI_THRESHOLD = 5
+const MAJOR_EXCE_TERMS = [
+  'nothing could be better',
+  'best day',
+  'breakthrough',
+  'milestone',
+  'life changing',
+  'life-changing',
+  'first time',
+  'tried something new',
+  'did something new',
+  'made a new friend',
+  'made new friends',
+  'new friend',
+  'joined a group',
+  'joined a club',
+  'joined a team',
+  'opened up',
+  'stood up for myself',
+  'big step',
+  'brave step',
+  'got accepted',
+  'passed the test',
+  'finished the project',
+]
+
+const EXCE_PATTERNS = [
+  /\b(?:first\s+time|for\s+the\s+first\s+time)\b.{0,80}\b(?:i\s+)?(?:tried|did|went|joined|made|talked|asked|finished|passed|started)\b/,
+  /\b(?:made|met)\s+(?:a\s+)?(?:new\s+)?friends?\b/,
+  /\b(?:tried|did|started)\s+something\s+(?:new|scary|hard|different)\b/,
+  /\b(?:joined|went\s+to)\s+(?:a\s+)?(?:club|group|team|class|event|meetup)\b/,
+  /\b(?:opened\s+up|stood\s+up\s+for\s+myself|asked\s+for\s+help|got\s+accepted|got\s+the\s+job|passed\s+the\s+test|finished\s+the\s+project)\b/,
+]
+
+const NEGATIVE_SUPPORT_THRESHOLD = 0.85
+const SEMANTIC_SUPPORT_THRESHOLD = 0.9
+export const EXCE_AI_THRESHOLD = 4
 
 export type RiskAssessmentInput = {
   sentiment: EntrySentiment
@@ -153,6 +511,15 @@ export type RiskAssessment = {
   supportiveMessage?: string
   responseKind: 'none' | 'positive' | 'support' | 'crisis'
   crisisConfirmed?: boolean
+  literalSentimentLabel: LiteralSentimentLabel
+  literalSentimentConfidence: number
+  literalSentimentScore: number
+  sentimentModelSource: LiteralSentimentScore['source']
+  guardSafe?: boolean
+  guardCategories?: string[]
+  semanticRiskLabel: SemanticRiskScore['label']
+  semanticRiskConfidence: number
+  semanticRiskSource: SemanticRiskScore['source']
   source: 'local' | 'hybrid'
 }
 
@@ -161,12 +528,41 @@ type RiskAssessmentOptions = {
 }
 
 type WorkerRiskResponse = {
+  guardSafe?: unknown
+  guardCategories?: unknown
+  literalSentimentLabel?: unknown
+  literalSentimentConfidence?: unknown
+  literalSentimentScore?: unknown
+  sentimentModelSource?: unknown
   riskScore?: unknown
   interventionScore?: unknown
   riskLevel?: unknown
   responseKind?: unknown
   reasons?: unknown
   supportiveMessage?: unknown
+}
+
+type WorkerRiskRequest = {
+  localRiskScore: number
+  localInterventionScore: number
+  localRiskLevel: RiskLevel
+  localResponseKind: RiskAssessment['responseKind']
+  localCrisisHardLock: boolean
+  localExceScore: number
+  localLiteralSentimentLabel: RiskAssessment['literalSentimentLabel']
+  localLiteralSentimentConfidence: number
+  localLiteralSentimentScore: number
+  localSemanticRiskLabel: RiskAssessment['semanticRiskLabel']
+  localSemanticRiskConfidence: number
+  localSemanticRiskSource: RiskAssessment['semanticRiskSource']
+  reasons: string[]
+  entry: {
+    sentiment: EntrySentiment
+    emotion: string
+    situation: string
+    details: string
+  }
+  supportMemories: SupportMemory[]
 }
 
 type SupportMemory = {
@@ -282,13 +678,13 @@ function clampInterventionScore(n: number) {
 
 function responseKindForIntervention(score: number): RiskAssessment['responseKind'] {
   if (score >= 2) return 'crisis'
-  if (score > 0) return 'support'
   if (score <= -1) return 'positive'
+  if (score >= NEGATIVE_SUPPORT_THRESHOLD) return 'support'
   return 'none'
 }
 
 function riskScoreForIntervention(score: number) {
-  return score > 0 ? clamp01(score / 2) : 0
+  return score >= 2 ? clamp01(score / 2) : 0
 }
 
 function riskLevelForIntervention(score: number): RiskLevel {
@@ -303,24 +699,157 @@ export function riskLevelForScore(score: number): RiskLevel {
   return 'none'
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function termMatches(normalized: string, term: string) {
+  const cleanTerm = normalize(term)
+  if (!cleanTerm) return false
+  if (/^[a-z0-9']+$/.test(cleanTerm)) {
+    return new RegExp(`(^|[^a-z0-9'])${escapeRegExp(cleanTerm)}(?=$|[^a-z0-9'])`).test(normalized)
+  }
+  return normalized.includes(cleanTerm)
+}
+
 function scoreTerms(normalized: string, terms: string[], weight: number) {
-  const hits = terms.filter((term) => normalized.includes(normalize(term)))
+  const hits = terms.filter((term) => termMatches(normalized, term))
   return { hits, score: hits.length ? Math.min(weight, hits.length * weight * 0.65) : 0 }
+}
+
+function scorePatterns(normalized: string, patterns: RegExp[], label: string, weight: number) {
+  const hits = patterns.some((pattern) => pattern.test(normalized)) ? [label] : []
+  return { hits, score: hits.length ? weight : 0 }
+}
+
+function textForSentiment(input: RiskAssessmentInput) {
+  return `${input.situation}\n${input.details}\n${input.emotionNote}`
+}
+
+function hasConcreteDangerContext(text: string) {
+  return /\b(?:kill|murder|hurt|harm|attack|stab|shoot|beat|weapon|gun|knife|blood|dead|die|death|last\s+breath|final\s+breath|(?:his|her|their|this)\s+breath\s+(?:will\s+be\s+)?(?:(?:his|her|their)\s+|the\s+)?(?:last|final)|won't\s+see\s+tomorrow|wont\s+see\s+tomorrow|will\s+not\s+see\s+tomorrow|suicide|suicidal|overdose|self-?harm|cant\s+stay\s+safe|can't\s+stay\s+safe|not\s+safe)\b/.test(text)
+}
+
+function isBenignRoutineOrIdiom(text: string) {
+  const householdTask =
+    /\b(?:take|taking|took)\s+out\s+(?:the\s+)?(?:trash|garbage|recycling|compost)\b/.test(text) ||
+    /\b(?:clean|cleaning|wash|washing|do|doing)\s+(?:the\s+)?(?:dishes|laundry|floors|bathroom|kitchen|sink|counters?)\b/.test(text) ||
+    /\b(?:vacuum|vacuuming|sweep|sweeping|mop|mopping|fold|folding)\s+(?:the\s+)?(?:floor|floors|laundry|clothes|room|house|apartment)\b/.test(text)
+  const takeOutIdiom =
+    /\b(?:take|taking|took)\s+(?:(?:my|the|a|an|our|his|her|their)\s+)?[\w'-]+\s+out\b/.test(text) ||
+    /\b(?:take|taking|took)\s+out\s+(?:(?:my|the|a|an|our|his|her|their)\s+)?[\w'-]+\b/.test(text)
+  return (householdTask || takeOutIdiom) && !hasConcreteDangerContext(text)
+}
+
+function isBenignLowSignalMood(text: string) {
+  if (hasConcreteDangerContext(text)) return false
+  const words = text.match(/[a-z']+/g) ?? []
+  if (words.length === 0 || words.length > 10) return false
+  const allowed = new Set([
+    'i',
+    "i'm",
+    'im',
+    'am',
+    'feel',
+    'feeling',
+    'felt',
+    'just',
+    'a',
+    'bit',
+    'little',
+    'kind',
+    'of',
+    'sort',
+    'today',
+    'tonight',
+    'okay',
+    'ok',
+    'fine',
+    'alright',
+    'sad',
+    'sick',
+    'ill',
+    'unwell',
+    'nauseous',
+    'nauseated',
+    'queasy',
+    'feverish',
+    'hurting',
+    'sore',
+    'achy',
+    'tired',
+    'exhausted',
+    'drained',
+    'angry',
+    'mad',
+    'upset',
+    'anxious',
+    'stressed',
+    'overwhelmed',
+    'mixed',
+    'meh',
+    'down',
+    'low',
+    'lonely',
+    'blah',
+  ])
+  return words.every((word) => allowed.has(word))
+}
+
+function hasExplicitDangerIntent(text: string) {
+  return /\b(?:suicide|suicidal|want\s+to\s+die|wish\s+i\s+(?:was|were)\s+dead|end\s+(?:my\s+life|myself|it\s+all)|can't\s+stay\s+safe|cant\s+stay\s+safe|cannot\s+stay\s+safe|not\s+safe\s+(?:alone|with\s+myself)|deserve\s+(?:pain|to\s+hurt|to\s+bleed)|punish\s+myself|make\s+myself\s+pay|want\s+to\s+see\s+blood|need\s+to\s+see\s+blood)\b/.test(text) ||
+    /\b(?:want|need|urge|urges|plan|planning|about\s+to|going\s+to|gonna|ready\s+to|might|could|will)\b.{0,56}\b(?:hurt|harm|cut|burn|scratch|pick|pull|bleed|pain|razor|blade|knife|lighter|overdose|kill|end)\b/.test(text)
+}
+
+function isBenignAccidentalInjury(text: string) {
+  const injury = /\b(?:cut|cuts|cutting|sliced|slice|nicked|nick|burned|burnt|burn|scraped|scratched|scratch|stabbed|poked)\s+(?:myself|me|my\s+(?:finger|thumb|hand|arm|skin))\b/.test(text) ||
+    /\b(?:my\s+(?:finger|thumb|hand|arm|skin))\b.{0,36}\b(?:cut|sliced|nicked|burned|burnt|scraped|scratched|poked)\b/.test(text)
+  const accidentContext =
+    /\b(?:accidentally|by\s+accident|slipped|chopping|cooking|kitchen|vegetables?|veggies|onion|knife\s+slipped|paper\s+cut|shaving|razor\s+burn|cat\s+scratched|fell|trip(?:ped)?|craft|sewing)\b/.test(text)
+  return injury && accidentContext && !hasExplicitDangerIntent(text)
+}
+
+function shouldSuppressSemanticRisk(text: string, message: ReturnType<typeof messageRisk>) {
+  return !message.crisisConfirmed && (isBenignRoutineOrIdiom(text) || isBenignLowSignalMood(text))
+}
+
+function hasMeaningfulAssessmentText(text: string) {
+  const words = text.match(/[a-z0-9']+/g) ?? []
+  return words.length >= 2 || (words[0]?.length ?? 0) >= 4
 }
 
 function scoreExce(input: RiskAssessmentInput) {
   const text = normalize(`${input.situation}\n${input.details}\n${input.emotionNote}`)
+  if (!hasMeaningfulAssessmentText(text)) return { score: 0, hits: [] as string[] }
   let score = 0
-  const hits = EXCE_TERMS.filter((term) => text.includes(normalize(term)))
-  score += hits.length
-  if (input.sentiment === '+') score += 2
-  if (input.emotion === 'happy') score += 2
-  if (input.emotion === 'calm') score += 1
-  return { score, hits: unique(hits) }
+  const hits = EXCE_TERMS.filter((term) => termMatches(text, term))
+  const majorHits = MAJOR_EXCE_TERMS.filter((term) => termMatches(text, term))
+  const patternHits = EXCE_PATTERNS.some((pattern) => pattern.test(text)) ? ['positive milestone'] : []
+  const majorSignal = majorHits.length > 0 || patternHits.length > 0
+  if (majorSignal) {
+    score += majorHits.length * 2 + patternHits.length * 2 + hits.length * 0.5
+    if (input.sentiment === '+') score += 2
+    if (input.emotion === 'happy') score += 2
+    if (input.emotion === 'calm') score += 1
+  } else if (hits.length >= 4 && input.sentiment === '+' && input.emotion === 'happy') {
+    score += hits.length
+  }
+  return { score, hits: unique([...majorHits, ...patternHits, ...(score > 0 ? hits : [])]) }
+}
+
+function scoreSupport(input: RiskAssessmentInput) {
+  const text = normalize(textForSentiment(input))
+  const terms = scoreTerms(text, SUPPORT_TERMS, 0.92)
+  const patterns = scorePatterns(text, SUPPORT_PATTERNS, 'self-worth distress', 0.92)
+  const hits = unique([...terms.hits, ...patterns.hits])
+  return {
+    score: hits.length ? Math.max(terms.score, patterns.score, SEMANTIC_SUPPORT_THRESHOLD) : 0,
+    hits,
+  }
 }
 
 function messageRisk(input: RiskAssessmentInput) {
-  const text = normalize(`${input.situation}\n${input.details}\n${input.emotionNote}`)
+  const text = normalize(textForSentiment(input))
   if (!text) {
     return {
       score: 0,
@@ -332,40 +861,41 @@ function messageRisk(input: RiskAssessmentInput) {
   }
 
   const crisis = scoreTerms(text, CRISIS_TERMS, 2.2)
-  const ambiguous = scoreTerms(text, AMBIGUOUS_RISK_TERMS, 0.7)
+  const lifeEndingMetaphor = scorePatterns(text, LIFE_ENDING_METAPHOR_PATTERNS, 'life-ending metaphor', 2.1)
   const selfHarm = scoreTerms(text, SELF_HARM_TERMS, 2)
   const crisisMeds = scoreTerms(text, CRISIS_MEDICATION_TERMS, 2.1)
-  const meds = scoreTerms(text, MEDICATION_TERMS, 0.7)
-  const intensity = scoreTerms(text, INTENSITY_TERMS, 0.7)
-  const distress = scoreTerms(text, DISTRESS_TERMS, 0.5)
+  const otherHarm = scoreTerms(text, OTHER_HARM_TERMS, 2.1)
+  const otherHarmPattern = scorePatterns(text, OTHER_HARM_PATTERNS, 'targeted harm language', 2.1)
+  const selfHarmPattern = scorePatterns(text, SELF_HARM_PATTERNS, 'self-directed harm language', 2.1)
+  const rashAction = scoreTerms(text, RASH_ACTION_TERMS, 1.9)
+  const suppressSelfHarm = (selfHarm.hits.length > 0 || selfHarmPattern.hits.length > 0) &&
+    isBenignAccidentalInjury(text)
   const reasons: string[] = []
 
-  const crisisConfirmed = crisis.hits.length > 0 || selfHarm.hits.length > 0 || crisisMeds.hits.length > 0
+  const crisisConfirmed =
+    crisis.hits.length > 0 ||
+    lifeEndingMetaphor.hits.length > 0 ||
+    (!suppressSelfHarm && (selfHarm.hits.length > 0 || selfHarmPattern.hits.length > 0)) ||
+    crisisMeds.hits.length > 0 ||
+    otherHarm.hits.length > 0 ||
+    otherHarmPattern.hits.length > 0 ||
+    rashAction.hits.length > 0
   let interventionScore =
     crisis.score +
-    selfHarm.score +
+    lifeEndingMetaphor.score +
+    (suppressSelfHarm ? 0 : selfHarm.score) +
+    (suppressSelfHarm ? 0 : selfHarmPattern.score) +
     crisisMeds.score +
-    meds.score +
-    intensity.score +
-    distress.score +
-    ambiguous.score
-  if (input.sentiment === '-') interventionScore += 0.55
-  if (input.sentiment === '=') interventionScore += 0.1
-  if (input.emotion === 'sad') interventionScore += 0.45
-  if (input.emotion === 'anxious') interventionScore += 0.4
-  if (input.emotion === 'angry') interventionScore += 0.25
+    otherHarm.score +
+    otherHarmPattern.score +
+    rashAction.score
   if (crisisConfirmed) interventionScore = Math.max(interventionScore, 2.1)
 
-  if (crisis.hits.length) reasons.push('crisis language')
-  if (ambiguous.hits.length) reasons.push('ambiguous risk language')
-  if (selfHarm.hits.length) reasons.push('self-harm language')
+  if (crisis.hits.length || lifeEndingMetaphor.hits.length) reasons.push('crisis language')
+  if (!suppressSelfHarm && (selfHarm.hits.length || selfHarmPattern.hits.length)) reasons.push('self-harm language')
+  if (otherHarm.hits.length || otherHarmPattern.hits.length) reasons.push('other-harm language')
   if (crisisMeds.hits.length) reasons.push('overdose language')
-  if (meds.hits.length) reasons.push('medication language')
-  if (intensity.hits.length) reasons.push('high-intensity distress language')
-  if (distress.hits.length) reasons.push('distress language')
-  if (input.sentiment === '-' || input.emotion === 'sad' || input.emotion === 'anxious') {
-    reasons.push('difficult mood signal')
-  }
+  if (rashAction.hits.length) reasons.push('rash action language')
 
   const finalInterventionScore = clampInterventionScore(interventionScore)
   return {
@@ -373,16 +903,96 @@ function messageRisk(input: RiskAssessmentInput) {
     interventionScore: finalInterventionScore,
     flaggedTerms: unique([
       ...crisis.hits,
-      ...ambiguous.hits,
-      ...selfHarm.hits,
+      ...lifeEndingMetaphor.hits,
+      ...(suppressSelfHarm ? [] : selfHarm.hits),
+      ...(suppressSelfHarm ? [] : selfHarmPattern.hits),
+      ...otherHarm.hits,
+      ...otherHarmPattern.hits,
       ...crisisMeds.hits,
-      ...meds.hits,
-      ...intensity.hits,
-      ...distress.hits,
+      ...rashAction.hits,
     ]),
     reasons: unique(reasons),
     crisisConfirmed,
   }
+}
+
+export function debugAssessLocalMessageRisk(text: string) {
+  return messageRisk({
+    sentiment: '=',
+    emotion: 'other',
+    emotionNote: '',
+    situation: '',
+    details: text,
+  })
+}
+
+function applyLiteralSentiment(
+  message: ReturnType<typeof messageRisk>,
+  literalSentiment: LiteralSentimentScore,
+  semanticRisk: SemanticRiskScore,
+  supportScore: number,
+  heatScore: number,
+  exceScore: number,
+  suppressSemanticRisk: boolean,
+) {
+  if (message.crisisConfirmed) return message.interventionScore
+  if (suppressSemanticRisk) return 0
+  if (exceScore >= EXCE_AI_THRESHOLD) {
+    return Math.min(-1, -0.85 - (exceScore - EXCE_AI_THRESHOLD) * 0.15)
+  }
+  if (supportScore >= SEMANTIC_SUPPORT_THRESHOLD) return supportScore
+  if (heatScore >= 0.48 && (supportScore > 0 || semanticRisk.supportScore >= 0.6 || literalSentiment.literalScore >= 0.7)) {
+    return SEMANTIC_SUPPORT_THRESHOLD
+  }
+  if (semanticRisk.supportScore >= SEMANTIC_SUPPORT_THRESHOLD && semanticRisk.crisisScore < 0.35) {
+    return semanticRisk.supportScore
+  }
+  return 0
+}
+
+function localSelfHarmActionPhrase(text: string) {
+  if (/\b(?:razor|blade|knife)\b/.test(text)) return 'using a sharp object to hurt yourself'
+  if (/\b(?:lighter|cigarette)\b/.test(text)) return 'burning yourself'
+  if (/\boverdose|too\s+many\s+pills\b/.test(text)) return 'taking too much medication'
+  if (/\b(?:cut|cutting|carve|slice)\b/.test(text)) return 'cutting yourself'
+  if (/\b(?:burn|burning)\b/.test(text)) return 'burning yourself'
+  if (/\b(?:scratch|scratching|pick|picking)\b/.test(text)) return 'scratching or picking your skin'
+  if (/\b(?:pull|pulling)\s+(?:my\s+)?hair\b/.test(text)) return 'pulling your hair'
+  if (/\b(?:blood|bleed|bleeding)\b/.test(text)) return 'making yourself bleed'
+  if (/\b(?:pain|hurt|punish)\b/.test(text)) return 'hurting or punishing yourself'
+  return 'hurting yourself'
+}
+
+function localCrisisFallbackMessage(input: RiskAssessmentInput, message: ReturnType<typeof messageRisk>) {
+  if (!message.crisisConfirmed) return undefined
+  const context = input.situation.trim() || input.details.trim() || input.emotionNote.trim()
+  const anchor = context ? `This entry sounds urgent around "${context.slice(0, 120)}." ` : ''
+  const reasonText = message.reasons.join(' ')
+  const normalizedText = normalize(textForSentiment(input))
+  if (reasonText.includes('other-harm')) {
+    return `${anchor}Because it mentions possibly hurting someone else, put distance between you and the situation before doing anything else. Step away, get cold water on your hands or face, move your body hard for a minute, write the message you will not send, and contact a safe person now. If anyone may be in immediate danger, call emergency services.`
+  }
+  if (reasonText.includes('self-harm') || reasonText.includes('crisis') || reasonText.includes('overdose')) {
+    const action = localSelfHarmActionPhrase(normalizedText)
+    return `${anchor}Because it points toward ${action}, move closer to another person and farther from anything you could use to act on this. Try one grounding thing you can do right now, like naming five objects nearby or putting on something comforting, and contact 988 or a trusted person if the urge is close.`
+  }
+  if (reasonText.includes('rash action')) {
+    return `${anchor}Because it sounds like you may be about to make a decision you could regret, slow the next ten minutes down. Delay the action, leave the trigger if you can, write the choice down without doing it, and ask one steady person to sit with you before you decide.`
+  }
+  return `${anchor}This sounds like a moment that needs support before action. Pause, get near someone safe, put distance between you and anything risky, and contact emergency services or 988 if anyone could be in danger.`
+}
+
+function shouldLockLocalCrisis(local: RiskAssessment, input: RiskAssessmentInput) {
+  if (!local.crisisConfirmed) return false
+  const text = normalize(textForSentiment(input))
+  if (isBenignAccidentalInjury(text)) return false
+  if (local.reasons.some((reason) => reason === 'overdose language' || reason === 'other-harm language')) return true
+  if (local.reasons.includes('rash action language')) {
+    return /\b(?:right\s+now|tonight|today|about\s+to|going\s+to|gonna|will|empty|drain|gamble|crash|drive\s+off|max\s+out)\b/.test(text)
+  }
+  if (local.reasons.includes('self-harm language')) return hasExplicitDangerIntent(text)
+  if (local.reasons.includes('crisis language')) return hasExplicitDangerIntent(text) || local.flaggedTerms.length > 0
+  return false
 }
 
 async function recentEntries(dateKey: string) {
@@ -457,21 +1067,59 @@ function trendRisk(entries: EntryRow[]) {
   return { score: clamp01(score), reasons: unique(reasons) }
 }
 
+function trendHeat(entries: EntryRow[]) {
+  const recent = entries.slice(-14)
+  let heat = 0
+  let swings = 0
+  let previousPolarity: 'positive' | 'negative' | null = null
+  for (const entry of recent) {
+    const risk = entry.riskLevel === 'crisis' || entry.warningLevel === 'warn'
+    const negative = entry.sentiment === '-' || entry.emotion === 'sad' || entry.emotion === 'anxious' || entry.emotion === 'angry'
+    const positive = entry.sentiment === '+' || entry.emotion === 'happy' || entry.emotion === 'calm'
+    if (risk) heat += 2
+    else if (negative) heat += 0.7
+    if (positive) heat -= 0.85
+    const polarity = positive ? 'positive' : negative ? 'negative' : null
+    if (polarity && previousPolarity && polarity !== previousPolarity) swings += 1
+    if (polarity) previousPolarity = polarity
+    heat = Math.max(0, heat * 0.92)
+  }
+  const reasons: string[] = []
+  if (heat >= 2.4) reasons.push('support heat: repeated difficult entries')
+  if (swings >= 4) reasons.push('mood swing context')
+  return { heat: clamp01(heat / 5), reasons }
+}
+
 export async function assessLocalRisk(
   input: RiskAssessmentInput & { dateKey: string },
 ): Promise<RiskAssessment> {
   input = expandDebugRiskInput(input)
   const message = messageRisk(input)
   const exce = scoreExce(input)
-  const trend = trendRisk(await recentEntries(input.dateKey))
-  let interventionScore = message.interventionScore
-  if (!message.crisisConfirmed && exce.score >= EXCE_AI_THRESHOLD) {
-    interventionScore = Math.min(interventionScore, -1 - (exce.score - EXCE_AI_THRESHOLD) * 0.15)
-  }
+  const support = scoreSupport(input)
+  const entries = await recentEntries(input.dateKey)
+  const trend = trendRisk(entries)
+  const heat = trendHeat(entries)
+  const assessmentText = textForSentiment(input)
+  const normalizedAssessmentText = normalize(assessmentText)
+  const suppressSemanticRisk = shouldSuppressSemanticRisk(normalizedAssessmentText, message)
+  const [literalSentiment, semanticRisk] = await Promise.all([
+    scoreLiteralSentiment(assessmentText),
+    scoreSemanticRisk(assessmentText),
+  ])
+  const interventionScore = applyLiteralSentiment(
+    message,
+    literalSentiment,
+    semanticRisk,
+    support.score,
+    heat.heat,
+    exce.score,
+    suppressSemanticRisk,
+  )
   const responseKind = responseKindForIntervention(interventionScore)
   const riskScore = riskScoreForIntervention(interventionScore)
   const riskLevel = riskLevelForIntervention(interventionScore)
-  const warningLevel = responseKind === 'support' || responseKind === 'crisis' ? 'warn' : 'none'
+  const warningLevel = responseKind === 'crisis' ? 'warn' : 'none'
   return {
     riskScore,
     interventionScore,
@@ -482,11 +1130,45 @@ export async function assessLocalRisk(
     reasons: unique([
       ...message.reasons,
       ...(warningLevel === 'warn' ? trend.reasons : []),
+      ...(literalSentiment.source === 'model'
+        ? [`sentiment: ${literalSentiment.label.toLowerCase()} ${literalSentiment.confidence.toFixed(2)}`]
+        : []),
+      ...(semanticRisk.source === 'model'
+        ? [`semantic: ${semanticRisk.label} ${semanticRisk.confidence.toFixed(2)}`]
+        : []),
+      ...(suppressSemanticRisk ? ['semantic suppressed: benign low-signal entry'] : []),
+      ...heat.reasons,
+      ...support.hits.map((hit) => `support: ${hit}`),
       ...exce.hits.map((hit) => `positive: ${hit}`),
     ]),
+    supportiveMessage:
+      responseKind === 'crisis'
+        ? localCrisisFallbackMessage(input, message)
+        : undefined,
     responseKind,
     crisisConfirmed: message.crisisConfirmed,
+    literalSentimentLabel: literalSentiment.label,
+    literalSentimentConfidence: literalSentiment.confidence,
+    literalSentimentScore: literalSentiment.literalScore,
+    sentimentModelSource: literalSentiment.source,
+    semanticRiskLabel: semanticRisk.label,
+    semanticRiskConfidence: semanticRisk.confidence,
+    semanticRiskSource: semanticRisk.source,
     source: 'local',
+  }
+}
+
+export function assessDraftRisk(input: RiskAssessmentInput): Pick<
+  RiskAssessment,
+  'riskScore' | 'warningLevel' | 'flaggedTerms' | 'reasons'
+> {
+  const message = messageRisk(input)
+  const warningLevel = message.crisisConfirmed ? 'warn' as const : 'none' as const
+  return {
+    riskScore: message.score,
+    warningLevel,
+    flaggedTerms: message.flaggedTerms,
+    reasons: message.reasons,
   }
 }
 
@@ -505,7 +1187,19 @@ function riskEndpoint() {
   return normalizeEndpointUrl(weeklyEndpoint).replace(/\/weekly-summary\/?$/, '/risk-assessment')
 }
 
-function parseWorkerRisk(body: WorkerRiskResponse): Pick<RiskAssessment, 'interventionScore' | 'reasons' | 'supportiveMessage' | 'responseKind'> | null {
+function parseWorkerRisk(body: WorkerRiskResponse): Pick<
+  RiskAssessment,
+  | 'interventionScore'
+  | 'reasons'
+  | 'supportiveMessage'
+  | 'responseKind'
+  | 'guardSafe'
+  | 'guardCategories'
+  | 'literalSentimentLabel'
+  | 'literalSentimentConfidence'
+  | 'literalSentimentScore'
+  | 'sentimentModelSource'
+> | null {
   const interventionScore = Number(body.interventionScore)
   if (!Number.isFinite(interventionScore)) return null
   const responseKind = body.responseKind
@@ -520,16 +1214,33 @@ function parseWorkerRisk(body: WorkerRiskResponse): Pick<RiskAssessment, 'interv
   const reasons = Array.isArray(body.reasons)
     ? body.reasons.filter((row): row is string => typeof row === 'string').slice(0, 4)
     : []
+  const guardCategories = Array.isArray(body.guardCategories)
+    ? body.guardCategories.filter((row): row is string => typeof row === 'string').slice(0, 6)
+    : []
+  const literalSentimentLabel =
+    body.literalSentimentLabel === 'POSITIVE' || body.literalSentimentLabel === 'NEGATIVE'
+      ? body.literalSentimentLabel
+      : 'NEUTRAL'
+  const literalSentimentConfidence = clamp01(Number(body.literalSentimentConfidence))
+  const literalSentimentScore = clampInterventionScore(Number(body.literalSentimentScore))
+  const sentimentModelSource =
+    body.sentimentModelSource === 'worker' || body.sentimentModelSource === 'fallback'
+      ? body.sentimentModelSource
+      : 'fallback'
   let finalInterventionScore = clampInterventionScore(interventionScore)
   if (responseKind === 'crisis') finalInterventionScore = Math.max(finalInterventionScore, 2)
-  if (responseKind === 'support') finalInterventionScore = Math.min(Math.max(finalInterventionScore, 0.5), 1.9)
   if (responseKind === 'positive') finalInterventionScore = Math.min(finalInterventionScore, -1)
-  if (responseKind === 'none') finalInterventionScore = Math.abs(finalInterventionScore) < 1 ? 0 : finalInterventionScore
   return {
     interventionScore: finalInterventionScore,
     reasons,
     supportiveMessage: typeof body.supportiveMessage === 'string' ? body.supportiveMessage : undefined,
     responseKind,
+    guardSafe: typeof body.guardSafe === 'boolean' ? body.guardSafe : undefined,
+    guardCategories,
+    literalSentimentLabel,
+    literalSentimentConfidence,
+    literalSentimentScore,
+    sentimentModelSource,
   }
 }
 
@@ -538,22 +1249,56 @@ export async function refineRiskWithWorker(
   input: RiskAssessmentInput & { dateKey?: string },
   options: RiskAssessmentOptions = {},
 ): Promise<RiskAssessment> {
-  if (
-    !isAiEnabledLocally() ||
-    import.meta.env.VITE_ENABLE_WEEKLY_AI_SUMMARY !== '1' ||
-    (!options.forceAi && !shouldRequestAiRiskReview(local, input))
-  ) {
-    return local
-  }
+  const text = normalize(`${input.situation}\n${input.details}\n${input.emotionNote}`)
+  if (!options.forceAi && !hasMeaningfulAssessmentText(text)) return local
+  const aiConfigured = import.meta.env.VITE_ENABLE_WEEKLY_AI_SUMMARY === '1'
+  const wantsWorker =
+    options.forceAi ||
+    (aiConfigured && local.responseKind !== 'none') ||
+    (isAiEnabledLocally() && aiConfigured && shouldRequestLlamaGuard(local, input))
+  if (!wantsWorker) return local
   const endpoint = riskEndpoint()
   const token = normalizeEnvToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
-  if (!endpoint || !token) return local
+  if (!endpoint || !token) {
+    return options.forceAi
+      ? {
+          ...local,
+          reasons: unique([
+            ...local.reasons,
+            !endpoint ? 'worker skipped: VITE_WEEKLY_AI_ENDPOINT missing' : '',
+            !token ? 'worker skipped: VITE_WEEKLY_AI_TOKEN missing' : '',
+          ].filter(Boolean)),
+        }
+      : local
+  }
 
   try {
     const controller = new AbortController()
     const supportMemories = await recentSupportMemories(input.dateKey, input)
-    const timeout = window.setTimeout(() => controller.abort(), 7000)
+    const timeout = window.setTimeout(() => controller.abort(), 15000)
     try {
+      const workerRequest: WorkerRiskRequest = {
+        localRiskScore: local.riskScore,
+        localInterventionScore: local.interventionScore,
+        localRiskLevel: local.riskLevel,
+        localResponseKind: local.responseKind,
+        localCrisisHardLock: shouldLockLocalCrisis(local, input),
+        localExceScore: local.exceScore,
+        localLiteralSentimentLabel: local.literalSentimentLabel,
+        localLiteralSentimentConfidence: local.literalSentimentConfidence,
+        localLiteralSentimentScore: local.literalSentimentScore,
+        localSemanticRiskLabel: local.semanticRiskLabel,
+        localSemanticRiskConfidence: local.semanticRiskConfidence,
+        localSemanticRiskSource: local.semanticRiskSource,
+        reasons: local.reasons,
+        entry: {
+          sentiment: input.sentiment,
+          emotion: input.emotionNote || input.emotion,
+          situation: input.situation,
+          details: input.details,
+        },
+        supportMemories,
+      }
       const response = await fetch(endpoint, {
         method: 'POST',
         signal: controller.signal,
@@ -561,27 +1306,23 @@ export async function refineRiskWithWorker(
           'Content-Type': 'application/json',
           Authorization: 'Bearer ' + token,
         },
-        body: JSON.stringify({
-          localRiskScore: local.riskScore,
-          localInterventionScore: local.interventionScore,
-          localRiskLevel: local.riskLevel,
-          localExceScore: local.exceScore,
-          reasons: local.reasons,
-          entry: {
-            sentiment: input.sentiment,
-            emotion: input.emotionNote || input.emotion,
-            situation: input.situation,
-            details: input.details,
-          },
-          supportMemories,
-        }),
+        body: JSON.stringify(workerRequest),
       })
       if (!response.ok) return local
       const parsed = parseWorkerRisk((await response.json()) as WorkerRiskResponse)
       if (!parsed) return local
       let interventionScore = parsed.interventionScore
-      if (local.crisisConfirmed) interventionScore = Math.max(interventionScore, 2)
-      const responseKind = responseKindForIntervention(interventionScore)
+      const hardLocalCrisis = shouldLockLocalCrisis(local, input)
+      const responseKind = parsed.guardSafe === false || hardLocalCrisis
+        ? 'crisis'
+        : parsed.responseKind === 'crisis' ||
+            parsed.responseKind === 'positive' ||
+            parsed.responseKind === 'support' ||
+            parsed.responseKind === 'none'
+          ? parsed.responseKind
+          : responseKindForIntervention(interventionScore)
+      if (responseKind === 'crisis') interventionScore = Math.max(interventionScore, 2)
+      if (responseKind === 'none') interventionScore = 0
       const riskScore = riskScoreForIntervention(interventionScore)
       const riskLevel = riskLevelForIntervention(interventionScore)
       if (responseKind === 'support' && supportMemories[0]) {
@@ -592,10 +1333,17 @@ export async function refineRiskWithWorker(
         riskScore,
         interventionScore,
         riskLevel,
-        warningLevel: responseKind === 'support' || responseKind === 'crisis' ? 'warn' : 'none',
+        warningLevel: responseKind === 'crisis' ? 'warn' : 'none',
         reasons: unique([...local.reasons, ...parsed.reasons]),
-        supportiveMessage: parsed.supportiveMessage,
+        supportiveMessage:
+          parsed.supportiveMessage ?? (responseKind === 'crisis' ? local.supportiveMessage : undefined),
         responseKind,
+        guardSafe: parsed.guardSafe,
+        guardCategories: parsed.guardCategories,
+        literalSentimentLabel: parsed.literalSentimentLabel,
+        literalSentimentConfidence: parsed.literalSentimentConfidence,
+        literalSentimentScore: parsed.literalSentimentScore,
+        sentimentModelSource: parsed.sentimentModelSource,
         source: 'hybrid',
       }
     } finally {
@@ -616,17 +1364,32 @@ export async function assessRisk(
 }
 
 export function shouldRequestAiRiskReview(local: RiskAssessment, input: RiskAssessmentInput) {
-  if (local.responseKind !== 'none') return true
+  return shouldRequestLlamaGuard(local, input)
+}
+
+export function shouldRequestLlamaGuard(local: RiskAssessment, input: RiskAssessmentInput) {
+  if (local.crisisConfirmed) return true
   if (local.flaggedTerms.length > 0) return true
-  if (local.riskScore >= AI_RISK_REVIEW_THRESHOLD) return true
   if (local.exceScore >= EXCE_AI_THRESHOLD) return true
   const text = normalize(`${input.situation}\n${input.details}\n${input.emotionNote}`)
   if (!text || text.length < 12) return false
-  if (input.sentiment === '-' && text.length >= 24 && local.riskScore >= 0.12) return true
-  if (input.emotion === 'sad' || input.emotion === 'anxious' || input.emotion === 'angry') {
-    return AI_REVIEW_TERMS.some((term) => text.includes(normalize(term)))
+  if (shouldSuppressSemanticRisk(text, {
+    score: local.riskScore,
+    interventionScore: local.interventionScore,
+    flaggedTerms: local.flaggedTerms,
+    reasons: local.reasons,
+    crisisConfirmed: Boolean(local.crisisConfirmed),
+  })) return false
+  if (
+    (local.semanticRiskLabel === 'self_harm' || local.semanticRiskLabel === 'other_harm') &&
+    local.semanticRiskConfidence >= 0.82
+  ) {
+    return true
   }
-  return AI_REVIEW_TERMS.some((term) => text.includes(normalize(term)))
+  if (local.semanticRiskLabel === 'rash_action' && local.semanticRiskConfidence >= 0.72) return true
+  if (local.responseKind === 'support' || local.responseKind === 'positive') return true
+  if (AI_REVIEW_TERMS.some((term) => termMatches(text, term))) return true
+  return false
 }
 
 export function flagConcerningLanguage(text: string) {
@@ -640,6 +1403,6 @@ export function flagConcerningLanguage(text: string) {
   const responseKind = responseKindForIntervention(message.interventionScore)
   return {
     flaggedTerms: message.flaggedTerms,
-    warningLevel: responseKind === 'support' || responseKind === 'crisis' ? 'warn' as const : 'none' as const,
+    warningLevel: responseKind === 'crisis' ? 'warn' as const : 'none' as const,
   }
 }

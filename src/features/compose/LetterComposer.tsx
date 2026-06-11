@@ -5,7 +5,7 @@ import { SentimentPills, type SentimentValue } from '../../components/SentimentP
 import { dateKeyForLocalDay } from '../../shared/dates'
 import { isDebugMode } from '../../shared/debug/debugFlags'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
-import { assessLocalRisk, assessRisk, type RiskAssessment } from '../safety/riskAssessment'
+import { assessDraftRisk, assessRisk, type RiskAssessment } from '../safety/riskAssessment'
 import { CrisisResourcePanel } from '../safety/CrisisResourcePanel'
 import type { EntryEmotion, RiskLevel } from '../../db/schema'
 
@@ -55,7 +55,7 @@ export function LetterComposer({
   const [details, setDetails] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitState, setSubmitState] = useState<'idle' | 'done' | 'error'>('idle')
-  const [draftRisk, setDraftRisk] = useState<RiskAssessment | null>(null)
+  const [draftRisk, setDraftRisk] = useState<ReturnType<typeof assessDraftRisk> | null>(null)
   const [submittedRisk, setSubmittedRisk] = useState<RiskAssessment | null>(null)
   const [dateKey, setDateKey] = useState(() => dateKeyForLocalDay(new Date()))
 
@@ -104,10 +104,9 @@ export function LetterComposer({
   useEffect(() => {
     let active = true
     const id = window.setTimeout(() => {
-      void assessLocalRisk(riskInput).then((next) => {
-        if (active) setDraftRisk(next)
-      })
-    }, 180)
+      const next = assessDraftRisk(riskInput)
+      if (active) setDraftRisk(next)
+    }, 250)
     return () => {
       active = false
       window.clearTimeout(id)
@@ -121,6 +120,7 @@ export function LetterComposer({
     if (disabled || isSubmitting) return
     setIsSubmitting(true)
     setSubmitState('idle')
+    setSubmittedRisk(null)
     try {
       const finalRisk = await assessRisk(riskInput)
       await onSubmit({
@@ -146,7 +146,10 @@ export function LetterComposer({
       setDetails('')
       setDraftRisk(null)
       setSubmitState('done')
-      if (finalRisk.responseKind !== 'none') {
+      if (
+        finalRisk.responseKind === 'crisis' ||
+        (finalRisk.responseKind !== 'none' && finalRisk.supportiveMessage?.trim())
+      ) {
         setSubmittedRisk(finalRisk)
       }
       window.setTimeout(() => setSubmitState('idle'), 2200)
@@ -244,7 +247,7 @@ export function LetterComposer({
             {step === 'review' ? (
               <button
                 type="button"
-                disabled={disabled}
+                disabled={disabled || isSubmitting}
                 className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-medium"
                 onClick={() => setStep('write')}
               >
@@ -270,7 +273,7 @@ export function LetterComposer({
                 disabled={disabled || isSubmitting}
                 onClick={handleSubmit}
               >
-                {isSubmitting ? 'Submitting…' : 'Submit'}
+                {isSubmitting ? <SubmitThrobber /> : 'Submit'}
               </button>
             )}
           </div>
@@ -285,7 +288,7 @@ export function LetterComposer({
   )
 }
 
-function DraftRiskNotice({ risk }: { risk: RiskAssessment }) {
+function DraftRiskNotice({ risk }: { risk: ReturnType<typeof assessDraftRisk> }) {
   return (
     <div className="space-y-1">
       <div className="font-medium" style={{ color: 'var(--danger)' }}>
@@ -294,29 +297,25 @@ function DraftRiskNotice({ risk }: { risk: RiskAssessment }) {
       <div>
         When you submit, Mentell can show support resources or a gentler note for what you wrote.
       </div>
-      <div className="font-mono text-[11px] uppercase opacity-70">
-        Risk {risk.riskScore.toFixed(2)} · local
-      </div>
+      {isDebugMode() ? (
+        <div className="font-mono text-[11px] uppercase opacity-70">
+          Risk {risk.riskScore.toFixed(2)} · local
+        </div>
+      ) : null}
     </div>
   )
 }
 
 function SupportNotice({ risk }: { risk: RiskAssessment }) {
   const celebration = risk.responseKind === 'positive'
-  const message =
-    risk.supportiveMessage ??
-    (celebration
-      ? 'That sounds like something worth noticing. Keep going.'
-      : 'This sounds like a moment that deserves gentleness.')
+  const message = risk.supportiveMessage?.trim()
   return (
     <div className="space-y-2">
       <div className="font-medium" style={{ color: 'var(--success)' }}>
         {celebration ? 'This deserves a little confetti' : 'A small note for this moment'}
       </div>
-      <div>{message}</div>
-      <div className="font-mono text-[11px] uppercase opacity-70">
-        Intervention {risk.interventionScore.toFixed(1)} · {risk.source}
-      </div>
+      {message ? <div>{message}</div> : null}
+      {isDebugMode() ? <RiskSignalLine risk={risk} /> : null}
     </div>
   )
 }
@@ -330,24 +329,28 @@ function RiskNotice({ risk }: { risk: RiskAssessment }) {
           ? 'You matter, and you do not have to sit with this alone.'
           : 'I noticed this feels heavy. You are cared about.'}
       </div>
-      <div>
-        {risk.supportiveMessage ??
-          (crisis
-            ? 'If you might be in immediate danger, please contact emergency services, 988, or someone you trust now. Take one slow breath and stay near another person if you can. This moment can pass.'
-            : 'Consider sharing these feelings with someone you trust or a mental health professional.')}
-      </div>
-      <div className="font-mono text-[11px] uppercase opacity-70">
-        Intervention {risk.interventionScore.toFixed(1)} · {risk.source}
-      </div>
-      {risk.reasons.length ? <div>Signals: {risk.reasons.join(', ')}</div> : null}
+      {risk.supportiveMessage?.trim() ? <div>{risk.supportiveMessage}</div> : null}
+      {isDebugMode() ? <RiskSignalLine risk={risk} /> : null}
+      {isDebugMode() && risk.reasons.length ? <div>Signals: {risk.reasons.join(', ')}</div> : null}
       {crisis ? <CrisisResourcePanel compact /> : null}
+    </div>
+  )
+}
+
+function RiskSignalLine({ risk }: { risk: RiskAssessment }) {
+  const guard =
+    risk.guardSafe === undefined ? '' : ` · guard ${risk.guardSafe ? 'safe' : 'unsafe'}`
+  return (
+    <div className="font-mono text-[11px] uppercase opacity-70">
+      Literal {risk.literalSentimentLabel} {risk.literalSentimentConfidence.toFixed(2)} (
+      {risk.literalSentimentScore.toFixed(2)}) · {risk.sentimentModelSource} · {risk.source}
+      {guard}
     </div>
   )
 }
 
 function RiskResultModal({ risk, onClose }: { risk: RiskAssessment; onClose: () => void }) {
   const crisis = risk.responseKind === 'crisis'
-  const support = risk.responseKind === 'support'
   const celebration = risk.responseKind === 'positive'
   const titleId = 'risk-result-modal-title'
   const reduced = shouldReduceMotion()
@@ -391,10 +394,22 @@ function RiskResultModal({ risk, onClose }: { risk: RiskAssessment; onClose: () 
           </button>
         </div>
         <div className="mt-5 rounded-2xl border border-[var(--paper-border)] p-4">
-          {support || crisis ? <RiskNotice risk={risk} /> : <SupportNotice risk={risk} />}
+          {crisis ? <RiskNotice risk={risk} /> : <SupportNotice risk={risk} />}
         </div>
       </motion.div>
     </motion.div>
+  )
+}
+
+function SubmitThrobber() {
+  return (
+    <span className="inline-flex items-center gap-2">
+      <span
+        className="inline-block size-4 animate-spin rounded-full border-2 border-black/25 border-t-black/80"
+        aria-hidden
+      />
+      <span>Checking</span>
+    </span>
   )
 }
 
