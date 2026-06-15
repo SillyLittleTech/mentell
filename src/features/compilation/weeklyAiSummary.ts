@@ -149,6 +149,9 @@ export async function requestWeeklyAiSummary(
         `The AI endpoint is reachable but does not accept this request. Check that VITE_WEEKLY_AI_ENDPOINT points to the Worker /weekly-summary route.${detail ? ` ${detail}` : ''}`,
       )
     }
+    if (response.status >= 500) {
+      throw new Error(`AI endpoint offline or unreachable (${response.status}). Data will be synced shortly after returning online.${detail ? ` ${detail}` : ''}`)
+    }
     throw new Error(`AI endpoint error (${response.status}).${detail ? ` ${detail}` : ''}`)
   }
 
