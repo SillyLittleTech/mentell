@@ -20,7 +20,7 @@ type RequestBody = {
 
 const HOUR_LIMIT = 24
 const DAY_LIMIT = 80
-const MODEL = '@cf/meta/llama-3.1-8b-instruct'
+const MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast'
 
 export async function handleWeeklySummary(request: Request, env: Env): Promise<Response> {
   const origin = request.headers.get('Origin')

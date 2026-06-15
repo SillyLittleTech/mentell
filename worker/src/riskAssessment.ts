@@ -34,7 +34,7 @@ type RequestBody = {
 }
 
 const GUARD_MODEL = '@cf/meta/llama-guard-3-8b'
-const RESPONSE_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8'
+const RESPONSE_MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast'
 const SENTIMENT_MODEL = '@cf/huggingface/distilbert-sst-2-int8'
 const POSITIVE_ENCOURAGEMENT_THRESHOLD = -0.85
 const POSITIVE_EXCE_THRESHOLD = 4
