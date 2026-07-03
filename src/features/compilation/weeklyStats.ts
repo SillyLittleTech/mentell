@@ -1,3 +1,4 @@
+import { stripDateKey } from '../../shared/dates'
 import { endOfWeek, format, parseISO, startOfWeek } from 'date-fns'
 import { getDb, type EntryRow } from '../../db/schema'
 
@@ -18,22 +19,22 @@ function toDateKey(d: Date) {
 }
 
 export function weekKeyForDateKey(dateKey: string) {
-  const d = parseISO(dateKey)
+  const d = parseISO(stripDateKey(dateKey))
   const wk = format(d, "yyyy-'W'II")
   return wk
 }
 
 export async function getWeeklyStatsForDateKey(dateKey: string): Promise<WeeklyStats> {
-  const d = parseISO(dateKey)
+  const d = parseISO(stripDateKey(dateKey))
   const start = startOfWeek(d, { weekStartsOn: 1 })
   const end = endOfWeek(d, { weekStartsOn: 1 })
 
   const startKey = toDateKey(start)
   const endKey = toDateKey(end)
 
-  const entries = (
-    await getDb().entries.where('dateKey').between(startKey, endKey, true, true).toArray()
-  ).sort((a, b) => b.createdAt - a.createdAt)
+  const entriesNorm = await getDb().entries.where('dateKey').between(startKey, endKey, true, true).toArray()
+  const entriesBulk = await getDb().entries.where('dateKey').between('~' + startKey, '~' + endKey, true, true).toArray()
+  const entries = [...entriesNorm, ...entriesBulk].sort((a, b) => b.createdAt - a.createdAt)
 
   let positives = 0
   let negatives = 0
@@ -80,7 +81,7 @@ export async function getWeeklyStatsForWeekKey(weekKey: string): Promise<WeeklyS
     }
   }
 
-  const d = parseISO(anchor)
+  const d = parseISO(stripDateKey(anchor))
   const startKey = toDateKey(startOfWeek(d, { weekStartsOn: 1 }))
   const endKey = toDateKey(endOfWeek(d, { weekStartsOn: 1 }))
 

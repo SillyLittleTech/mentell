@@ -1,46 +1,12 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { AnimatePresence, motion } from 'framer-motion'
-import { ProgressLight, type ProgressState } from '../../components/ProgressLight'
-import { SentimentPills, type SentimentValue } from '../../components/SentimentPills'
-import { dateKeyForLocalDay } from '../../shared/dates'
-import { isDebugMode } from '../../shared/debug/debugFlags'
-import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
-import { assessDraftRisk, assessRisk, type RiskAssessment } from '../safety/riskAssessment'
-import { CrisisResourcePanel } from '../safety/CrisisResourcePanel'
-import type { EntryEmotion, RiskLevel } from '../../db/schema'
+import re
 
-export type Draft = {
-  dateKey: string
-  sentiment: SentimentValue
-  emotion: EntryEmotion
-  emotionNote: string
-  situation: string
-  details: string
-  flaggedTerms: string[]
-  warningLevel: 'none' | 'warn'
-  riskScore: number
-  interventionScore: number
-  riskLevel: RiskLevel
-}
+with open('src/features/compose/LetterComposer.tsx', 'r') as f:
+    content = f.read()
 
-const EMOTION_OPTIONS: Array<{ value: EntryEmotion; label: string }> = [
-  { value: 'happy', label: '🙂 Happy' },
-  { value: 'calm', label: '😌 Calm' },
-  { value: 'anxious', label: '😟 Anxious' },
-  { value: 'sad', label: '😔 Sad' },
-  { value: 'angry', label: '😠 Angry' },
-  { value: 'other', label: '🤔 None of these fit' },
-]
+# We need to change LetterComposer to manage an array of drafts instead of one.
+# But `draftRisk` and `submittedRisk` must also be handled.
 
-type DebugAiTestFill = {
-  sentiment: SentimentValue
-  emotion: EntryEmotion
-  emotionNote: string
-  situation: string
-  details: string
-}
-
-
+new_component = """
 export type Timeframe = 'just now' | 'an hour ago' | 'yesterday'
 
 export type DraftInputState = {
@@ -166,7 +132,7 @@ export function LetterComposer({
       const finalDrafts: Draft[] = []
       let highestRisk: RiskAssessment | null = null
 
-      for (const draft of (isBulkMode ? draftInputs : [draftInputs[0]])) {
+      for (const draft of draftInputs) {
         let draftDateKey = dateKey
         if (draft.timeframe === 'yesterday') {
            // We need a helper to get yesterday. We can import subDays from date-fns
@@ -461,136 +427,18 @@ export function LetterComposer({
     </div>
   )
 }
-function DraftRiskNotice({ risk }: { risk: ReturnType<typeof assessDraftRisk> }) {
-  return (
-    <div className="space-y-1">
-      <div className="font-medium" style={{ color: 'var(--danger)' }}>
-        I noticed this feels heavy. You are cared about.
-      </div>
-      <div>
-        When you submit, Mentell can show support resources or a gentler note for what you wrote.
-      </div>
-      {isDebugMode() ? (
-        <div className="font-mono text-[11px] uppercase opacity-70">
-          Risk {risk.riskScore.toFixed(2)} · local
-        </div>
-      ) : null}
-    </div>
-  )
-}
+"""
 
-function SupportNotice({ risk }: { risk: RiskAssessment }) {
-  const celebration = risk.responseKind === 'positive'
-  const message = risk.supportiveMessage?.trim()
-  return (
-    <div className="space-y-2">
-      <div className="font-medium" style={{ color: 'var(--success)' }}>
-        {celebration ? 'This deserves a little confetti' : 'A small note for this moment'}
-      </div>
-      {message ? <div>{message}</div> : null}
-      {isDebugMode() ? <RiskSignalLine risk={risk} /> : null}
-    </div>
-  )
-}
+start_marker = "export function LetterComposer({"
+end_marker = "function DraftRiskNotice("
 
-function RiskNotice({ risk }: { risk: RiskAssessment }) {
-  const crisis = risk.responseKind === 'crisis'
-  return (
-    <div className="space-y-2">
-      <div className="font-medium" style={{ color: 'var(--danger)' }}>
-        {crisis
-          ? 'You matter, and you do not have to sit with this alone.'
-          : 'I noticed this feels heavy. You are cared about.'}
-      </div>
-      {risk.supportiveMessage?.trim() ? <div>{risk.supportiveMessage}</div> : null}
-      {isDebugMode() ? <RiskSignalLine risk={risk} /> : null}
-      {isDebugMode() && risk.reasons.length ? <div>Signals: {risk.reasons.join(', ')}</div> : null}
-      {crisis ? <CrisisResourcePanel compact /> : null}
-    </div>
-  )
-}
+start_idx = content.find(start_marker)
+end_idx = content.find(end_marker)
 
-function RiskSignalLine({ risk }: { risk: RiskAssessment }) {
-  const guard =
-    risk.guardSafe === undefined ? '' : ` · guard ${risk.guardSafe ? 'safe' : 'unsafe'}`
-  return (
-    <div className="font-mono text-[11px] uppercase opacity-70">
-      Literal {risk.literalSentimentLabel} {risk.literalSentimentConfidence.toFixed(2)} (
-      {risk.literalSentimentScore.toFixed(2)}) · {risk.sentimentModelSource} · {risk.source}
-      {guard}
-    </div>
-  )
-}
+# also need to replace the `onSubmit: (draft: Draft) => Promise<void> | void` with `drafts: Draft[]`
+# But it's in the signature.
+# So we can just replace everything from `export function LetterComposer` to `function DraftRiskNotice`.
+content = content[:start_idx] + new_component + content[end_idx:]
 
-function RiskResultModal({ risk, onClose }: { risk: RiskAssessment; onClose: () => void }) {
-  const crisis = risk.responseKind === 'crisis'
-  const celebration = risk.responseKind === 'positive'
-  const titleId = 'risk-result-modal-title'
-  const reduced = shouldReduceMotion()
-  return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4"
-      initial={reduced ? false : { opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={reduced ? undefined : { opacity: 0 }}
-      transition={{ duration: motionDuration(0.2) || 0 }}
-    >
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="paper max-h-[min(90dvh,42rem)] w-full max-w-xl overflow-y-auto rounded-3xl p-6 shadow-lg"
-        initial={reduced ? false : { scale: 0.96, y: 18 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={reduced ? undefined : { scale: 0.98, y: 10 }}
-        transition={{ duration: motionDuration(0.25) || 0 }}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div id={titleId} className="font-paper text-2xl">
-              {crisis ? 'You are not alone' : celebration ? 'Look at you go' : 'A note for you'}
-            </div>
-            <div className="ink-muted mt-1 text-sm">
-              {crisis
-                ? 'Mentell noticed this entry may need extra care.'
-                : celebration
-                  ? 'Mentell noticed a bright patch worth celebrating.'
-                  : 'Mentell found a supportive note after reading your entry.'}
-            </div>
-          </div>
-          <button
-            type="button"
-            className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm font-semibold"
-            onClick={onClose}
-          >
-            Close
-          </button>
-        </div>
-        <div className="mt-5 rounded-2xl border border-[var(--paper-border)] p-4">
-          {crisis ? <RiskNotice risk={risk} /> : <SupportNotice risk={risk} />}
-        </div>
-      </motion.div>
-    </motion.div>
-  )
-}
-
-function SubmitThrobber() {
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span
-        className="inline-block size-4 animate-spin rounded-full border-2 border-black/25 border-t-black/80"
-        aria-hidden
-      />
-      <span>Checking</span>
-    </span>
-  )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="grid gap-2">
-      <div className="ink-muted text-sm font-medium">{label}</div>
-      {children}
-    </label>
-  )
-}
+with open('src/features/compose/LetterComposer.tsx', 'w') as f:
+    f.write(content)

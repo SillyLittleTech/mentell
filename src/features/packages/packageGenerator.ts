@@ -1,3 +1,4 @@
+import { stripDateKey } from '../../shared/dates'
 import { eachWeekOfInterval, endOfWeek, format, parseISO, startOfWeek, subWeeks } from 'date-fns'
 import type { PackageRow } from '../../db/schema'
 import { getDb } from '../../db/schema'
@@ -17,7 +18,7 @@ export async function generateDuePackages(now: Date = new Date()) {
   const lastCompleteWeekEnd = endOfWeek(subWeeks(now, 1), { weekStartsOn: 1 })
   const lastCompleteWeekStart = startOfWeek(lastCompleteWeekEnd, { weekStartsOn: 1 })
 
-  const firstWeekStart = startOfWeek(parseISO(first.dateKey), { weekStartsOn: 1 })
+  const firstWeekStart = startOfWeek(parseISO(stripDateKey(first.dateKey)), { weekStartsOn: 1 })
   if (firstWeekStart > lastCompleteWeekStart) return { created }
 
   const weeks = eachWeekOfInterval(
@@ -32,7 +33,9 @@ export async function generateDuePackages(now: Date = new Date()) {
     const startKey = format(wStart, 'yyyy-MM-dd')
     const endKey = format(wEnd, 'yyyy-MM-dd')
 
-    const count = await getDb().entries.where('dateKey').between(startKey, endKey, true, true).count()
+    const countNorm = await getDb().entries.where('dateKey').between(startKey, endKey, true, true).count()
+    const countBulk = await getDb().entries.where('dateKey').between('~' + startKey, '~' + endKey, true, true).count()
+    const count = countNorm + countBulk
     if (count <= 0) continue
 
     const result = await ensurePackageWithStatus('weekly', weekKeyForDateKey(startKey))

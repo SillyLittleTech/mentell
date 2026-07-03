@@ -1,3 +1,4 @@
+import { stripDateKey } from '../../shared/dates'
 import { addDays, differenceInCalendarDays, parseISO } from 'date-fns'
 import { getDb } from '../../db/schema'
 import { isPointsEnabled } from '../../shared/settings/appSettings'
@@ -141,8 +142,8 @@ function sanitizeRestoreCandidate(candidate: StreakRestoreCandidate | null) {
 
 function isConsecutiveDay(prevDateKey: string, nextDateKey: string) {
   try {
-    const prev = parseISO(prevDateKey)
-    const next = parseISO(nextDateKey)
+    const prev = parseISO(stripDateKey(prevDateKey))
+    const next = parseISO(stripDateKey(nextDateKey))
     const expected = addDays(prev, 1)
     return expected.toISOString().slice(0, 10) === next.toISOString().slice(0, 10)
   } catch {
@@ -152,7 +153,7 @@ function isConsecutiveDay(prevDateKey: string, nextDateKey: string) {
 
 function dayGap(prevDateKey: string, nextDateKey: string) {
   try {
-    return differenceInCalendarDays(parseISO(nextDateKey), parseISO(prevDateKey))
+    return differenceInCalendarDays(parseISO(stripDateKey(nextDateKey)), parseISO(stripDateKey(prevDateKey)))
   } catch {
     return null
   }

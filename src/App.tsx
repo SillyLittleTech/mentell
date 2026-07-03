@@ -569,15 +569,18 @@ function HomePlaceholder({
         ) : null}
         <LetterComposer
           disabled={composerLocked}
-          onSubmit={async (draft) => {
+          onSubmit={async (drafts) => {
             const submitDateKey = dateKeyForLocalDay(new Date())
             const award = await awardForSubmission(submitDateKey)
-            await upsertEntryFromDraft({
-              ...draft,
-              dateKey: submitDateKey,
-              scoreDelta: award.totalDelta,
-              streakAtSubmit: award.nextStreak,
-            })
+
+            for (const draft of drafts) {
+              await upsertEntryFromDraft({
+                ...draft,
+                dateKey: draft.dateKey,
+                scoreDelta: award.totalDelta,
+                streakAtSubmit: award.nextStreak,
+              })
+            }
 
             await runPackageDeliveryAndNotify()
             void pushLocalChangesNow()
