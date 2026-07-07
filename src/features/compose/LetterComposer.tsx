@@ -188,8 +188,19 @@ export function LetterComposer({
 
         const finalRisk = await assessRisk(riskInputForDraft)
 
-        if (!highestRisk || finalRisk.riskScore > highestRisk.riskScore) {
-          highestRisk = finalRisk
+        const isCrisis = finalRisk.responseKind === 'crisis';
+        const hasMessage = finalRisk.responseKind !== 'none' && !!finalRisk.supportiveMessage?.trim();
+        const prevIsCrisis = highestRisk?.responseKind === 'crisis';
+        const prevHasMessage = highestRisk?.responseKind !== 'none' && !!highestRisk?.supportiveMessage?.trim();
+
+        if (!highestRisk) {
+          highestRisk = finalRisk;
+        } else if (isCrisis && !prevIsCrisis) {
+          highestRisk = finalRisk;
+        } else if (!prevIsCrisis && hasMessage && !prevHasMessage) {
+          highestRisk = finalRisk;
+        } else if (!prevIsCrisis && !prevHasMessage && finalRisk.riskScore > highestRisk.riskScore) {
+          highestRisk = finalRisk;
         }
 
         finalDrafts.push({

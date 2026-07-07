@@ -73,7 +73,8 @@ function authorize(request: Request, env: Env) {
   return match[1] === normalizeToken(env.WEEKLY_SUMMARY_TOKEN)
 }
 
-function normalizeToken(raw: string) {
+function normalizeToken(raw?: string) {
+  if (!raw) return ''
   const t = raw.trim()
   if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
     return t.slice(1, -1)
