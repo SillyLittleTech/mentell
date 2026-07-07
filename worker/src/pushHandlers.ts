@@ -11,7 +11,8 @@ const FALLBACK_TZ = 'America/New_York'
 const PUSH_HOUR_LIMIT = 60
 const PUSH_DAY_LIMIT = 180
 
-function normalizeToken(raw: string) {
+function normalizeToken(raw?: string) {
+  if (!raw) return ''
   const t = raw.trim()
   if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
     return t.slice(1, -1)
