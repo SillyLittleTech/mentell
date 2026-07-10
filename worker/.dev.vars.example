@@ -1,6 +1,11 @@
 # Copy to worker/.dev.vars (gitignored) for local wrangler dev
 # Quote tokens that contain # @ ! etc. (otherwise # starts a comment)
 WEEKLY_SUMMARY_TOKEN="your-token-here"
+# Optional; defaults to WEEKLY_SUMMARY_TOKEN when unset
+# PROJECTOR_SEARCH_TOKEN="your-token-here"
+# AI Gateway id for Workers AI (weekly summary + projector fallbacks). Configure rate limits on this gateway.
+# Do NOT put rate limits on any gateway attached to the AI Search instance.
+# AI_GATEWAY_ID=mentell-workers-ai
 # Web Push — REQUIRED for /push/test and delayed push in wrangler dev (secrets alone are not enough locally)
 # Generate: npx web-push generate-vapid-keys
 # Use the same pair as production wrangler secret put VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY

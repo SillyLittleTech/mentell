@@ -507,8 +507,7 @@ export function Shoppe({
           ) : (
             <button
               type="button"
-              className="focus-ring mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
-              style={{ background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }}
+              className="btn-primary focus-ring mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
               disabled={freezeCount >= STREAK_FREEZE_MAX}
               onClick={buyFreeze}
             >

@@ -1,6 +1,7 @@
 const SLOWMO_KEY = 'mentell.debug.slowmo'
 const FORCE_PACKAGES_KEY = 'mentell.debug.forcePackages'
 const SKIP_AI_CACHE_KEY = 'mentell.debug.skipAiCache'
+const SKIP_SEARCH_RATE_KEY = 'mentell.debug.skipSearchRateLimit'
 
 export function isDebugMode() {
   return (import.meta as ImportMeta & { env?: { MODE?: string } }).env?.MODE === 'debug'
@@ -31,5 +32,13 @@ export function getSkipAiCache() {
 
 export function setSkipAiCache(v: boolean) {
   localStorage.setItem(SKIP_AI_CACHE_KEY, v ? '1' : '0')
+}
+
+export function getSkipSearchRateLimit() {
+  return localStorage.getItem(SKIP_SEARCH_RATE_KEY) === '1'
+}
+
+export function setSkipSearchRateLimit(v: boolean) {
+  localStorage.setItem(SKIP_SEARCH_RATE_KEY, v ? '1' : '0')
 }
 

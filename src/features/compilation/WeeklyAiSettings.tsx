@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   loadAiProfile,
   saveAiProfile,
   type AiAgeRange,
   type AiProfile,
 } from './aiProfile'
-import { publicUrl } from '../../shared/publicUrl'
+import { MaterialIcon } from '../../components/MaterialIcon'
 
 const AGE_OPTIONS: { value: AiAgeRange; label: string }[] = [
   { value: 'prefer-not', label: 'Prefer not to say' },
@@ -28,13 +28,18 @@ export function WeeklyAiSettings({
   onClose: () => void
   onSaved: (profile: AiProfile) => void
 }) {
-  const [draft, setDraft] = useState<AiProfile>(() => loadAiProfile())
-
-  useEffect(() => {
-    if (open) setDraft(loadAiProfile())
-  }, [open])
-
   if (!open) return null
+  return <WeeklyAiSettingsInner key="open" onClose={onClose} onSaved={onSaved} />
+}
+
+function WeeklyAiSettingsInner({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void
+  onSaved: (profile: AiProfile) => void
+}) {
+  const [draft, setDraft] = useState<AiProfile>(() => loadAiProfile())
 
   return (
     <div
@@ -103,16 +108,15 @@ export function WeeklyAiSettings({
               onChange={(e) => setDraft((d) => ({ ...d, about: e.target.value }))}
             />
             <div className="ink-muted text-xs">
-              {draft.about.length}/{ABOUT_MAX} · Used for tone and style (e.g. “be playful”, “keep it brief”).
-              Regenerate your summary after saving. Not medical advice.
+              {draft.about.length}/{ABOUT_MAX} · Used for tone and style (e.g. “be playful”, “keep it
+              brief”). Regenerate your summary after saving. Not medical advice.
             </div>
           </label>
         </div>
 
         <button
           type="button"
-          className="focus-ring mt-5 w-full rounded-2xl px-4 py-3 text-sm font-semibold"
-          style={{ background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }}
+          className="btn-primary focus-ring mt-5 w-full rounded-2xl px-4 py-3 text-sm font-semibold"
           onClick={() => {
             const saved = saveAiProfile(draft)
             onSaved(saved)
@@ -130,17 +134,12 @@ export function WeeklyAiSettingsButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
-      className="focus-ring rounded-2xl border border-[var(--paper-border)] p-2"
+      className="focus-ring inline-flex items-center justify-center rounded-2xl border border-[var(--paper-border)] px-3 py-2"
       aria-label="AI preferences"
       title="AI preferences"
       onClick={onClick}
     >
-      <img
-        alt=""
-        src={publicUrl('/asset/setting.png')}
-        className="h-8 w-8 select-none object-contain"
-        draggable={false}
-      />
+      <MaterialIcon name="settings" size={20} />
     </button>
   )
 }

@@ -1,5 +1,6 @@
 import { corsJson, corsResponse } from './cors'
 import type { Env } from './env'
+import { runWorkersAi } from './aiGateway'
 
 type RiskLevel = 'none' | 'low' | 'elevated' | 'crisis'
 
@@ -246,7 +247,7 @@ async function generateAssessmentWithAi(
       : buildAssessment(fallbackKind, literalSentiment.score, supportMessageFor(fallbackKind, body))
 
   try {
-    const result = await env.AI.run(RESPONSE_MODEL, {
+    const result = await runWorkersAi(env, RESPONSE_MODEL, {
       messages: [
         {
           role: 'system',
@@ -354,7 +355,7 @@ async function scoreSentimentWithAi(
   }
 
   try {
-    const result = await env.AI.run(SENTIMENT_MODEL, { text })
+    const result = await runWorkersAi(env, SENTIMENT_MODEL, { text })
     const row = Array.isArray(result)
       ? result
           .filter((candidate) => candidate && typeof candidate === 'object')
@@ -378,7 +379,7 @@ async function scoreSentimentWithAi(
 
 async function assessGuard(env: Env, journalJson: string, body: RequestBody): Promise<GuardResult> {
   try {
-    const result = await env.AI.run(GUARD_MODEL, {
+    const result = await runWorkersAi(env, GUARD_MODEL, {
       messages: [
         {
           role: 'user',

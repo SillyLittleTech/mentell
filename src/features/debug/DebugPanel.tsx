@@ -5,10 +5,12 @@ import { makeId } from '../../shared/id'
 import {
   getForcePackages,
   getSkipAiCache,
+  getSkipSearchRateLimit,
   getSlowMo,
   isDebugMode,
   setForcePackages,
   setSkipAiCache,
+  setSkipSearchRateLimit,
   setSlowMo,
 } from '../../shared/debug/debugFlags'
 import { clearWeeklyAiCache } from '../compilation/weeklyAiCache'
@@ -34,6 +36,18 @@ import {
 } from './debugNotifications'
 import { dexieDatabaseName, scopedStorageKey } from '../../shared/storage/storageScope'
 import { normalizeEndpointUrl } from '../compilation/weeklyAiSummary'
+import {
+  getOrCreateAnonSearchUserId,
+  loadAllEntriesForSearch,
+  probeProjectorSearchEndpoint,
+  requestProjectorSearch,
+  toSearchSnapshot,
+} from '../compilation/projectorSearch'
+import {
+  emitProjectorDebug,
+  makeMockSearchAnswer,
+  makeMockSearchEntries,
+} from './projectorDebug'
 import { dateKeyForLocalDay } from '../../shared/dates'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
@@ -68,11 +82,15 @@ export function DebugPanel() {
   const [slowMo, setSlowMoState] = useState(getSlowMo())
   const [forcePackages, setForcePackagesState] = useState(getForcePackages())
   const [skipAiCache, setSkipAiCacheState] = useState(getSkipAiCache())
+  const [skipSearchRate, setSkipSearchRateState] = useState(getSkipSearchRateLimit())
   const [debugScore, setDebugScore] = useState('')
   const [debugStreak, setDebugStreak] = useState('')
   const [notifSnap, setNotifSnap] = useState<NotificationDebugSnapshot | null>(null)
   const [notifResult, setNotifResult] = useState<string | null>(null)
   const [aiEndpointResult, setAiEndpointResult] = useState<string | null>(null)
+  const [searchDebugResult, setSearchDebugResult] = useState<string | null>(null)
+  const [fetchEntryIds, setFetchEntryIds] = useState('')
+  const [fetchedEntriesPreview, setFetchedEntriesPreview] = useState<string | null>(null)
   const [riskProbeText, setRiskProbeText] = useState('death')
   const [riskProbeResult, setRiskProbeResult] = useState<string | null>(null)
   const [pushDelaySec, setPushDelaySec] = useState(30)
@@ -342,6 +360,18 @@ export function DebugPanel() {
                   />
                 </label>
 
+                <label className="flex items-center justify-between gap-3 text-sm">
+                  <span>Skip search rate limit</span>
+                  <input
+                    type="checkbox"
+                    checked={skipSearchRate}
+                    onChange={(e) => {
+                      setSkipSearchRateLimit(e.target.checked)
+                      setSkipSearchRateState(e.target.checked)
+                    }}
+                  />
+                </label>
+
                 <button
                   type="button"
                   disabled={busy}
@@ -358,7 +388,139 @@ export function DebugPanel() {
                     {aiEndpointResult}
                   </div>
                 ) : null}
+              </div>
+            </div>
 
+            <div className="rounded-3xl border border-[var(--paper-border)] p-3">
+              <div className="font-mono text-xs font-bold">projector / AI search</div>
+              <div className="mt-2 grid gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={() => {
+                    setBusy(true)
+                    void probeProjectorSearchEndpoint()
+                      .then((r) => setSearchDebugResult(r))
+                      .finally(() => setBusy(false))
+                  }}
+                >
+                  Check search endpoint
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={() => {
+                    setBusy(true)
+                    void (async () => {
+                      try {
+                        const entries = await loadAllEntriesForSearch()
+                        const res = await requestProjectorSearch({
+                          query: '',
+                          mode: 'index',
+                          entries,
+                          userId: getOrCreateAnonSearchUserId(),
+                          forceIndex: true,
+                          skipRateLimit: true,
+                        })
+                        setSearchDebugResult(
+                          res.type === 'error'
+                            ? res.message
+                            : res.type === 'answer'
+                              ? res.text
+                              : `Indexed; got ${res.entries.length} entries back`,
+                        )
+                      } catch (e) {
+                        setSearchDebugResult(e instanceof Error ? e.message : String(e))
+                      } finally {
+                        setBusy(false)
+                      }
+                    })()
+                  }}
+                >
+                  Force index sync
+                  <div className="ink-muted text-xs">POST mode=index with all Dexie entries</div>
+                </button>
+                <button
+                  type="button"
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm"
+                  onClick={() => {
+                    emitProjectorDebug({ action: 'open-search', seed: makeMockSearchEntries() })
+                    setOpen(false)
+                  }}
+                >
+                  Render mock entry cards
+                </button>
+                <button
+                  type="button"
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm"
+                  onClick={() => {
+                    emitProjectorDebug({ action: 'open-search', seed: makeMockSearchAnswer() })
+                    setOpen(false)
+                  }}
+                >
+                  Render mock plain answer
+                </button>
+                <div className="grid gap-1">
+                  <input
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 text-xs"
+                    placeholder="entry ids, comma-separated"
+                    value={fetchEntryIds}
+                    onChange={(e) => setFetchEntryIds(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                    onClick={() => {
+                      setBusy(true)
+                      void (async () => {
+                        try {
+                          const ids = fetchEntryIds
+                            .split(',')
+                            .map((s) => s.trim())
+                            .filter(Boolean)
+                          const rows = await getDb().entries.bulkGet(ids)
+                          const found = rows.filter(Boolean).map((r) => toSearchSnapshot(r!))
+                          setFetchedEntriesPreview(
+                            found.length
+                              ? found.map((e) => `${e.id} ${e.dateKey} [${e.sentiment}]`).join('\n')
+                              : 'No matching local entries.',
+                          )
+                          if (found.length) {
+                            emitProjectorDebug({
+                              action: 'open-search',
+                              seed: {
+                                type: 'entries',
+                                entryIds: found.map((e) => e.id),
+                                entries: found,
+                                preamble: 'Debug fetch by entry IDs (local Dexie).',
+                              },
+                            })
+                            setOpen(false)
+                          }
+                        } catch (e) {
+                          setFetchedEntriesPreview(e instanceof Error ? e.message : String(e))
+                        } finally {
+                          setBusy(false)
+                        }
+                      })()
+                    }}
+                  >
+                    Fetch by entry IDs
+                  </button>
+                </div>
+                {searchDebugResult ? (
+                  <div className="ink-muted rounded-2xl border border-[var(--paper-border)] px-3 py-2 font-mono text-[10px]">
+                    {searchDebugResult}
+                  </div>
+                ) : null}
+                {fetchedEntriesPreview ? (
+                  <div className="ink-muted rounded-2xl border border-[var(--paper-border)] px-3 py-2 font-mono text-[10px] whitespace-pre-wrap">
+                    {fetchedEntriesPreview}
+                  </div>
+                ) : null}
               </div>
             </div>
 

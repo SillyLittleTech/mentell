@@ -8,6 +8,7 @@ import {
   handlePushUnsubscribe,
 } from './pushHandlers'
 import { runPushCron } from './pushCron'
+import { handleProjectorSearch } from './projectorSearch'
 import { handleRiskAssessment } from './riskAssessment'
 import { handleWeeklySummary } from './weeklySummary'
 
@@ -21,6 +22,8 @@ export default {
     switch (url.pathname) {
       case '/weekly-summary':
         return handleWeeklySummary(request, env)
+      case '/projector-search':
+        return handleProjectorSearch(request, env)
       case '/risk-assessment':
         return handleRiskAssessment(request, env)
       case '/push/subscribe':

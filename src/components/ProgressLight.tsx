@@ -2,7 +2,7 @@ export type ProgressState = 'write' | 'review' | 'warn'
 
 function colorFor(state: ProgressState) {
   if (state === 'warn') return 'var(--danger)'
-  if (state === 'review') return 'var(--warn)'
+  if (state === 'review') return 'var(--primary-action)'
   return 'var(--success)'
 }
 

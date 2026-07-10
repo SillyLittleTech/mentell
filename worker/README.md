@@ -66,13 +66,8 @@ npm run deploy
 }
 ```
 
-<<<<<<< Updated upstream
 - `mode`: `reflection` (default) or `overview` (objective third-person narrative per day)
 - `profile`: optional; sanitized server-side. Used for reflection tone, ignored for overview objectivity.
-=======
-- `mode`: `reflection` (default) or `overview` (third-person narrative per day)
-- `profile`: optional; sanitized server-side (untrusted user context only)
->>>>>>> Stashed changes
 
 CORS allows browser requests from:
 
@@ -108,3 +103,38 @@ wrangler secret put FIREBASE_SERVICE_ACCOUNT_JSON
 ```
 
 Frontend (GitHub **Variables**, not secrets): `VITE_VAPID_PUBLIC_KEY`, `VITE_PUSH_API_BASE` = worker URL without trailing slash.
+
+## Projector AI Search
+
+`GET|POST /projector-search` — natural-language search over journal entries (Cloudflare AI Search).
+
+### Operator setup
+
+1. Create AI Search instance `mentell-journals` with custom metadata: `userId`, `entryId`, `dateKey`, `updatedAt`.
+2. Use **two** AI Gateways:
+   - Workers AI gateway (set `AI_GATEWAY_ID`) — configure moderate rate limits here.
+   - AI Search’s own gateway — **no** rate limiting or caching.
+3. Binding in `wrangler.jsonc`: `AI_SEARCH` → `mentell-journals` (`remote: true` for `wrangler dev`).
+4. Auth: Bearer `PROJECTOR_SEARCH_TOKEN` or `WEEKLY_SUMMARY_TOKEN`.
+
+### API
+
+`POST /projector-search` body:
+
+```json
+{
+  "query": "entries about anxiety at work",
+  "mode": "search",
+  "userId": "firebase-uid-or-anon-id",
+  "indexDigest": "abc123",
+  "entries": [{ "id": "…", "dateKey": "2026-05-20", "sentiment": "+", "situation": "…", "details": "…", "updatedAt": 0 }]
+}
+```
+
+- `mode`: `search` (default), `chat` (follow-up with `messages[]`), or `index` (force reindex only).
+- Response: `{ type: "entries", entryIds, entries, preamble? }` or `{ type: "answer", text }` or `{ type: "error", message }`.
+- Rate limits: 12/hour, 40/day per IP (KV keys `ps:h:` / `ps:d:`).
+- `data-fetcher` merges client entries with Firestore by `updatedAt` when `FIREBASE_SERVICE_ACCOUNT_JSON` is set.
+
+Client env: `VITE_ENABLE_PROJECTOR_AI_SEARCH`, `VITE_PROJECTOR_SEARCH_ENDPOINT`, `VITE_PROJECTOR_SEARCH_TOKEN` (see root `AGENTS.md`).
+

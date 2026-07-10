@@ -1,7 +1,15 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { MaterialIcon } from '../../components/MaterialIcon'
 import { dateKeyForLocalDay } from '../../shared/dates'
-import { getWeeklyStatsForDateKey, getWeeklyStatsForWeekKey, type WeeklyStats } from './weeklyStats'
+import {
+  getEntriesForWeeksBefore,
+  getWeeklyStatsForDateKey,
+  getWeeklyStatsForWeekKey,
+  type WeekCursor,
+  type WeeklyStats,
+} from './weeklyStats'
+import type { EntryRow } from '../../db/schema'
 import { getScoreSnapshot } from '../score/scoreService'
 import { StreakDisplay } from '../score/StreakDisplay'
 import { SCORE_CHANGED_EVENT } from '../score/scoreEvents'
@@ -15,15 +23,6 @@ import {
   type AiSummaryMode,
 } from './weeklyAiSummary'
 import { loadAiProfile, profileFingerprint, type AiProfile } from './aiProfile'
-
-function profileActiveHint(profile: AiProfile) {
-  if (profile.about.trim()) {
-    const snippet = profile.about.trim().slice(0, 60)
-    return snippet.length < profile.about.trim().length ? `${snippet}…` : snippet
-  }
-  if (profile.displayName.trim()) return `Name: ${profile.displayName}`
-  return null
-}
 import { clearWeeklyAiCache, getCachedWeeklySummary } from './weeklyAiCache'
 import { SharingPanel } from '../settings/SharingSection'
 import { WeeklyAiSettings, WeeklyAiSettingsButton } from './WeeklyAiSettings'
@@ -33,6 +32,32 @@ import {
   fetchEntriesForRange,
   type RawReportRange,
 } from './weeklyReportExport'
+import {
+  ProjectorEntryDetail,
+  ProjectorEntrySlide,
+} from './ProjectorEntrySlide'
+import { ProjectorSearchModal } from './ProjectorSearchModal'
+import { projectorSearchEnabled, type ProjectorSearchResult } from './projectorSearch'
+import {
+  PROJECTOR_DEBUG_EVENT,
+  type ProjectorDebugDetail,
+} from '../debug/projectorDebug'
+
+function profileActiveHint(profile: AiProfile) {
+  if (profile.about.trim()) {
+    const snippet = profile.about.trim().slice(0, 60)
+    return snippet.length < profile.about.trim().length ? `${snippet}…` : snippet
+  }
+  if (profile.displayName.trim()) return `Name: ${profile.displayName}`
+  return null
+}
+
+export type OlderWeekBatch = {
+  weekKey: string
+  startDateKey: string
+  endDateKey: string
+  entries: EntryRow[]
+}
 
 export function WeeklyProjector() {
   const todayKey = useMemo(() => dateKeyForLocalDay(new Date()), [])
@@ -45,12 +70,41 @@ export function WeeklyProjector() {
   const [summaryBusy, setSummaryBusy] = useState(false)
   const [fromCache, setFromCache] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [debugSearchSeed, setDebugSearchSeed] = useState<ProjectorSearchResult | null>(null)
   const [profile, setProfile] = useState<AiProfile>(() => loadAiProfile())
   const [mode, setMode] = useState<AiSummaryMode>('reflection')
   const [rawRange, setRawRange] = useState<RawReportRange>('week')
   const [rawBusy, setRawBusy] = useState(false)
   const [settingsStale, setSettingsStale] = useState(false)
+  const [olderWeeks, setOlderWeeks] = useState<OlderWeekBatch[]>([])
+  const [olderAnchorWeek, setOlderAnchorWeek] = useState<string | null>(null)
+  const [paginationCursor, setPaginationCursor] = useState<WeekCursor>(null)
+  const [hasMoreWeeks, setHasMoreWeeks] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const aiEnabled = weeklyAiSummaryEnabled()
+  const searchEnabled = projectorSearchEnabled()
+
+  const visibleOlderWeeks = useMemo(
+    () => (stats && olderAnchorWeek === stats.weekKey ? olderWeeks : []),
+    [stats, olderAnchorWeek, olderWeeks],
+  )
+
+  useEffect(() => {
+    const onDebug = (event: Event) => {
+      const detail = (event as CustomEvent<ProjectorDebugDetail>).detail
+      if (!detail) return
+      if (detail.action === 'open-search') {
+        setDebugSearchSeed(detail.seed ?? null)
+        setSearchOpen(true)
+      } else if (detail.action === 'close-search') {
+        setSearchOpen(false)
+        setDebugSearchSeed(null)
+      }
+    }
+    window.addEventListener(PROJECTOR_DEBUG_EVENT, onDebug)
+    return () => window.removeEventListener(PROJECTOR_DEBUG_EVENT, onDebug)
+  }, [])
 
   const restoreCachedSummary = useCallback(
     (nextStats: WeeklyStats, nextProfile: AiProfile, nextMode: AiSummaryMode) => {
@@ -102,16 +156,26 @@ export function WeeklyProjector() {
       window.clearInterval(id)
     }
   }, [todayKey, aiEnabled, profile, mode, restoreCachedSummary])
+
   useEffect(() => {
     const onScore = () => setScore(getScoreSnapshot())
     window.addEventListener(SCORE_CHANGED_EVENT, onScore)
     return () => window.removeEventListener(SCORE_CHANGED_EVENT, onScore)
   }, [])
 
-  const selected = useMemo(() => {
-    if (!stats || !selectedId) return null
-    return stats.entries.find((e) => e.id === selectedId) ?? null
-  }, [selectedId, stats])
+  // Reset older weeks when primary week changes
+  // (handled via olderAnchorWeek mismatch — no effect needed)
+
+  const allEntriesForPreview = useMemo(() => {
+    const map = new Map<string, EntryRow>()
+    for (const e of stats?.entries ?? []) map.set(e.id, e)
+    for (const batch of visibleOlderWeeks) {
+      for (const e of batch.entries) map.set(e.id, e)
+    }
+    return map
+  }, [stats, visibleOlderWeeks])
+
+  const selected = selectedId ? allEntriesForPreview.get(selectedId) ?? null : null
 
   async function handleGenerate() {
     if (!stats) return
@@ -145,6 +209,29 @@ export function WeeklyProjector() {
       downloadRawReportHtml(html, `mentell-raw-${suffix}.html`)
     } finally {
       setRawBusy(false)
+    }
+  }
+
+  async function handleShowMore() {
+    if (!stats || loadingMore || !hasMoreWeeks) return
+    const cursorForWeek = olderAnchorWeek === stats.weekKey ? paginationCursor : null
+    setLoadingMore(true)
+    try {
+      const { batches, nextCursor } = await getEntriesForWeeksBefore(
+        stats.weekKey,
+        cursorForWeek,
+        1,
+      )
+      if (batches.length > 0) {
+        setOlderWeeks((prev) =>
+          olderAnchorWeek === stats.weekKey ? [...prev, ...batches] : [...batches],
+        )
+        setOlderAnchorWeek(stats.weekKey)
+      }
+      setPaginationCursor(nextCursor)
+      setHasMoreWeeks(Boolean(nextCursor))
+    } finally {
+      setLoadingMore(false)
     }
   }
 
@@ -215,10 +302,11 @@ export function WeeklyProjector() {
             </select>
             <button
               type="button"
-              className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold"
+              className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold"
               disabled={rawBusy}
               onClick={handleRawDownload}
             >
+              <MaterialIcon name="table_chart" size={20} />
               {rawBusy ? 'Building…' : 'Download RAW report'}
             </button>
           </div>
@@ -233,29 +321,40 @@ export function WeeklyProjector() {
           </div>
           {profileActiveHint(profile) ? (
             <div className="ink-muted mt-2 text-xs">
-              Preferences active: {profileActiveHint(profile)} — open settings (gear) then regenerate after edits.
+              Preferences active: {profileActiveHint(profile)} — open settings (gear) then regenerate
+              after edits.
             </div>
           ) : null}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <ModeToggle mode={mode} onChange={setMode} />
             <WeeklyAiSettingsButton onClick={() => setSettingsOpen(true)} />
+            {searchEnabled ? (
+              <button
+                type="button"
+                className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm font-semibold"
+                onClick={() => setSearchOpen(true)}
+              >
+                <MaterialIcon name="search" size={20} />
+                Search
+              </button>
+            ) : null}
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="focus-ring rounded-2xl px-4 py-3 text-sm font-semibold"
-              style={{ background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }}
+              className="btn-primary focus-ring inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold"
               disabled={summaryBusy || stats.entries.length === 0}
               onClick={handleGenerate}
             >
+              <MaterialIcon name="auto_awesome" size={20} accent={false} />
               {summaryBusy ? 'Generating…' : 'Generate weekly AI summary'}
             </button>
             {summary ? (
               <button
                 type="button"
-                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold"
+                className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold"
                 onClick={() => {
                   const md = buildAiSummaryMarkdown({
                     weekKey: stats.weekKey,
@@ -272,6 +371,7 @@ export function WeeklyProjector() {
                   )
                 }}
               >
+                <MaterialIcon name="download" size={20} />
                 Download AI summary
               </button>
             ) : null}
@@ -284,7 +384,9 @@ export function WeeklyProjector() {
           ) : null}
 
           {fromCache && summary ? (
-            <div className="ink-muted mt-3 text-xs">Loaded from cache (same week data & preferences).</div>
+            <div className="ink-muted mt-3 text-xs">
+              Loaded from cache (same week data & preferences).
+            </div>
           ) : null}
 
           {summaryError ? (
@@ -298,6 +400,20 @@ export function WeeklyProjector() {
               {summary}
             </div>
           ) : null}
+        </div>
+      ) : null}
+
+      {/* Search available when AI search enabled even if weekly summary card is off but AI not disabled */}
+      {!aiEnabled && searchEnabled && delivered ? (
+        <div className="paper rounded-3xl p-6">
+          <button
+            type="button"
+            className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold"
+            onClick={() => setSearchOpen(true)}
+          >
+            <MaterialIcon name="search" size={20} />
+            Search journals
+          </button>
         </div>
       ) : null}
 
@@ -317,6 +433,15 @@ export function WeeklyProjector() {
         }}
       />
 
+      <ProjectorSearchModal
+        open={searchOpen}
+        onClose={() => {
+          setSearchOpen(false)
+          setDebugSearchSeed(null)
+        }}
+        debugSeed={debugSearchSeed}
+      />
+
       <div className="paper rounded-3xl p-6">
         <div className="font-paper text-xl">Slides</div>
         <div className="ink-muted mt-1 text-sm">
@@ -334,31 +459,53 @@ export function WeeklyProjector() {
             </div>
           ) : (
             stats.entries.map((e) => (
-              <button
-                key={e.id}
-                type="button"
-                className="focus-ring rounded-2xl border px-4 py-3 text-left hover:opacity-95"
-                style={styleForSentiment(e.sentiment)}
-                onClick={() => setSelectedId(e.id)}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="font-medium">
-                    {e.dateKey} <span className="font-mono">[{e.sentiment}]</span>
-                  </div>
-                  {e.warningLevel === 'warn' ? (
-                    <div className="rounded-xl border border-[var(--paper-border)] px-2 py-1 text-sm">
-                      <span style={{ color: 'var(--danger)' }}>!</span>
-                    </div>
-                  ) : null}
-                </div>
-                <div className="ink-muted mt-1 line-clamp-1 text-sm">{e.situation || '—'}</div>
-                <div className="ink-muted mt-1 text-xs">
-                  Emotion: {e.emotionNote ? e.emotionNote : labelForEmotion(e.emotion)}
-                </div>
-              </button>
+              <ProjectorEntrySlide key={e.id} entry={e} onClick={() => setSelectedId(e.id)} />
             ))
           )}
         </div>
+
+        {delivered && visibleOlderWeeks.length > 0 ? (
+          <div className="mt-6 space-y-6">
+            {visibleOlderWeeks.map((batch) => (
+              <div key={batch.weekKey}>
+                <div className="font-paper text-lg">
+                  {batch.weekKey}{' '}
+                  <span className="ink-muted text-sm font-sans">· older</span>
+                </div>
+                <div className="ink-muted mt-0.5 text-xs">
+                  {batch.startDateKey} → {batch.endDateKey}
+                </div>
+                <div className="mt-3 grid gap-3">
+                  {batch.entries.map((e) => (
+                    <ProjectorEntrySlide
+                      key={e.id}
+                      entry={e}
+                      onClick={() => setSelectedId(e.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {delivered ? (
+          <div className="mt-5">
+            {olderAnchorWeek !== stats.weekKey || hasMoreWeeks ? (
+              <button
+                type="button"
+                className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold disabled:opacity-60"
+                disabled={loadingMore}
+                onClick={handleShowMore}
+              >
+                <MaterialIcon name="expand_more" size={22} />
+                {loadingMore ? 'Loading…' : 'Show more'}
+              </button>
+            ) : (
+              <div className="ink-muted text-center text-sm">No older weeks with entries.</div>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <AnimatePresence>
@@ -378,7 +525,7 @@ export function WeeklyProjector() {
               transition={{ duration: motionDuration(0.25) || 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
                   <div className="font-paper text-2xl">
                     Slide preview <span className="font-mono">[{selected.sentiment}]</span>
@@ -393,39 +540,7 @@ export function WeeklyProjector() {
                   Close
                 </button>
               </div>
-
-              {selected.warningLevel === 'warn' ? (
-                <div className="mt-4 rounded-2xl border border-[var(--paper-border)] p-4">
-                  <div className="font-medium" style={{ color: 'var(--danger)' }}>
-                    Flagged terms: {selected.flaggedTerms.join(', ') || '—'}
-                  </div>
-                  <div className="ink-muted mt-1 text-sm">
-                    If you’re in immediate danger or need urgent help, consider contacting local emergency
-                    services.
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="mt-5 grid gap-4">
-                <div>
-                  <div className="ink-muted text-sm font-medium">Situation</div>
-                  <div className="mt-2 rounded-2xl border border-[var(--paper-border)] p-4 font-paper text-lg">
-                    {selected.situation || '—'}
-                  </div>
-                </div>
-                <div>
-                  <div className="ink-muted text-sm font-medium">Emotion</div>
-                  <div className="mt-2 rounded-2xl border border-[var(--paper-border)] p-4">
-                    {selected.emotionNote ? selected.emotionNote : labelForEmotion(selected.emotion)}
-                  </div>
-                </div>
-                <div>
-                  <div className="ink-muted text-sm font-medium">Details</div>
-                  <div className="mt-2 whitespace-pre-wrap rounded-2xl border border-[var(--paper-border)] p-4 font-paper text-lg leading-relaxed">
-                    {selected.details || '—'}
-                  </div>
-                </div>
-              </div>
+              <ProjectorEntryDetail entry={selected} />
             </motion.div>
           </motion.div>
         ) : null}
@@ -447,58 +562,24 @@ function ModeToggle({
     <div className="flex rounded-2xl border border-[var(--paper-border)] p-1">
       <button
         type="button"
-        className="focus-ring rounded-xl px-3 py-2 text-xs font-semibold"
-        style={
-          mode === 'reflection'
-            ? { background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }
-            : undefined
-        }
+        className={`focus-ring rounded-xl px-3 py-2 text-xs font-semibold ${
+          mode === 'reflection' ? 'btn-primary' : ''
+        }`}
         onClick={() => onChange('reflection')}
       >
         Reflection
       </button>
       <button
         type="button"
-        className="focus-ring rounded-xl px-3 py-2 text-xs font-semibold"
-        style={
-          mode === 'overview'
-            ? { background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }
-            : undefined
-        }
+        className={`focus-ring rounded-xl px-3 py-2 text-xs font-semibold ${
+          mode === 'overview' ? 'btn-primary' : ''
+        }`}
         onClick={() => onChange('overview')}
       >
         Narrative overview
       </button>
     </div>
   )
-}
-
-function styleForSentiment(sentiment: '+' | '-' | '=') {
-  if (sentiment === '+') {
-    return {
-      borderColor: 'rgba(42,155,88,0.35)',
-      background: 'rgba(42,155,88,0.1)',
-    }
-  }
-  if (sentiment === '-') {
-    return {
-      borderColor: 'rgba(198,29,29,0.35)',
-      background: 'rgba(198,29,29,0.1)',
-    }
-  }
-  return {
-    borderColor: 'rgba(224,178,44,0.35)',
-    background: 'rgba(224,178,44,0.12)',
-  }
-}
-
-function labelForEmotion(emotion: string) {
-  if (emotion === 'happy') return 'Happy'
-  if (emotion === 'calm') return 'Calm'
-  if (emotion === 'anxious') return 'Anxious'
-  if (emotion === 'sad') return 'Sad'
-  if (emotion === 'angry') return 'Angry'
-  return 'Other'
 }
 
 function StatChip({ label, children }: { label: string; children: React.ReactNode }) {
@@ -514,7 +595,9 @@ function ProjectorCard({ title, value }: { title: string; value: number }) {
   return (
     <div className="rounded-3xl border border-[var(--paper-border)] p-4 sm:p-5">
       <div className="ink-muted text-xs sm:text-sm">{title}</div>
-      <div className="mt-2 font-mono text-2xl font-black leading-none sm:text-3xl md:text-4xl">{value}</div>
+      <div className="mt-2 font-mono text-2xl font-black leading-none sm:text-3xl md:text-4xl">
+        {value}
+      </div>
     </div>
   )
 }

@@ -259,8 +259,7 @@ export function LetterComposer({
               <button
                 type="button"
                 disabled={disabled}
-                className="focus-ring rounded-2xl px-4 py-3 text-sm font-medium"
-                style={{ background: 'var(--warn)', color: 'rgba(0,0,0,0.85)' }}
+                className="btn-primary focus-ring rounded-2xl px-4 py-3 text-sm font-medium"
                 onClick={() => setStep('review')}
               >
                 Review
