@@ -516,18 +516,33 @@ async function handleLocalFallback(
           },
         ]
 
-  const result = await runWorkersAi(env, MODEL, { messages })
-  const text = extractAiText(result).trim()
-  return corsJson(
-    {
-      type: 'answer',
-      text: text || 'Could not generate an answer.',
-      indexStatus: opts.indexStatus ?? 'idle',
-    },
-    200,
-    env,
-    opts.origin,
-  )
+  try {
+    const result = await runWorkersAi(env, MODEL, { messages })
+    const text = extractAiText(result).trim()
+    return corsJson(
+      {
+        type: 'answer',
+        text: text || 'Could not generate an answer.',
+        indexStatus: opts.indexStatus ?? 'idle',
+      },
+      200,
+      env,
+      opts.origin,
+    )
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn('[projector-search] local fallback AI unavailable', msg)
+    return corsJson(
+      {
+        type: 'answer',
+        text: 'No matching journal context found for that question.',
+        indexStatus: opts.indexStatus ?? 'failed',
+      },
+      200,
+      env,
+      opts.origin,
+    )
+  }
 }
 
 async function maybeSyncIndex(
