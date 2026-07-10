@@ -9,7 +9,7 @@ export const EntryRowSchema = z.object({
   id: z.string().min(1),
   createdAt: z.number().int().nonnegative(),
   updatedAt: z.number().int().nonnegative(),
-  dateKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  dateKey: z.string().regex(/^~?\d{4}-\d{2}-\d{2}$/),
   sentiment: EntrySentimentSchema,
   emotion: EntryEmotionSchema,
   emotionNote: z.string(),

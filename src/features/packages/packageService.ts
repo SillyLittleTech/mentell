@@ -1,3 +1,4 @@
+import { stripDateKey } from '../../shared/dates'
 import { getDb, type PackageKind, type PackageRow } from '../../db/schema'
 import { format, parseISO } from 'date-fns'
 import { makeId } from '../../shared/id'
@@ -5,7 +6,7 @@ import { awardForPackageOpen } from '../score/scoreService'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
 function weekKeyForEntryDate(dateKey: string) {
-  return format(parseISO(dateKey), "yyyy-'W'II")
+  return format(parseISO(stripDateKey(dateKey)), "yyyy-'W'II")
 }
 
 export async function ensurePackage(kind: PackageKind, periodKey: string) {

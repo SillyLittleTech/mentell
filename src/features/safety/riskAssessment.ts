@@ -1,3 +1,4 @@
+import { stripDateKey } from '../../shared/dates'
 import { format, parseISO, subDays } from 'date-fns'
 import { getDb, type EntryEmotion, type EntryRow, type EntrySentiment, type RiskLevel } from '../../db/schema'
 import { isDebugMode } from '../../shared/debug/debugFlags'
@@ -996,9 +997,11 @@ function shouldLockLocalCrisis(local: RiskAssessment, input: RiskAssessmentInput
 }
 
 async function recentEntries(dateKey: string) {
-  const end = parseISO(dateKey)
+  const end = parseISO(stripDateKey(dateKey))
   const startKey = format(subDays(end, 7), 'yyyy-MM-dd')
-  return getDb().entries.where('dateKey').between(startKey, dateKey, true, true).toArray()
+  const entriesNorm = await getDb().entries.where('dateKey').between(startKey, dateKey, true, true).toArray()
+  const entriesBulk = await getDb().entries.where('dateKey').between('~' + startKey, '~' + dateKey, true, true).toArray()
+  return [...entriesNorm, ...entriesBulk]
 }
 
 async function recentSupportMemories(
@@ -1006,9 +1009,11 @@ async function recentSupportMemories(
   input: RiskAssessmentInput,
 ): Promise<SupportMemory[]> {
   if (!dateKey) return []
-  const end = parseISO(dateKey)
+  const end = parseISO(stripDateKey(dateKey))
   const startKey = format(subDays(end, 60), 'yyyy-MM-dd')
-  const rows = await getDb().entries.where('dateKey').between(startKey, dateKey, true, true).toArray()
+  const rowsNorm = await getDb().entries.where('dateKey').between(startKey, dateKey, true, true).toArray()
+  const rowsBulk = await getDb().entries.where('dateKey').between('~' + startKey, '~' + dateKey, true, true).toArray()
+  const rows = [...rowsNorm, ...rowsBulk]
   const inputTokens = memoryTokens(`${input.situation}\n${input.details}\n${input.emotionNote}`)
   const usedIds = new Set(loadUsedSupportMemoryIds())
   return rows
@@ -1019,7 +1024,7 @@ async function recentSupportMemories(
     .map((entry) => {
       const candidateTokens = memoryTokens(`${entry.situation}\n${entry.details}\n${entry.emotionNote}`)
       const overlap = candidateTokens.filter((token) => inputTokens.includes(token)).length
-      const ageDays = Math.max(0, Math.round((end.getTime() - parseISO(entry.dateKey).getTime()) / 86_400_000))
+      const ageDays = Math.max(0, Math.round((end.getTime() - parseISO(stripDateKey(entry.dateKey)).getTime()) / 86_400_000))
       const moodBoost = entry.emotion === 'calm' ? 1.1 : entry.emotion === 'happy' ? 1 : 0.5
       const reusePenalty = usedIds.has(entry.id) ? -8 : 0
       const relevance = overlap * 3 + moodBoost + Math.max(0, 2 - ageDays / 14) + reusePenalty
