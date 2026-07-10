@@ -1,3 +1,4 @@
+import { stripDateKey } from '../../shared/dates'
 import { endOfWeek, format, parseISO, startOfWeek, subWeeks } from 'date-fns'
 import { getDb, type EntryRow } from '../../db/schema'
 import { getEffectiveGlobalName } from '../../shared/settings/effectiveGlobalName'
@@ -17,20 +18,30 @@ export async function fetchEntriesForRange(
     return getDb().entries.orderBy('dateKey').toArray()
   }
 
-  const anchor = parseISO(anchorDateKey)
+  const anchor = parseISO(stripDateKey(anchorDateKey))
   const weekEnd = endOfWeek(anchor, { weekStartsOn: 1 })
   const endKey = toDateKey(weekEnd)
 
   if (range === 'week') {
     const weekStart = startOfWeek(anchor, { weekStartsOn: 1 })
-    return getDb().entries
-      .where('dateKey')
+    const entriesNorm = await getDb()
+      .entries.where('dateKey')
       .between(toDateKey(weekStart), endKey, true, true)
       .toArray()
+    const entriesBulk = await getDb()
+      .entries.where('dateKey')
+      .between('~' + toDateKey(weekStart), '~' + endKey, true, true)
+      .toArray()
+    return [...entriesNorm, ...entriesBulk]
   }
 
   const startKey = toDateKey(startOfWeek(subWeeks(anchor, 4), { weekStartsOn: 1 }))
-  return getDb().entries.where('dateKey').between(startKey, endKey, true, true).toArray()
+  const entriesNorm = await getDb().entries.where('dateKey').between(startKey, endKey, true, true).toArray()
+  const entriesBulk = await getDb()
+    .entries.where('dateKey')
+    .between('~' + startKey, '~' + endKey, true, true)
+    .toArray()
+  return [...entriesNorm, ...entriesBulk]
 }
 
 function countSentiments(entries: EntryRow[]) {
