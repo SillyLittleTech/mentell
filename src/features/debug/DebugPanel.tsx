@@ -43,6 +43,7 @@ import {
   requestProjectorSearch,
   toSearchSnapshot,
 } from '../compilation/projectorSearch'
+import { useAuthOptional } from '../../shared/firebase/authContext'
 import {
   emitProjectorDebug,
   makeMockSearchAnswer,
@@ -77,6 +78,7 @@ const DEBUG_AI_TESTS = [
 
 export function DebugPanel() {
   const enabled = useMemo(() => isDebugMode(), [])
+  const auth = useAuthOptional()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [slowMo, setSlowMoState] = useState(getSlowMo())
@@ -420,7 +422,7 @@ export function DebugPanel() {
                           query: '',
                           mode: 'index',
                           entries,
-                          userId: getOrCreateAnonSearchUserId(),
+                          userId: auth?.user?.uid || getOrCreateAnonSearchUserId(),
                           forceIndex: true,
                           skipRateLimit: true,
                         })

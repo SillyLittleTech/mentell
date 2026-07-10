@@ -45,6 +45,52 @@ export function entryItemKey(userId: string, entryId: string) {
   return `journals/${userId}/${entryId}.md`
 }
 
+/** Built-in AI Search folder attribute for a tenant's journal docs. */
+export function userFolder(userId: string) {
+  return `journals/${userId}/`
+}
+
+/** Retrieval filters scoped to a single userId (custom metadata + folder path). */
+export function buildRetrievalFilters(userId: string) {
+  return {
+    userId,
+    folder: userFolder(userId),
+  }
+}
+
+export type AiSearchChunk = {
+  score?: number
+  text?: string
+  item?: { key?: string; metadata?: Record<string, unknown> }
+}
+
+export function chunkBelongsToUser(chunk: AiSearchChunk, userId: string) {
+  const key = chunk.item?.key
+  if (typeof key === 'string' && key.startsWith(userFolder(userId))) return true
+  const metaUserId = chunk.item?.metadata?.userId
+  if (typeof metaUserId === 'string' && metaUserId === userId) return true
+  return false
+}
+
+export function filterChunksForUser(chunks: AiSearchChunk[] | undefined, userId: string) {
+  if (!chunks?.length) return [] as AiSearchChunk[]
+  return chunks.filter((chunk) => chunkBelongsToUser(chunk, userId))
+}
+
+/** Shared ai_search_options: tenant filters + similarity cache off. */
+export function tenantAiSearchOptions(
+  userId: string,
+  retrieval: Record<string, unknown>,
+) {
+  return {
+    retrieval: {
+      ...retrieval,
+      filters: buildRetrievalFilters(userId),
+    },
+    cache: { enabled: false },
+  }
+}
+
 export function formatEntryDocument(entry: EntrySnapshot) {
   return [
     `# Journal entry ${entry.dateKey}`,
