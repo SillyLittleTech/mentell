@@ -34,6 +34,7 @@ function applyThemeCosmetics(mode: 'light' | 'dark', themeItem: ThemeItem | null
     setThemeCssVar('--paper-bg')
     setThemeCssVar('--paper-border')
     setThemeCssVar('--accent')
+    setThemeCssVar('--primary-action')
     setThemeCssVar('--shop-theme-overlay')
     return
   }
@@ -42,6 +43,7 @@ function applyThemeCosmetics(mode: 'light' | 'dark', themeItem: ThemeItem | null
   setThemeCssVar('--paper-bg', palette.paperBg)
   setThemeCssVar('--paper-border', palette.paperBorder)
   setThemeCssVar('--accent', palette.accent)
+  setThemeCssVar('--primary-action', palette.accent)
   setThemeCssVar('--shop-theme-overlay', palette.overlay)
 }
 

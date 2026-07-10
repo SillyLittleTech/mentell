@@ -24,14 +24,23 @@ export async function fetchEntriesForRange(
 
   if (range === 'week') {
     const weekStart = startOfWeek(anchor, { weekStartsOn: 1 })
-    const entriesNorm = await getDb().entries.where('dateKey').between(toDateKey(weekStart), endKey, true, true).toArray()
-    const entriesBulk = await getDb().entries.where('dateKey').between('~' + toDateKey(weekStart), '~' + endKey, true, true).toArray()
+    const entriesNorm = await getDb()
+      .entries.where('dateKey')
+      .between(toDateKey(weekStart), endKey, true, true)
+      .toArray()
+    const entriesBulk = await getDb()
+      .entries.where('dateKey')
+      .between('~' + toDateKey(weekStart), '~' + endKey, true, true)
+      .toArray()
     return [...entriesNorm, ...entriesBulk]
   }
 
   const startKey = toDateKey(startOfWeek(subWeeks(anchor, 4), { weekStartsOn: 1 }))
   const entriesNorm = await getDb().entries.where('dateKey').between(startKey, endKey, true, true).toArray()
-  const entriesBulk = await getDb().entries.where('dateKey').between('~' + startKey, '~' + endKey, true, true).toArray()
+  const entriesBulk = await getDb()
+    .entries.where('dateKey')
+    .between('~' + startKey, '~' + endKey, true, true)
+    .toArray()
   return [...entriesNorm, ...entriesBulk]
 }
 
@@ -147,7 +156,7 @@ export function buildRawReportHtml(input: {
 </head>
 <body>
   <h1>Mentell — RAW mental health report</h1>
-  <p class="muted">${rangeLabel} · Generated ${format(new Date(), 'yyyy-MM-dd HH:mm')} · Local export (no AI)</p>
+  <p class="muted">${rangeLabel} · Generated ${format(new Date(), 'yyyy-MM-dd HH:mm')} · mentell.sillylittle.tech</p>
 
   <div class="card">
     <h2>Summary</h2>

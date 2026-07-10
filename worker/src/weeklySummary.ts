@@ -1,5 +1,6 @@
 import { corsJson, corsResponse } from './cors'
 import type { Env } from './env'
+import { extractAiText, runWorkersAi } from './aiGateway'
 import { sanitizeProfile, type AiProfileInput } from './sanitizeProfile'
 
 type JournalEntry = {
@@ -199,7 +200,7 @@ async function generateSummary(
     ? `${readerBlock}\n\nJournal entries (JSON):\n${journalJson}`
     : `Journal entries (JSON):\n${journalJson}`
 
-  const result = await env.AI.run(MODEL, {
+  const result = await runWorkersAi(env, MODEL, {
     messages: [
       {
         role: 'system',
@@ -217,19 +218,4 @@ async function generateSummary(
     throw new Error('Model returned an empty summary')
   }
   return text.trim()
-}
-
-function extractAiText(result: unknown) {
-  if (typeof result === 'string') return result
-  if (result && typeof result === 'object') {
-    const r = result as Record<string, unknown>
-    if (typeof r.response === 'string') return r.response
-    if (typeof r.text === 'string') return r.text
-    const choices = r.choices
-    if (Array.isArray(choices) && choices[0] && typeof choices[0] === 'object') {
-      const msg = (choices[0] as { message?: { content?: string } }).message?.content
-      if (typeof msg === 'string') return msg
-    }
-  }
-  return ''
 }

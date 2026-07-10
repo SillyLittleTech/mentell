@@ -7,6 +7,8 @@
   --paper-border: rgba(25, 24, 31, 0.14);
   --desk-bg: #505153;
   --accent: #d12a2a;
+  --accent-soft: color-mix(in srgb, var(--primary-action) 16%, var(--paper-bg));
+  --primary-action: #e0b22c;
   --success: #2a9b58;
   --warn: #e0b22c;
   --danger: #c61d1d;
@@ -106,8 +108,40 @@ textarea {
 }
 
 .focus-ring:focus-visible {
-  outline: 3px solid rgba(224, 178, 44, 0.5);
+  outline: 3px solid color-mix(in srgb, var(--primary-action) 50%, transparent);
   outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--primary-action);
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+}
+
+.chat-bubble {
+  max-width: 85%;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-bubble--user {
+  margin-left: auto;
+  background: var(--primary-action);
+  color: rgba(0, 0, 0, 0.85);
+  border-radius: 1.15rem 1.15rem 0.35rem 1.15rem;
+}
+
+.chat-bubble--assistant {
+  margin-right: auto;
+  background: var(--accent-soft);
+  color: var(--paper-ink);
+  border-radius: 1.15rem 1.15rem 1.15rem 0.35rem;
 }
 
 html[data-reduced-motion='true'] *,

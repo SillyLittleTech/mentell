@@ -35,5 +35,5 @@ worker/.wrangler
 *.sw?
 /scripts/emergency
 .agents
-# Python script files
+.cursor
 *.py

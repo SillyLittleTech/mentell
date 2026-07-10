@@ -19,6 +19,11 @@ interface ImportMetaEnv {
   readonly VITE_ENABLE_WEEKLY_AI_SUMMARY?: string
   readonly VITE_WEEKLY_AI_ENDPOINT?: string
   readonly VITE_WEEKLY_AI_TOKEN?: string
+  readonly VITE_ENABLE_PROJECTOR_AI_SEARCH?: string
+  readonly VITE_PROJECTOR_SEARCH_ENDPOINT?: string
+  readonly VITE_PROJECTOR_SEARCH_TOKEN?: string
+  /** When "1", confirm before closing projector search if follow-ups exist (default off) */
+  readonly VITE_ENABLE_PJS_CLOSECONF?: string
   readonly VITE_FEEDBACK_FORM_ENDPOINT?: string
   readonly VITE_FEEDBACK_TURNSTILE_SITE_KEY?: string
   readonly VITE_ENABLE_FIREBASE?: string

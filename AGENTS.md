@@ -51,6 +51,32 @@ The AI card on `/week` only appears when env flags are set **and** a weekly pack
 
 Worker POST body also accepts optional `mode` (`reflection` | `overview`) and `profile` (`displayName`, `ageRange`, `about`).
 
+### Projector AI Search (Cloudflare AI Search)
+
+Optional natural-language search over journal entries on the Projector (`/week`) tab. Uses the same Worker with a new route and an AI Search instance.
+
+**Operator setup**
+
+1. In the Cloudflare dashboard, create an **AI Search** instance named `mentell-journals` (built-in storage).
+2. Add custom metadata fields: `userId` (text), `entryId` (text), `dateKey` (text), `updatedAt` (number or text).
+3. Create **two** AI Gateways:
+   - `mentell-workers-ai` — attach rate limits / spend limits here; used by weekly summary and projector fallbacks via `AI_GATEWAY_ID`.
+   - A dedicated gateway for the AI Search instance — **no rate limiting and no caching** (Cloudflare warns these break indexing/query accuracy).
+4. Worker binding is already in [`worker/wrangler.jsonc`](worker/wrangler.jsonc) (`AI_SEARCH` → `mentell-journals`, `remote: true` for local dev).
+5. Optional secrets/vars: `AI_GATEWAY_ID`, `PROJECTOR_SEARCH_TOKEN` (falls back to `WEEKLY_SUMMARY_TOKEN`).
+
+**Local client env** (root `.env.local`):
+
+```env
+VITE_ENABLE_PROJECTOR_AI_SEARCH=1
+VITE_PROJECTOR_SEARCH_ENDPOINT=http://127.0.0.1:8787/projector-search
+VITE_PROJECTOR_SEARCH_TOKEN=dev-local-token
+```
+
+The Search button is gated by Settings → **Disable AI summaries** (same local AI toggle) plus the build flags above. Without an AI Search binding, the Worker falls back to local keyword match + Workers AI.
+
+**Production:** set GitHub Variables `VITE_ENABLE_PROJECTOR_AI_SEARCH`, `VITE_PROJECTOR_SEARCH_ENDPOINT`, and reuse `WEEKLY_AI_TOKEN` / `VITE_PROJECTOR_SEARCH_TOKEN` as needed.
+
 ### Firebase sync + share links (optional)
 
 See [`docs/FIREBASE.md`](docs/FIREBASE.md). Off by default via `VITE_ENABLE_FIREBASE=0` in [`.env.example`](.env.example).

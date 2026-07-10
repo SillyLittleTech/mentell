@@ -16,6 +16,7 @@ export function PrivacyPolicyPage() {
   const syncOn = isFirebaseSyncEnabled()
   const shareOn = isShareLinksEnabled()
   const weeklyAiOn = import.meta.env.VITE_ENABLE_WEEKLY_AI_SUMMARY === '1'
+  const projectorSearchOn = import.meta.env.VITE_ENABLE_PROJECTOR_AI_SEARCH === '1'
 
   useEffect(() => {
     if (hash) {
@@ -160,6 +161,21 @@ export function PrivacyPolicyPage() {
           </p>
         </section>
       )}
+
+      {projectorSearchOn ? (
+        <section className="paper rounded-3xl p-6">
+          <h2 className="font-paper text-xl">Projector AI Search (optional)</h2>
+          <p className="ink-muted mt-3 text-sm leading-relaxed">
+            When Projector search is enabled and you have not disabled AI in Settings, search queries
+            may upload journal text to Cloudflare <strong>AI Search</strong> for indexing and
+            retrieval, then return matching entries or a plain-text answer via the same Worker. Index
+            content is scoped to your search user id (signed-in account or a local anonymous id).
+          </p>
+          <p className="ink-muted mt-3 text-sm leading-relaxed">
+            Prefer not to search content you would not want processed by an AI retrieval service.
+          </p>
+        </section>
+      ) : null}
 
       <section className="paper rounded-3xl p-6">
         <h2 className="font-paper text-xl">Hosting</h2>

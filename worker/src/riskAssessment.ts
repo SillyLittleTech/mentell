@@ -1,5 +1,6 @@
 import { corsJson, corsResponse } from './cors'
 import type { Env } from './env'
+import { runWorkersAi } from './aiGateway'
 
 type RiskLevel = 'none' | 'low' | 'elevated' | 'crisis'
 
@@ -85,8 +86,7 @@ function authorize(request: Request, env: Env) {
   return match[1] === normalizeToken(env.WEEKLY_SUMMARY_TOKEN)
 }
 
-function normalizeToken(raw?: string) {
-  if (!raw) return ''
+function normalizeToken(raw: string) {
   const t = raw.trim()
   if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
     return t.slice(1, -1)
@@ -247,7 +247,7 @@ async function generateAssessmentWithAi(
       : buildAssessment(fallbackKind, literalSentiment.score, supportMessageFor(fallbackKind, body))
 
   try {
-    const result = await env.AI.run(RESPONSE_MODEL, {
+    const result = await runWorkersAi(env, RESPONSE_MODEL, {
       messages: [
         {
           role: 'system',
@@ -355,7 +355,7 @@ async function scoreSentimentWithAi(
   }
 
   try {
-    const result = await env.AI.run(SENTIMENT_MODEL, { text })
+    const result = await runWorkersAi(env, SENTIMENT_MODEL, { text })
     const row = Array.isArray(result)
       ? result
           .filter((candidate) => candidate && typeof candidate === 'object')
@@ -379,7 +379,7 @@ async function scoreSentimentWithAi(
 
 async function assessGuard(env: Env, journalJson: string, body: RequestBody): Promise<GuardResult> {
   try {
-    const result = await env.AI.run(GUARD_MODEL, {
+    const result = await runWorkersAi(env, GUARD_MODEL, {
       messages: [
         {
           role: 'user',
