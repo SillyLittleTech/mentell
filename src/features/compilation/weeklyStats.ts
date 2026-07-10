@@ -1,9 +1,4 @@
-<<<<<<< HEAD
 import { endOfWeek, format, parseISO, startOfWeek, subWeeks } from 'date-fns'
-=======
-import { stripDateKey } from '../../shared/dates'
-import { endOfWeek, format, parseISO, startOfWeek } from 'date-fns'
->>>>>>> main
 import { getDb, type EntryRow } from '../../db/schema'
 
 export type WeeklyStats = {
@@ -23,16 +18,11 @@ function toDateKey(d: Date) {
 }
 
 export function weekKeyForDateKey(dateKey: string) {
-<<<<<<< HEAD
   const d = parseISO(dateKey)
-=======
-  const d = parseISO(stripDateKey(dateKey))
->>>>>>> main
   const wk = format(d, "yyyy-'W'II")
   return wk
 }
 
-<<<<<<< HEAD
 /** Parse ISO week key like 2026-W20 into a Date within that week (Monday). */
 export function dateFromWeekKey(weekKey: string): Date | null {
   const m = weekKey.match(/^(\d{4})-W(\d{2})$/)
@@ -58,25 +48,15 @@ export function previousWeekKey(weekKey: string): string | null {
 
 export async function getWeeklyStatsForDateKey(dateKey: string): Promise<WeeklyStats> {
   const d = parseISO(dateKey)
-=======
-export async function getWeeklyStatsForDateKey(dateKey: string): Promise<WeeklyStats> {
-  const d = parseISO(stripDateKey(dateKey))
->>>>>>> main
   const start = startOfWeek(d, { weekStartsOn: 1 })
   const end = endOfWeek(d, { weekStartsOn: 1 })
 
   const startKey = toDateKey(start)
   const endKey = toDateKey(end)
 
-<<<<<<< HEAD
   const entries = (
     await getDb().entries.where('dateKey').between(startKey, endKey, true, true).toArray()
   ).sort((a, b) => b.createdAt - a.createdAt)
-=======
-  const entriesNorm = await getDb().entries.where('dateKey').between(startKey, endKey, true, true).toArray()
-  const entriesBulk = await getDb().entries.where('dateKey').between('~' + startKey, '~' + endKey, true, true).toArray()
-  const entries = [...entriesNorm, ...entriesBulk].sort((a, b) => b.createdAt - a.createdAt)
->>>>>>> main
 
   let positives = 0
   let negatives = 0
@@ -110,7 +90,6 @@ export async function getWeeklyStatsForWeekKey(weekKey: string): Promise<WeeklyS
     .sort((a, b) => b.createdAt - a.createdAt)
   const anchor = entries[0]?.dateKey
   if (!anchor) {
-<<<<<<< HEAD
     const d = dateFromWeekKey(weekKey)
     if (d) {
       const startKey = toDateKey(startOfWeek(d, { weekStartsOn: 1 }))
@@ -127,8 +106,6 @@ export async function getWeeklyStatsForWeekKey(weekKey: string): Promise<WeeklyS
         entries: [],
       }
     }
-=======
->>>>>>> main
     return {
       weekKey,
       startDateKey: '',
@@ -142,11 +119,7 @@ export async function getWeeklyStatsForWeekKey(weekKey: string): Promise<WeeklyS
     }
   }
 
-<<<<<<< HEAD
   const d = parseISO(anchor)
-=======
-  const d = parseISO(stripDateKey(anchor))
->>>>>>> main
   const startKey = toDateKey(startOfWeek(d, { weekStartsOn: 1 }))
   const endKey = toDateKey(endOfWeek(d, { weekStartsOn: 1 }))
 
@@ -174,7 +147,6 @@ export async function getWeeklyStatsForWeekKey(weekKey: string): Promise<WeeklyS
     entries,
   }
 }
-<<<<<<< HEAD
 
 export type WeekCursor = { beforeWeekKey: string } | null
 
@@ -239,5 +211,3 @@ export async function getEntriesForWeeksBefore(
 
   return { batches, nextCursor }
 }
-=======
->>>>>>> main

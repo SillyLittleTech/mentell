@@ -1,9 +1,6 @@
 import { corsJson, corsResponse } from './cors'
 import type { Env } from './env'
-<<<<<<< HEAD
 import { runWorkersAi } from './aiGateway'
-=======
->>>>>>> main
 
 type RiskLevel = 'none' | 'low' | 'elevated' | 'crisis'
 
@@ -89,12 +86,7 @@ function authorize(request: Request, env: Env) {
   return match[1] === normalizeToken(env.WEEKLY_SUMMARY_TOKEN)
 }
 
-<<<<<<< HEAD
 function normalizeToken(raw: string) {
-=======
-function normalizeToken(raw?: string) {
-  if (!raw) return ''
->>>>>>> main
   const t = raw.trim()
   if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
     return t.slice(1, -1)
