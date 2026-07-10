@@ -594,8 +594,10 @@ function normalizeMessages(messages: ChatMessage[] | undefined, query: string): 
 }
 
 function sanitizeUserId(raw: string | undefined) {
-  if (!raw || typeof raw !== 'string') return ''
-  return raw.trim().slice(0, 128).replace(/[^a-zA-Z0-9_-]/g, '')
+  if (typeof raw !== 'string') return ''
+  if (raw.length === 0) return ''
+  if (raw.trim().length === 0) return ''
+  return raw
 }
 
 function authorize(request: Request, env: Env) {
