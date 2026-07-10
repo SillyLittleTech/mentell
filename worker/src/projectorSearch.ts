@@ -260,8 +260,8 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
         indexStatus,
         origin,
         ownedChunks,
-        maxResults: 12,
-        matchThreshold: 0.3,
+        maxResults: 10,
+        matchThreshold: 0.35,
         preferChat: false,
       })
     } catch (searchErr) {
