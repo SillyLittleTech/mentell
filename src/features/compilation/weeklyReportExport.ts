@@ -145,7 +145,7 @@ export function buildRawReportHtml(input: {
 </head>
 <body>
   <h1>Mentell — RAW mental health report</h1>
-  <p class="muted">${rangeLabel} · Generated ${format(new Date(), 'yyyy-MM-dd HH:mm')} · Local export (no AI)</p>
+  <p class="muted">${rangeLabel} · Generated ${format(new Date(), 'yyyy-MM-dd HH:mm')} · mentell.sillylittle.tech</p>
 
   <div class="card">
     <h2>Summary</h2>
