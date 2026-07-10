@@ -3,8 +3,11 @@ import type { Env } from './env'
 import { extractAiText, runWorkersAi } from './aiGateway'
 import {
   extractEntryIdsFromChunks,
+  filterChunksForUser,
   getAiSearchInstance,
   syncEntriesToAiSearch,
+  tenantAiSearchOptions,
+  type AiSearchChunk,
 } from './aiSearchIndex'
 import { fetchEntriesByIds } from './dataFetcher'
 import type { EntrySnapshot } from './entryMerge'
@@ -68,7 +71,10 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
   }
 
   const mode = body.mode === 'chat' ? 'chat' : body.mode === 'index' ? 'index' : 'search'
-  const userId = sanitizeUserId(body.userId) || 'anon'
+  const userId = sanitizeUserId(body.userId)
+  if (!userId) {
+    return corsJson({ error: 'userId is required' }, 400, env, origin)
+  }
   const entries = Array.isArray(body.entries) ? body.entries.filter((e) => e && typeof e.id === 'string') : []
   const query = typeof body.query === 'string' ? body.query.trim() : ''
 
@@ -127,72 +133,37 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
       })
     }
 
-    const filters = { userId }
-
     try {
       if (mode === 'chat') {
-        const messages = normalizeMessages(body.messages, query)
-        const chat = await instance.chatCompletions({
-          messages: [
-            {
-              role: 'system',
-              content: chatSystemPrompt(),
-            },
-            ...messages,
-          ],
-          ai_search_options: {
-            retrieval: {
-              filters,
-              max_num_results: 8,
-              match_threshold: 0.35,
-            },
-          },
-        })
-        const text = extractAiText(chat).trim()
-        const fromChunks = await resolveFromChunkIds(env, extractEntryIdsFromChunks(chat.chunks), entries, userId)
-        const merged = mergeEntrySnapshots(fromChunks, localHits)
-        if (merged.length > 0) {
-          return corsJson(
-            {
-              type: 'entries',
-              entryIds: merged.map((e) => e.id),
-              entries: merged,
-              preamble: text || undefined,
-              indexStatus,
-            },
-            200,
-            env,
-            origin,
-          )
-        }
-        return corsJson(
-          {
-            type: 'answer',
-            text: text || 'I could not find enough context to answer that.',
-            indexStatus,
-          },
-          200,
-          env,
+        return await handleVerifiedSearchAnswer(env, {
+          instance,
+          query,
+          userId,
+          entries,
+          localHits,
+          indexStatus,
           origin,
-        )
+          messages: body.messages,
+          maxResults: 8,
+          matchThreshold: 0.35,
+          preferChat: true,
+        })
       }
 
       // Search mode
       const search = await instance.search({
         messages: [{ role: 'user', content: query }],
-        ai_search_options: {
-          retrieval: {
-            filters,
-            max_num_results: 10,
-            match_threshold: 0.35,
-            retrieval_type: 'hybrid',
-          },
-        },
+        ai_search_options: tenantAiSearchOptions(userId, {
+          max_num_results: 10,
+          match_threshold: 0.35,
+          retrieval_type: 'hybrid',
+        }),
       })
 
+      const ownedChunks = filterChunksForUser(search.chunks, userId)
       const fromChunks = await resolveFromChunkIds(
         env,
-        extractEntryIdsFromChunks(search.chunks),
+        extractEntryIdsFromChunks(ownedChunks),
         entries,
         userId,
       )
@@ -279,59 +250,20 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
         )
       }
 
-      // No entry matches → plain-text chat over retrieval
-      const chat = await instance.chatCompletions({
-        messages: [
-          { role: 'system', content: chatSystemPrompt() },
-          {
-            role: 'user',
-            content: localHits.length
-              ? `${query}\n\nLocal journal context:\n${localHits
-                  .map(
-                    (e) =>
-                      `${e.dateKey} [${e.sentiment}] ${e.situation}: ${(e.details || '').slice(0, 160)}`,
-                  )
-                  .join('\n')}`
-              : query,
-          },
-        ],
-        ai_search_options: {
-          retrieval: {
-            filters,
-            max_num_results: 12,
-            match_threshold: 0.3,
-          },
-        },
-      })
-      const text = extractAiText(chat).trim()
-      const chatMerged = mergeEntrySnapshots(
-        await resolveFromChunkIds(env, extractEntryIdsFromChunks(chat.chunks), entries, userId),
+      // No entry cards → plain-text answer from owned retrieval only (never unscoped chatCompletions)
+      return await handleVerifiedSearchAnswer(env, {
+        instance,
+        query,
+        userId,
+        entries,
         localHits,
-      )
-      if (chatMerged.length > 0) {
-        return corsJson(
-          {
-            type: 'entries',
-            entryIds: chatMerged.map((e) => e.id),
-            entries: chatMerged,
-            preamble: text || undefined,
-            indexStatus,
-          },
-          200,
-          env,
-          origin,
-        )
-      }
-      return corsJson(
-        {
-          type: 'answer',
-          text: text || 'No matching journal context found for that question.',
-          indexStatus,
-        },
-        200,
-        env,
+        indexStatus,
         origin,
-      )
+        ownedChunks,
+        maxResults: 10,
+        matchThreshold: 0.35,
+        preferChat: false,
+      })
     } catch (searchErr) {
       const msg = searchErr instanceof Error ? searchErr.message : String(searchErr)
       console.warn('[projector-search] AI Search query failed, local fallback', msg)
@@ -367,6 +299,127 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
   }
 }
 
+/**
+ * Search with tenant filters, keep only owned chunks, then answer via Workers AI
+ * using verified context only (never trust AI Search chatCompletions RAG text).
+ */
+async function handleVerifiedSearchAnswer(
+  env: Env,
+  opts: {
+    instance: NonNullable<ReturnType<typeof getAiSearchInstance>>
+    query: string
+    userId: string
+    entries: EntrySnapshot[]
+    localHits: EntrySnapshot[]
+    indexStatus: IndexStatus
+    origin: string | null
+    messages?: ChatMessage[]
+    ownedChunks?: AiSearchChunk[]
+    maxResults: number
+    matchThreshold: number
+    preferChat: boolean
+  },
+) {
+  let ownedChunks = opts.ownedChunks
+  if (!ownedChunks) {
+    const search = await opts.instance.search({
+      messages: [{ role: 'user', content: opts.query }],
+      ai_search_options: tenantAiSearchOptions(opts.userId, {
+        max_num_results: opts.maxResults,
+        match_threshold: opts.matchThreshold,
+        retrieval_type: 'hybrid',
+      }),
+    })
+    ownedChunks = filterChunksForUser(search.chunks, opts.userId)
+  }
+
+  const fromChunks = await resolveFromChunkIds(
+    env,
+    extractEntryIdsFromChunks(ownedChunks, opts.matchThreshold),
+    opts.entries,
+    opts.userId,
+  )
+  const merged = mergeEntrySnapshots(fromChunks, opts.localHits)
+
+  const contextBlocks: string[] = []
+  for (const chunk of ownedChunks) {
+    if (typeof chunk.text === 'string' && chunk.text.trim()) {
+      contextBlocks.push(chunk.text.trim().slice(0, 800))
+    }
+  }
+  for (const e of opts.localHits) {
+    contextBlocks.push(
+      `${e.dateKey} [${e.sentiment}] ${e.situation}: ${(e.details || '').slice(0, 200)}`,
+    )
+  }
+
+  let text = ''
+  if (contextBlocks.length > 0 || opts.preferChat) {
+    try {
+      const messages = opts.preferChat
+        ? [
+            { role: 'system', content: chatSystemPrompt() },
+            ...normalizeMessages(opts.messages, opts.query),
+            ...(contextBlocks.length
+              ? [
+                  {
+                    role: 'system' as const,
+                    content: `Owned journal context for this user only:\n${contextBlocks.slice(0, 12).join('\n---\n')}`,
+                  },
+                ]
+              : []),
+          ]
+        : [
+            { role: 'system', content: chatSystemPrompt() },
+            {
+              role: 'user',
+              content: `Question: ${opts.query}\n\nJournal context (this user only):\n${
+                contextBlocks.slice(0, 12).join('\n---\n') || '(none)'
+              }`,
+            },
+          ]
+      const brief = await runWorkersAi(env, MODEL, { messages })
+      text = extractAiText(brief).trim()
+    } catch {
+      text = ''
+    }
+  }
+
+  if (merged.length > 0) {
+    return corsJson(
+      {
+        type: 'entries',
+        entryIds: merged.map((e) => e.id),
+        entries: merged,
+        preamble: text || undefined,
+        indexStatus: opts.indexStatus,
+      },
+      200,
+      env,
+      opts.origin,
+    )
+  }
+
+  return corsJson(
+    {
+      type: 'answer',
+      text:
+        text ||
+        (contextBlocks.length === 0
+          ? 'No matching journal context found for that question.'
+          : 'I could not find enough context to answer that.'),
+      indexStatus: opts.indexStatus,
+    },
+    200,
+    env,
+    opts.origin,
+  )
+}
+
+function isAnonymousSearchUserId(userId: string) {
+  return userId === 'anon' || userId === 'anon_local' || userId.startsWith('anon_')
+}
+
 async function resolveFromChunkIds(
   env: Env,
   entryIds: string[],
@@ -377,7 +430,7 @@ async function resolveFromChunkIds(
   return fetchEntriesByIds({
     entryIds,
     localEntries: entries,
-    userId: userId === 'anon' ? undefined : userId,
+    userId: isAnonymousSearchUserId(userId) ? undefined : userId,
     serviceAccountJson: env.FIREBASE_SERVICE_ACCOUNT_JSON,
   })
 }
@@ -463,18 +516,33 @@ async function handleLocalFallback(
           },
         ]
 
-  const result = await runWorkersAi(env, MODEL, { messages })
-  const text = extractAiText(result).trim()
-  return corsJson(
-    {
-      type: 'answer',
-      text: text || 'Could not generate an answer.',
-      indexStatus: opts.indexStatus ?? 'idle',
-    },
-    200,
-    env,
-    opts.origin,
-  )
+  try {
+    const result = await runWorkersAi(env, MODEL, { messages })
+    const text = extractAiText(result).trim()
+    return corsJson(
+      {
+        type: 'answer',
+        text: text || 'Could not generate an answer.',
+        indexStatus: opts.indexStatus ?? 'idle',
+      },
+      200,
+      env,
+      opts.origin,
+    )
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn('[projector-search] local fallback AI unavailable', msg)
+    return corsJson(
+      {
+        type: 'answer',
+        text: 'No matching journal context found for that question.',
+        indexStatus: opts.indexStatus ?? 'failed',
+      },
+      200,
+      env,
+      opts.origin,
+    )
+  }
 }
 
 async function maybeSyncIndex(
@@ -526,8 +594,10 @@ function normalizeMessages(messages: ChatMessage[] | undefined, query: string): 
 }
 
 function sanitizeUserId(raw: string | undefined) {
-  if (!raw || typeof raw !== 'string') return ''
-  return raw.trim().slice(0, 128).replace(/[^a-zA-Z0-9_-]/g, '')
+  if (typeof raw !== 'string') return ''
+  if (raw.length === 0) return ''
+  if (raw.trim().length === 0) return ''
+  return raw
 }
 
 function authorize(request: Request, env: Env) {

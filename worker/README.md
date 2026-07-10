@@ -117,6 +117,17 @@ Frontend (GitHub **Variables**, not secrets): `VITE_VAPID_PUBLIC_KEY`, `VITE_PUS
 3. Binding in `wrangler.jsonc`: `AI_SEARCH` → `mentell-journals` (`remote: true` for `wrangler dev`).
 4. Auth: Bearer `PROJECTOR_SEARCH_TOKEN` or `WEEKLY_SUMMARY_TOKEN`.
 
+### Tenant isolation
+
+All users share one AI Search instance. Isolation is by request `userId` only:
+
+- Documents are stored at `journals/{userId}/{entryId}.md` with matching `userId` metadata.
+- Every search request requires a non-empty `userId` and retrieves with filters on both `userId` and `folder: journals/{userId}/`.
+- Similarity cache is disabled per request (`cache.enabled = false`) so answers for one userId are never reused for another.
+- Retrieved chunks are ownership-checked before entry resolution or answer generation; answers are built via Workers AI from owned context only (not unscoped `chatCompletions` RAG).
+
+Different browser contexts (incognito, debug mode) use different local anon ids and must not see each other’s indexed journals. Sign-out does not rotate the local anon id.
+
 ### API
 
 `POST /projector-search` body:
@@ -132,9 +143,10 @@ Frontend (GitHub **Variables**, not secrets): `VITE_VAPID_PUBLIC_KEY`, `VITE_PUS
 ```
 
 - `mode`: `search` (default), `chat` (follow-up with `messages[]`), or `index` (force reindex only).
+- `userId` is **required** (sanitized; no shared `'anon'` fallback).
 - Response: `{ type: "entries", entryIds, entries, preamble? }` or `{ type: "answer", text }` or `{ type: "error", message }`.
 - Rate limits: 12/hour, 40/day per IP (KV keys `ps:h:` / `ps:d:`).
-- `data-fetcher` merges client entries with Firestore by `updatedAt` when `FIREBASE_SERVICE_ACCOUNT_JSON` is set.
+- `data-fetcher` merges client entries with Firestore by `updatedAt` when `FIREBASE_SERVICE_ACCOUNT_JSON` is set (skipped for `anon_*` user ids).
 
 Client env: `VITE_ENABLE_PROJECTOR_AI_SEARCH`, `VITE_PROJECTOR_SEARCH_ENDPOINT`, `VITE_PROJECTOR_SEARCH_TOKEN` (see root `AGENTS.md`).
 
