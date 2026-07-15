@@ -47,10 +47,15 @@ export function ProjectorEntryDetail({
     | 'emotion'
     | 'emotionNote'
     | 'details'
+    | 'behavioursNoted'
+    | 'reoccurringTheme'
     | 'warningLevel'
     | 'flaggedTerms'
   >
 }) {
+  const behavioursNoted = entry.behavioursNoted?.trim() ?? ''
+  const reoccurringTheme = entry.reoccurringTheme?.trim() ?? ''
+
   return (
     <div className="grid gap-4">
       {entry.warningLevel === 'warn' ? (
@@ -82,6 +87,26 @@ export function ProjectorEntryDetail({
           {entry.details || '—'}
         </div>
       </div>
+      {behavioursNoted || reoccurringTheme ? (
+        <div className="grid gap-4 border-t border-[var(--paper-border)] pt-4">
+          {behavioursNoted ? (
+            <div>
+              <div className="ink-muted text-sm font-medium">Behaviours noted</div>
+              <div className="mt-2 whitespace-pre-wrap rounded-2xl border border-[var(--paper-border)] p-4 font-paper text-lg leading-relaxed">
+                {behavioursNoted}
+              </div>
+            </div>
+          ) : null}
+          {reoccurringTheme ? (
+            <div>
+              <div className="ink-muted text-sm font-medium">Reoccurring theme</div>
+              <div className="mt-2 whitespace-pre-wrap rounded-2xl border border-[var(--paper-border)] p-4 font-paper text-lg leading-relaxed">
+                {reoccurringTheme}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

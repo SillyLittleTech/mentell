@@ -9,6 +9,8 @@ type JournalEntry = {
   emotion?: string
   situation: string
   details: string
+  behavioursNoted?: string
+  reoccurringTheme?: string
 }
 
 type SummaryMode = 'reflection' | 'overview'
@@ -158,6 +160,7 @@ Write a concise, objective narrative overview for each day with entries.
 Use third-person language only.
 Do not address the person directly, do not use their name, and do not use first- or second-person language.
 For each day, write 1-2 sentences that reference dateKey, sentiment, emotion, situation, and details.
+When behavioursNoted or reoccurringTheme are present, weave those interaction patterns in briefly.
 Keep the tone neutral and observational.
 Use plain language; no bullet lists unless helpful.`
   }
@@ -193,6 +196,8 @@ async function generateSummary(
       emotion: e.emotion ?? null,
       situation: e.situation,
       details: e.details,
+      behavioursNoted: e.behavioursNoted || null,
+      reoccurringTheme: e.reoccurringTheme || null,
     })),
   })
 

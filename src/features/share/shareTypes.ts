@@ -28,6 +28,8 @@ export type ShareEntryPreview = {
   emotionNote?: string
   situation?: string
   details?: string
+  behavioursNoted?: string
+  reoccurringTheme?: string
   warningLevel?: WarningLevel
 }
 

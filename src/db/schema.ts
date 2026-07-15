@@ -16,6 +16,10 @@ export type EntryRow = {
   emotionNote: string
   situation: string
   details: string
+  /** Free-text notes on behaviours observed in the interaction. */
+  behavioursNoted: string
+  /** Free-text label for a reoccurring interaction theme/type. */
+  reoccurringTheme: string
   flaggedTerms: string[]
   warningLevel: WarningLevel
   riskScore: number
@@ -171,6 +175,21 @@ export class MentellDB extends Dexie {
       .upgrade(async (tx) => {
         await tx.table('entries').toCollection().modify((row: Partial<EntryRow>) => {
           if (typeof row.interventionScore !== 'number') row.interventionScore = 0
+        })
+      })
+
+    this.version(8)
+      .stores({
+        entries: '&id, dateKey, createdAt, updatedAt, sentiment, warningLevel, riskLevel',
+        notes: '&id, createdAt, updatedAt, tag',
+        stickies: '&id, createdAt, updatedAt, zIndex',
+        packages: '&id, kind, periodKey, createdAt, updatedAt, openedAt',
+        characterAppearance: '&id, updatedAt',
+      })
+      .upgrade(async (tx) => {
+        await tx.table('entries').toCollection().modify((row: Partial<EntryRow>) => {
+          if (typeof row.behavioursNoted !== 'string') row.behavioursNoted = ''
+          if (typeof row.reoccurringTheme !== 'string') row.reoccurringTheme = ''
         })
       })
   }

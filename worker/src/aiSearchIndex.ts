@@ -106,6 +106,12 @@ export function formatEntryDocument(entry: EntrySnapshot) {
     '## Details',
     entry.details || '—',
     '',
+    '## Behaviours noted',
+    entry.behavioursNoted || '—',
+    '',
+    '## Reoccurring theme',
+    entry.reoccurringTheme || '—',
+    '',
   ].join('\n')
 }
 

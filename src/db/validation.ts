@@ -15,6 +15,8 @@ export const EntryRowSchema = z.object({
   emotionNote: z.string(),
   situation: z.string(),
   details: z.string(),
+  behavioursNoted: z.string().default(''),
+  reoccurringTheme: z.string().default(''),
   flaggedTerms: z.array(z.string()),
   warningLevel: WarningLevelSchema,
   riskScore: z.number().min(0).max(1),

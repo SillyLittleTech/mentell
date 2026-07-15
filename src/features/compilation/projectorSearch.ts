@@ -25,6 +25,8 @@ export type ProjectorSearchEntry = Pick<
   | 'emotionNote'
   | 'situation'
   | 'details'
+  | 'behavioursNoted'
+  | 'reoccurringTheme'
   | 'flaggedTerms'
   | 'warningLevel'
   | 'riskScore'
@@ -107,6 +109,8 @@ export function toSearchSnapshot(entry: EntryRow): ProjectorSearchEntry {
     emotionNote: entry.emotionNote,
     situation: entry.situation,
     details: entry.details,
+    behavioursNoted: entry.behavioursNoted ?? '',
+    reoccurringTheme: entry.reoccurringTheme ?? '',
     flaggedTerms: entry.flaggedTerms,
     warningLevel: entry.warningLevel,
     riskScore: entry.riskScore,

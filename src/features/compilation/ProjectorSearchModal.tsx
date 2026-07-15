@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { EntryRow } from '../../db/schema'
 import { MaterialIcon } from '../../components/MaterialIcon'
+import { useBodyScrollLock } from '../../shared/motion/useBodyScrollLock'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import { useAuthOptional } from '../../shared/firebase/authContext'
 import {
@@ -120,6 +121,8 @@ function ProjectorSearchModalInner({
   const hasFollowUps = userMessageCount > 1
   const label = statusLabel(busy, indexStatus)
 
+  useBodyScrollLock(true)
+
   useEffect(() => {
     const el = threadRef.current
     if (!el) return
@@ -202,7 +205,7 @@ function ProjectorSearchModalInner({
         onClick={requestClose}
       >
         <motion.div
-          className="paper flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl"
+          className="paper flex max-h-[min(90dvh,42rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl"
           initial={shouldReduceMotion() ? false : { scale: 0.96, y: 18 }}
           animate={{ scale: 1, y: 0 }}
           exit={shouldReduceMotion() ? undefined : { scale: 0.98, y: 10 }}
@@ -270,7 +273,7 @@ function ProjectorSearchModalInner({
             </div>
           ) : null}
 
-          <div ref={threadRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-5">
+          <div ref={threadRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain p-5">
             {error ? (
               <div className="rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm text-[var(--danger)]">
                 {error}
@@ -373,19 +376,19 @@ function ProjectorSearchModalInner({
         <AnimatePresence>
           {selected ? (
             <motion.div
-              className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-6"
+              className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 p-4 sm:p-6"
               initial={shouldReduceMotion() ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={shouldReduceMotion() ? undefined : { opacity: 0 }}
               onClick={() => setSelected(null)}
             >
               <motion.div
-                className="paper w-full max-w-2xl rounded-3xl p-6"
+                className="paper my-auto flex max-h-[min(90dvh,42rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl"
                 initial={shouldReduceMotion() ? false : { scale: 0.96, y: 18 }}
                 animate={{ scale: 1, y: 0 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="mb-4 flex items-start justify-between gap-4">
+                <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--paper-border)] p-6 pb-4">
                   <div>
                     <div className="font-paper text-2xl">
                       Slide preview <span className="font-mono">[{selected.sentiment}]</span>
@@ -400,7 +403,9 @@ function ProjectorSearchModalInner({
                     Close
                   </button>
                 </div>
-                <ProjectorEntryDetail entry={selected as EntryRow} />
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 pt-4">
+                  <ProjectorEntryDetail entry={selected as EntryRow} />
+                </div>
               </motion.div>
             </motion.div>
           ) : null}

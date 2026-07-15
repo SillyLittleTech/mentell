@@ -11,4 +11,6 @@ export type WeeklyAiSummaryEntry = {
   emotionNote?: string
   situation?: string
   details?: string
+  behavioursNoted?: string
+  reoccurringTheme?: string
 }

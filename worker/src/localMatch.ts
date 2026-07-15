@@ -26,7 +26,7 @@ export function localMatchEntries(entries: EntrySnapshot[], query: string): Entr
   return entries
     .filter((e) => {
       const hay =
-        `${e.situation} ${e.details} ${e.emotionNote ?? ''} ${e.emotion ?? ''} ${e.dateKey}`.toLowerCase()
+        `${e.situation} ${e.details} ${e.behavioursNoted ?? ''} ${e.reoccurringTheme ?? ''} ${e.emotionNote ?? ''} ${e.emotion ?? ''} ${e.dateKey}`.toLowerCase()
       return terms.some((term) => hay.includes(term))
     })
     .slice(0, 20)

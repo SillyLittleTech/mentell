@@ -176,6 +176,8 @@ function documentToEntry(doc: {
   emotionNote?: string
   situation: string
   details: string
+  behavioursNoted?: string
+  reoccurringTheme?: string
   flaggedTerms?: string[]
   warningLevel?: string
   riskScore?: number
@@ -200,6 +202,10 @@ function documentToEntry(doc: {
     emotionNote: typeof get('emotionNote') === 'string' ? (get('emotionNote') as string) : undefined,
     situation: typeof get('situation') === 'string' ? (get('situation') as string) : '',
     details: typeof get('details') === 'string' ? (get('details') as string) : '',
+    behavioursNoted:
+      typeof get('behavioursNoted') === 'string' ? (get('behavioursNoted') as string) : undefined,
+    reoccurringTheme:
+      typeof get('reoccurringTheme') === 'string' ? (get('reoccurringTheme') as string) : undefined,
     flaggedTerms: Array.isArray(get('flaggedTerms'))
       ? (get('flaggedTerms') as unknown[]).filter((t): t is string => typeof t === 'string')
       : undefined,

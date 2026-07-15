@@ -27,6 +27,28 @@ type RequestBody = {
 
 type IndexStatus = 'synced' | 'skipped' | 'failed' | 'idle'
 
+function formatEntrySnippet(e: EntrySnapshot, detailsLen: number) {
+  const details = (e.details || '').slice(0, detailsLen)
+  const behaviours = (e.behavioursNoted || '').trim()
+  const theme = (e.reoccurringTheme || '').trim()
+  const extras = [
+    behaviours ? `behaviours=${behaviours.slice(0, 80)}` : '',
+    theme ? `theme=${theme.slice(0, 80)}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
+  return `${e.dateKey} [${e.sentiment}] ${e.situation}: ${details}${extras ? ` ${extras}` : ''}`
+}
+
+function formatEntryPromptLine(e: EntrySnapshot, detailsLen: number) {
+  const details = (e.details || '').slice(0, detailsLen)
+  const behaviours = (e.behavioursNoted || '').trim()
+  const theme = (e.reoccurringTheme || '').trim()
+  return `${e.dateKey} sentiment=${e.sentiment} situation=${e.situation} details=${details}${
+    behaviours ? ` behavioursNoted=${behaviours.slice(0, 100)}` : ''
+  }${theme ? ` reoccurringTheme=${theme.slice(0, 100)}` : ''}`
+}
+
 const HOUR_LIMIT = 12
 const DAY_LIMIT = 40
 const MODEL = '@cf/meta/llama-4-scout-17b-16e-instruct'
@@ -185,10 +207,7 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
               {
                 role: 'user',
                 content: `Query: ${query}\nMatched entries:\n${merged
-                  .map(
-                    (e) =>
-                      `${e.dateKey} [${e.sentiment}] ${e.situation}: ${(e.details || '').slice(0, 120)}`,
-                  )
+                  .map((e) => formatEntrySnippet(e, 120))
                   .join('\n')}`,
               },
             ],
@@ -223,12 +242,9 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
               },
               {
                 role: 'user',
-                content: `Question: ${query}\n\nMatching journal entries (use situation/details, never raw ids):\n${merged
-                  .map(
-                    (e) =>
-                      `${e.dateKey} sentiment=${e.sentiment} situation=${e.situation} details=${(e.details || '').slice(0, 200)}`,
-                  )
-                  .join('\n')}`,
+              content: `Question: ${query}\n\nMatching journal entries (use situation/details, never raw ids):\n${merged
+                .map((e) => formatEntryPromptLine(e, 200))
+                .join('\n')}`,
               },
             ],
           })
@@ -348,9 +364,7 @@ async function handleVerifiedSearchAnswer(
     }
   }
   for (const e of opts.localHits) {
-    contextBlocks.push(
-      `${e.dateKey} [${e.sentiment}] ${e.situation}: ${(e.details || '').slice(0, 200)}`,
-    )
+    contextBlocks.push(formatEntrySnippet(e, 200))
   }
 
   let text = ''
@@ -463,10 +477,7 @@ async function handleLocalFallback(
             {
               role: 'user',
               content: `Question: ${opts.query}\n\nMatching journal entries (use situation/details, never raw ids):\n${matched
-                .map(
-                  (e) =>
-                    `${e.dateKey} sentiment=${e.sentiment} situation=${e.situation} details=${(e.details || '').slice(0, 200)}`,
-                )
+                .map((e) => formatEntryPromptLine(e, 200))
                 .join('\n')}`,
             },
           ],
@@ -496,10 +507,7 @@ async function handleLocalFallback(
 
   const context = opts.entries
     .slice(0, 40)
-    .map(
-      (e) =>
-        `${e.dateKey} [${e.sentiment}] ${e.situation}: ${(e.details || '').slice(0, 200)}`,
-    )
+    .map((e) => formatEntrySnippet(e, 200))
     .join('\n')
 
   const messages =
