@@ -5,6 +5,7 @@ import { MaterialIcon } from '../../components/MaterialIcon'
 import { useBodyScrollLock } from '../../shared/motion/useBodyScrollLock'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import { useAuthOptional } from '../../shared/firebase/authContext'
+import { ProjectorEntriesCarousel } from './ProjectorEntriesCarousel'
 import {
   ProjectorEntryDetail,
   ProjectorEntrySlide,
@@ -288,17 +289,27 @@ function ProjectorSearchModalInner({
                   </ChatBubble>
                 )
               }
-              return (
-                <div key={item.id} className="grid gap-3">
-                  {item.entries.map((entry) => (
-                    <ProjectorEntrySlide
-                      key={entry.id}
-                      entry={entry as EntryRow}
-                      onClick={() => setSelected(entry)}
-                    />
-                  ))}
-                </div>
-              )
+              if (item.entries.length > 2) {
+                return (
+                  <ProjectorEntriesCarousel
+                    key={item.id}
+                    entries={item.entries}
+                    onSelect={(entry) => setSelected(entry)}
+                  />
+                )
+              } else {
+                return (
+                  <div key={item.id} className="grid gap-3">
+                    {item.entries.map((entry) => (
+                      <ProjectorEntrySlide
+                        key={entry.id}
+                        entry={entry as EntryRow}
+                        onClick={() => setSelected(entry)}
+                      />
+                    ))}
+                  </div>
+                )
+              }
             })}
           </div>
 
