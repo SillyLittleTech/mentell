@@ -18,6 +18,10 @@ import {
   type ProjectorSearchMessage,
   type ProjectorSearchResult,
 } from './projectorSearch'
+import {
+  downloadSearchChat,
+  type SearchExportItem,
+} from './projectorSearchExport'
 
 type BusyKind = 'search' | 'followup' | null
 
@@ -63,6 +67,28 @@ function apiMessagesFromThread(thread: ThreadItem[]): ProjectorSearchMessage[] {
   return thread
     .filter((item): item is Extract<ThreadItem, { kind: 'message' }> => item.kind === 'message')
     .map((item) => ({ role: item.role, content: item.content }))
+}
+
+function exportItemsFromThread(thread: ThreadItem[]): SearchExportItem[] {
+  return thread.map((item) => {
+    if (item.kind === 'message') {
+      return { kind: 'message', role: item.role, content: item.content }
+    }
+    return {
+      kind: 'entries',
+      count: item.entries.length,
+      labels: item.entries.map(
+        (e) => `${e.dateKey} [${e.sentiment}] ${e.situation || '(no situation)'}`,
+      ),
+    }
+  })
+}
+
+function hasAssistantResults(thread: ThreadItem[]) {
+  return thread.some(
+    (item) =>
+      (item.kind === 'message' && item.role === 'assistant') || item.kind === 'entries',
+  )
 }
 
 function ChatBubble({ role, children }: { role: 'user' | 'assistant'; children: ReactNode }) {
@@ -118,6 +144,7 @@ function ProjectorSearchModalInner({
   const threadRef = useRef<HTMLDivElement>(null)
 
   const hasConversation = thread.length > 0
+  const canSaveChat = hasAssistantResults(thread)
   const userMessageCount = thread.filter((t) => t.kind === 'message' && t.role === 'user').length
   const hasFollowUps = userMessageCount > 1
   const label = statusLabel(busy, indexStatus)
@@ -220,13 +247,26 @@ function ProjectorSearchModalInner({
                 Find entries or ask a question about your journal history.
               </div>
             </div>
-            <button
-              type="button"
-              className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
-              onClick={requestClose}
-            >
-              Close
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              {canSaveChat ? (
+                <button
+                  type="button"
+                  className="focus-ring inline-flex items-center justify-center rounded-2xl border border-[var(--paper-border)] p-2"
+                  onClick={() => downloadSearchChat(exportItemsFromThread(thread))}
+                  aria-label="Save chat as HTML and log"
+                  title="Save chat (.html + .log)"
+                >
+                  <MaterialIcon name="download" size={20} />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
+                onClick={requestClose}
+              >
+                Close
+              </button>
+            </div>
           </div>
 
           {label ? (
