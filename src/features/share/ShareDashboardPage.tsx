@@ -345,6 +345,26 @@ function ShareDashboardPageInner({ code, enabled }: { code: string; enabled: boo
                         ) : (
                           <div className="ink-muted text-sm">No extra details provided.</div>
                         )}
+                        {e.behavioursNoted?.trim() ? (
+                          <div className="mt-3">
+                            <div className="ink-muted text-xs font-medium uppercase tracking-wide">
+                              Behaviours noted
+                            </div>
+                            <div className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">
+                              {e.behavioursNoted}
+                            </div>
+                          </div>
+                        ) : null}
+                        {e.reoccurringTheme?.trim() ? (
+                          <div className="mt-3">
+                            <div className="ink-muted text-xs font-medium uppercase tracking-wide">
+                              Reoccurring theme
+                            </div>
+                            <div className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">
+                              {e.reoccurringTheme}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </li>

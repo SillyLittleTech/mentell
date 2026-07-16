@@ -138,6 +138,8 @@ export async function requestWeeklyAiSummary(
         emotion: entry.emotionNote || entry.emotion || '',
         situation: entry.situation ?? '',
         details: entry.details ?? '',
+        behavioursNoted: entry.behavioursNoted ?? '',
+        reoccurringTheme: entry.reoccurringTheme ?? '',
       })),
     }),
   })

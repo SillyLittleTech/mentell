@@ -13,6 +13,7 @@ import type { EntryRow } from '../../db/schema'
 import { getScoreSnapshot } from '../score/scoreService'
 import { StreakDisplay } from '../score/StreakDisplay'
 import { SCORE_CHANGED_EVENT } from '../score/scoreEvents'
+import { useBodyScrollLock } from '../../shared/motion/useBodyScrollLock'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import { getLatestDeliveredWeeklyPackage } from '../packages/packageService'
 import {
@@ -176,6 +177,7 @@ export function WeeklyProjector() {
   }, [stats, visibleOlderWeeks])
 
   const selected = selectedId ? allEntriesForPreview.get(selectedId) ?? null : null
+  useBodyScrollLock(Boolean(selected && delivered))
 
   async function handleGenerate() {
     if (!stats) return
@@ -511,21 +513,21 @@ export function WeeklyProjector() {
       <AnimatePresence>
         {selected && delivered ? (
           <motion.div
-            className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-6"
+            className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/35 p-4 sm:p-6"
             initial={shouldReduceMotion() ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={shouldReduceMotion() ? undefined : { opacity: 0 }}
             onClick={() => setSelectedId(null)}
           >
             <motion.div
-              className="paper w-full max-w-2xl rounded-3xl p-6"
+              className="paper my-auto flex max-h-[min(90dvh,42rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl"
               initial={shouldReduceMotion() ? false : { scale: 0.96, y: 18 }}
               animate={{ scale: 1, y: 0 }}
               exit={shouldReduceMotion() ? undefined : { scale: 0.98, y: 10 }}
               transition={{ duration: motionDuration(0.25) || 0 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="mb-4 flex items-start justify-between gap-4">
+              <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--paper-border)] p-6 pb-4">
                 <div>
                   <div className="font-paper text-2xl">
                     Slide preview <span className="font-mono">[{selected.sentiment}]</span>
@@ -540,7 +542,9 @@ export function WeeklyProjector() {
                   Close
                 </button>
               </div>
-              <ProjectorEntryDetail entry={selected} />
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 pt-4">
+                <ProjectorEntryDetail entry={selected} />
+              </div>
             </motion.div>
           </motion.div>
         ) : null}

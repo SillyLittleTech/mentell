@@ -1,9 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { MaterialIcon } from '../../components/MaterialIcon'
 import { ProgressLight, type ProgressState } from '../../components/ProgressLight'
 import { SentimentPills, type SentimentValue } from '../../components/SentimentPills'
 import { dateKeyForLocalDay } from '../../shared/dates'
 import { isDebugMode } from '../../shared/debug/debugFlags'
+import {
+  ENTRY_BEHAVIOURS_NOTED_MAX,
+  ENTRY_REOCCURRING_THEME_MAX,
+} from '../../shared/limits/entryLimits'
+import { useBodyScrollLock } from '../../shared/motion/useBodyScrollLock'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import { assessDraftRisk, assessRisk, type RiskAssessment } from '../safety/riskAssessment'
 import { CrisisResourcePanel } from '../safety/CrisisResourcePanel'
@@ -16,6 +22,8 @@ export type Draft = {
   emotionNote: string
   situation: string
   details: string
+  behavioursNoted: string
+  reoccurringTheme: string
   flaggedTerms: string[]
   warningLevel: 'none' | 'warn'
   riskScore: number
@@ -38,6 +46,8 @@ type DebugAiTestFill = {
   emotionNote: string
   situation: string
   details: string
+  behavioursNoted?: string
+  reoccurringTheme?: string
 }
 
 
@@ -50,6 +60,9 @@ export type DraftInputState = {
   emotionNote: string
   situation: string
   details: string
+  behavioursNoted: string
+  reoccurringTheme: string
+  extrasOpen: boolean
   timeframe: Timeframe
 }
 
@@ -69,6 +82,9 @@ export function LetterComposer({
     emotionNote: '',
     situation: '',
     details: '',
+    behavioursNoted: '',
+    reoccurringTheme: '',
+    extrasOpen: false,
     timeframe: 'just now',
   })
 
@@ -107,6 +123,9 @@ export function LetterComposer({
           emotionNote: detail.emotionNote,
           situation: detail.situation,
           details: detail.details,
+          behavioursNoted: detail.behavioursNoted ?? '',
+          reoccurringTheme: detail.reoccurringTheme ?? '',
+          extrasOpen: Boolean(detail.behavioursNoted || detail.reoccurringTheme),
           timeframe: 'just now',
         },
       ])
@@ -210,6 +229,8 @@ export function LetterComposer({
           emotionNote: draft.emotion === 'other' ? draft.emotionNote.trim() : '',
           situation: draft.situation.trim(),
           details: draft.details.trim(),
+          behavioursNoted: draft.behavioursNoted.trim(),
+          reoccurringTheme: draft.reoccurringTheme.trim(),
           flaggedTerms: finalRisk.flaggedTerms,
           warningLevel: finalRisk.warningLevel,
           riskScore: finalRisk.riskScore,
@@ -276,6 +297,12 @@ export function LetterComposer({
               placeholder="Write it like a letter you’re drafting…"
             />
           </Field>
+
+          <EntryExtrasFields
+            draft={draftInputs[0]}
+            disabled={disabled}
+            onChange={(updates) => updateDraft(draftInputs[0].id, updates)}
+          />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Field label="Emotion check‑in">
@@ -347,6 +374,11 @@ export function LetterComposer({
                     placeholder="Details for this entry…"
                   />
                 </Field>
+                <EntryExtrasFields
+                  draft={draft}
+                  disabled={disabled}
+                  onChange={(updates) => updateDraft(draft.id, updates)}
+                />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <Field label="Emotion check‑in">
                     <div className="grid gap-3">
@@ -537,9 +569,10 @@ function RiskResultModal({ risk, onClose }: { risk: RiskAssessment; onClose: () 
   const celebration = risk.responseKind === 'positive'
   const titleId = 'risk-result-modal-title'
   const reduced = shouldReduceMotion()
+  useBodyScrollLock(true)
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 p-4"
       initial={reduced ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={reduced ? undefined : { opacity: 0 }}
@@ -549,7 +582,7 @@ function RiskResultModal({ risk, onClose }: { risk: RiskAssessment; onClose: () 
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="paper max-h-[min(90dvh,42rem)] w-full max-w-xl overflow-y-auto rounded-3xl p-6 shadow-lg"
+        className="paper my-auto max-h-[min(90dvh,42rem)] w-full max-w-xl overflow-y-auto overscroll-contain rounded-3xl p-6 shadow-lg"
         initial={reduced ? false : { scale: 0.96, y: 18 }}
         animate={{ scale: 1, y: 0 }}
         exit={reduced ? undefined : { scale: 0.98, y: 10 }}
@@ -581,6 +614,58 @@ function RiskResultModal({ risk, onClose }: { risk: RiskAssessment; onClose: () 
         </div>
       </motion.div>
     </motion.div>
+  )
+}
+
+function EntryExtrasFields({
+  draft,
+  disabled,
+  onChange,
+}: {
+  draft: Pick<DraftInputState, 'behavioursNoted' | 'reoccurringTheme' | 'extrasOpen'>
+  disabled?: boolean
+  onChange: (updates: Partial<DraftInputState>) => void
+}) {
+  const expanded = draft.extrasOpen
+  return (
+    <div className="grid gap-3">
+      <button
+        type="button"
+        disabled={disabled}
+        className="focus-ring inline-flex w-fit items-center gap-1 rounded-xl border border-[var(--paper-border)] px-2.5 py-1.5 text-sm"
+        aria-expanded={expanded}
+        aria-label={expanded ? 'Hide extra entry details' : 'Show extra entry details'}
+        onClick={() => onChange({ extrasOpen: !expanded })}
+      >
+        <MaterialIcon name={expanded ? 'keyboard_arrow_up' : 'keyboard_arrow_down'} size={22} />
+        <span className="ink-muted">{expanded ? 'Less' : 'More'}</span>
+      </button>
+
+      {expanded ? (
+        <div className="grid gap-4 rounded-2xl border border-[var(--paper-border)] p-4">
+          <Field label="Behaviours noted">
+            <textarea
+              disabled={disabled}
+              className="focus-ring min-h-[88px] w-full resize-y rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-base leading-relaxed"
+              value={draft.behavioursNoted}
+              maxLength={ENTRY_BEHAVIOURS_NOTED_MAX}
+              onChange={(e) => onChange({ behavioursNoted: e.target.value })}
+              placeholder="What behaviours stood out in this interaction?"
+            />
+          </Field>
+          <Field label="Reoccurring theme">
+            <input
+              disabled={disabled}
+              className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-base"
+              value={draft.reoccurringTheme}
+              maxLength={ENTRY_REOCCURRING_THEME_MAX}
+              onChange={(e) => onChange({ reoccurringTheme: e.target.value })}
+              placeholder="A reoccurring interaction type or theme…"
+            />
+          </Field>
+        </div>
+      ) : null}
+    </div>
   )
 }
 

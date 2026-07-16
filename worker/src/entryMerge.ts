@@ -8,6 +8,8 @@ export type EntrySnapshot = {
   emotionNote?: string
   situation: string
   details: string
+  behavioursNoted?: string
+  reoccurringTheme?: string
   flaggedTerms?: string[]
   warningLevel?: string
   riskScore?: number

@@ -37,7 +37,11 @@ export async function buildSharePayload(
         if (permissions.showSituation) row.situation = e.situation
         if (permissions.showEmotion) row.emotion = e.emotion
         if (permissions.showEmotionNote) row.emotionNote = e.emotionNote
-        if (permissions.showDetails) row.details = e.details
+        if (permissions.showDetails) {
+          row.details = e.details
+          row.behavioursNoted = e.behavioursNoted
+          row.reoccurringTheme = e.reoccurringTheme
+        }
         if (permissions.showWarningsCount) row.warningLevel = e.warningLevel
         return row
       })

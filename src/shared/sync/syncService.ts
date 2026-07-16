@@ -71,6 +71,8 @@ async function mergeEntry(local: EntryRow | undefined, remote: EntryRow) {
   const normalizedRemote = {
     ...remote,
     interventionScore: typeof remote.interventionScore === 'number' ? remote.interventionScore : 0,
+    behavioursNoted: typeof remote.behavioursNoted === 'string' ? remote.behavioursNoted : '',
+    reoccurringTheme: typeof remote.reoccurringTheme === 'string' ? remote.reoccurringTheme : '',
   }
   const chosen = pickNewer(local, normalizedRemote)
   await getDb().entries.put(chosen)

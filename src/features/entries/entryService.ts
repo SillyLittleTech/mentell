@@ -16,6 +16,8 @@ export type EntryDraft = {
   emotionNote: string
   situation: string
   details: string
+  behavioursNoted: string
+  reoccurringTheme: string
   flaggedTerms: string[]
   warningLevel: WarningLevel
   riskScore: number
@@ -38,6 +40,8 @@ export async function upsertEntryFromDraft(draft: EntryDraft) {
     emotionNote: draft.emotionNote,
     situation: draft.situation,
     details: draft.details,
+    behavioursNoted: draft.behavioursNoted,
+    reoccurringTheme: draft.reoccurringTheme,
     flaggedTerms: draft.flaggedTerms,
     warningLevel: draft.warningLevel,
     riskScore: draft.riskScore,
