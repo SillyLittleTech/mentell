@@ -411,11 +411,14 @@ function styleForSentiment(sentiment: '+' | '-' | '=') {
   }
 }
 
+const EMOTION_LABELS: Record<string, string> = {
+  happy: 'Happy',
+  calm: 'Calm',
+  anxious: 'Anxious',
+  sad: 'Sad',
+  angry: 'Angry',
+}
+
 function labelForEmotion(emotion: string) {
-  if (emotion === 'happy') return 'Happy'
-  if (emotion === 'calm') return 'Calm'
-  if (emotion === 'anxious') return 'Anxious'
-  if (emotion === 'sad') return 'Sad'
-  if (emotion === 'angry') return 'Angry'
-  return 'Other'
+  return EMOTION_LABELS[emotion] || 'Other'
 }
