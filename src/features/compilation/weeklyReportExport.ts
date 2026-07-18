@@ -58,14 +58,17 @@ function countSentiments(entries: EntryRow[]) {
   return { positives, negatives, mixed, warnings, total: entries.length }
 }
 
+const EMOTION_LABELS: Record<string, string> = {
+  happy: 'Happy',
+  calm: 'Calm',
+  anxious: 'Anxious',
+  sad: 'Sad',
+  angry: 'Angry',
+}
+
 function emotionLabel(e: EntryRow) {
   if (e.emotionNote) return e.emotionNote
-  if (e.emotion === 'happy') return 'Happy'
-  if (e.emotion === 'calm') return 'Calm'
-  if (e.emotion === 'anxious') return 'Anxious'
-  if (e.emotion === 'sad') return 'Sad'
-  if (e.emotion === 'angry') return 'Angry'
-  return 'Other'
+  return EMOTION_LABELS[e.emotion] || 'Other'
 }
 
 function barSvg(label: string, value: number, max: number, color: string) {
