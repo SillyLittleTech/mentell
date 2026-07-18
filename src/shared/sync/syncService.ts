@@ -26,6 +26,7 @@ import {
   getScoreSnapshot,
   setStreakFreezesForSync,
   setStreakRestoreForSync,
+  SCORE_UPDATED_AT_KEY,
   type StreakRestoreCandidate,
 } from '../../features/score/scoreService'
 import { loadAiProfile, type AiProfile } from '../../features/compilation/aiProfile'
@@ -43,7 +44,12 @@ const PUSH_DEBOUNCE_MS = 1200
 let currentUid: string | null = null
 let pushTimer: ReturnType<typeof setTimeout> | null = null
 let pushInFlight: Promise<void> | null = null
+let pullInFlight: Promise<void> | null = null
 let unsubs: Unsubscribe[] = []
+
+export function waitForSync() {
+  return (pullInFlight ?? Promise.resolve()).catch(() => {})
+}
 
 function fs() {
   const f = getFirebaseFirestore()
@@ -116,22 +122,30 @@ async function pullMeta(uid: string) {
       lastDay?: string | null
       streakFreezes?: number
       streakRestore?: StreakRestoreCandidate | null
+      updatedAt?: number
     }
-    if (typeof data.total === 'number') {
-      localStorage.setItem(scopedStorageKey('mentell.score.total'), String(Math.trunc(data.total)))
-    }
-    if (typeof data.streak === 'number') {
-      localStorage.setItem(scopedStorageKey('mentell.score.streak'), String(Math.trunc(data.streak)))
-    }
-    if (data.lastDay === null || typeof data.lastDay === 'string') {
-      if (data.lastDay) localStorage.setItem(scopedStorageKey('mentell.score.lastDay'), data.lastDay)
-      else localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))
-    }
-    if (typeof data.streakFreezes === 'number') {
-      setStreakFreezesForSync(data.streakFreezes)
-    }
-    if (data.streakRestore === null || typeof data.streakRestore === 'object') {
-      setStreakRestoreForSync(data.streakRestore ?? null)
+    const remoteUpdatedAt = typeof data.updatedAt === 'number' ? data.updatedAt : 0
+    const localUpdatedAtStr = localStorage.getItem(SCORE_UPDATED_AT_KEY)
+    const localUpdatedAt = localUpdatedAtStr ? Number(localUpdatedAtStr) : 0
+
+    if (remoteUpdatedAt >= localUpdatedAt) {
+      if (typeof data.total === 'number') {
+        localStorage.setItem(scopedStorageKey('mentell.score.total'), String(Math.trunc(data.total)))
+      }
+      if (typeof data.streak === 'number') {
+        localStorage.setItem(scopedStorageKey('mentell.score.streak'), String(Math.trunc(data.streak)))
+      }
+      if (data.lastDay === null || typeof data.lastDay === 'string') {
+        if (data.lastDay) localStorage.setItem(scopedStorageKey('mentell.score.lastDay'), data.lastDay)
+        else localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))
+      }
+      if (typeof data.streakFreezes === 'number') {
+        setStreakFreezesForSync(data.streakFreezes)
+      }
+      if (data.streakRestore === null || typeof data.streakRestore === 'object') {
+        setStreakRestoreForSync(data.streakRestore ?? null)
+      }
+      localStorage.setItem(SCORE_UPDATED_AT_KEY, String(remoteUpdatedAt))
     }
   }
 
@@ -241,6 +255,9 @@ async function pushMeta(uid: string) {
   const shopInventory = loadShopInventory()
   const character = await getDb().characterAppearance.get(CHARACTER_APPEARANCE_ROW_ID)
   const now = Date.now()
+  const localScoreUpdatedAtStr = localStorage.getItem(SCORE_UPDATED_AT_KEY)
+  const localScoreUpdatedAt = localScoreUpdatedAtStr ? Number(localScoreUpdatedAtStr) : now
+
   await setDoc(
     userRef(uid, 'meta', 'score'),
     {
@@ -249,7 +266,7 @@ async function pushMeta(uid: string) {
       lastDay: score.lastDay,
       streakFreezes: score.streakFreezes,
       streakRestore: score.streakRestore,
-      updatedAt: now,
+      updatedAt: localScoreUpdatedAt,
     },
     { merge: true },
   )
@@ -307,14 +324,22 @@ export async function pushLocalToCloud(uid: string) {
 }
 
 export async function pullAndMerge(uid: string) {
-  await Promise.all([
-    pullCollection(uid, 'entries', getDb().entries, mergeEntry),
-    pullCollection(uid, 'notes', getDb().notes, mergeNote),
-    pullCollection(uid, 'stickies', getDb().stickies, mergeSticky),
-    pullCollection(uid, 'packages', getDb().packages, mergePackage),
-  ])
-  await pullMeta(uid)
-  window.dispatchEvent(new CustomEvent('mentell:score-changed'))
+  const pull = async () => {
+    await Promise.all([
+      pullCollection(uid, 'entries', getDb().entries, mergeEntry),
+      pullCollection(uid, 'notes', getDb().notes, mergeNote),
+      pullCollection(uid, 'stickies', getDb().stickies, mergeSticky),
+      pullCollection(uid, 'packages', getDb().packages, mergePackage),
+    ])
+    await pullMeta(uid)
+    window.dispatchEvent(new CustomEvent('mentell:score-changed'))
+  }
+  pullInFlight = pull()
+  try {
+    await pullInFlight
+  } finally {
+    pullInFlight = null
+  }
 }
 
 function watchCollection<T extends { id: string }>(

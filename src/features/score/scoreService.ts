@@ -1,5 +1,5 @@
 import { stripDateKey } from '../../shared/dates'
-import { addDays, differenceInCalendarDays, parseISO } from 'date-fns'
+import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { getDb } from '../../db/schema'
 import { isPointsEnabled } from '../../shared/settings/appSettings'
 import { scopedStorageKey } from '../../shared/storage/storageScope'
@@ -12,6 +12,7 @@ const SCORE_KEY = scopedStorageKey('mentell.score.total')
 const STREAK_KEY = scopedStorageKey('mentell.score.streak')
 const LAST_DAY_KEY = scopedStorageKey('mentell.score.lastDay')
 const STREAK_FREEZE_KEY = scopedStorageKey('mentell.score.streakFreezes')
+export const SCORE_UPDATED_AT_KEY = scopedStorageKey('mentell.score.updatedAt')
 
 export const STREAK_FREEZE_COST = 2000
 export const STREAK_FREEZE_MAX = 3
@@ -144,8 +145,7 @@ function isConsecutiveDay(prevDateKey: string, nextDateKey: string) {
   try {
     const prev = parseISO(stripDateKey(prevDateKey))
     const next = parseISO(stripDateKey(nextDateKey))
-    const expected = addDays(prev, 1)
-    return expected.toISOString().slice(0, 10) === next.toISOString().slice(0, 10)
+    return differenceInCalendarDays(next, prev) === 1
   } catch {
     return false
   }
@@ -243,6 +243,7 @@ export async function awardForSubmission(dateKey: string): Promise<ScoreResult> 
   setInt(SCORE_KEY, nextTotal)
   setInt(STREAK_KEY, nextStreak)
   if (freezeConsumed) setInt(STREAK_FREEZE_KEY, freezes - 1)
+  localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Date.now()))
   if (streakBroken && streak > 1) {
     writeRestoreCandidate({
       streak,
@@ -304,6 +305,7 @@ export function spendScore(spent: number): SpendScoreResult {
 
   const nextTotal = total - clean
   setInt(SCORE_KEY, nextTotal)
+  localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Date.now()))
   notifyLocalDataChanged()
   return { ok: true, spent: clean, nextTotal }
 }
@@ -349,6 +351,7 @@ export function buyStreakFreeze(): BuyStreakFreezeResult {
   }
   const nextFreezes = currentFreezes + 1
   setInt(STREAK_FREEZE_KEY, nextFreezes)
+  localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Date.now()))
   notifyLocalDataChanged()
   return { ok: true, spent: STREAK_FREEZE_COST, nextTotal: spend.nextTotal, nextFreezes }
 }
@@ -367,6 +370,7 @@ export function buyStreakRestore(): BuyStreakRestoreResult {
   }
   setInt(STREAK_KEY, candidate.restoreTo)
   writeRestoreCandidate(null)
+  localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Date.now()))
   notifyLocalDataChanged()
   return {
     ok: true,
@@ -392,6 +396,7 @@ export function awardForPackageOpen(kind: 'weekly' | 'monthly' | 'yearly'): Pack
   const delta = packageDelta(kind)
   const nextTotal = total + delta
   setInt(SCORE_KEY, nextTotal)
+  localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Date.now()))
   notifyLocalDataChanged()
 
   const hint =
