@@ -5,6 +5,7 @@ import { useTheme } from './shared/theme/useTheme'
 import { LetterComposer } from './features/compose/LetterComposer'
 import { SubmitAnimation } from './features/compose/SubmitAnimation'
 import { awardForSubmission, getScoreSnapshot } from './features/score/scoreService'
+import { waitForSync } from './shared/sync/syncService'
 import { upsertEntryFromDraft } from './features/entries/entryService'
 import { useEffect, useRef, useState } from 'react'
 import { WeeklyProjector } from './features/compilation/WeeklyProjector'
@@ -570,6 +571,7 @@ function HomePlaceholder({
         <LetterComposer
           disabled={composerLocked}
           onSubmit={async (drafts) => {
+            await waitForSync()
             const submitDateKey = dateKeyForLocalDay(new Date())
             const award = await awardForSubmission(submitDateKey)
 
