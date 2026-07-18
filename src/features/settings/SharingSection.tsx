@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import { isShareLinksEnabled } from '../../shared/features/featureFlags'
 import { useAuthOptional } from '../../shared/firebase/AuthProvider'
@@ -22,6 +22,8 @@ const DURATIONS = [
   { label: '30 days', hours: 24 * 30 },
 ] as const
 
+const TOAST_TIMEOUT_MS = 2000
+
 function presetDataWindowLabel(preset: SharePreset) {
   const days = SHARE_PRESETS[preset].maxDays
   return `Includes entries from the last ${days} days (${preset} preset).`
@@ -38,7 +40,20 @@ export function SharingPanel() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const toastTimeoutRef = useRef<number | undefined>(undefined)
   const [preset, setPreset] = useState<SharePreset>('family')
+
+  function showToast(message: string, durationMs = TOAST_TIMEOUT_MS) {
+    setToast(message)
+    window.clearTimeout(toastTimeoutRef.current)
+    if (durationMs > 0) {
+      toastTimeoutRef.current = window.setTimeout(() => setToast(null), durationMs)
+    }
+  }
+
+  useEffect(() => {
+    return () => window.clearTimeout(toastTimeoutRef.current)
+  }, [])
   const [label, setLabel] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [hours, setHours] = useState(24 * 7)
@@ -123,8 +138,7 @@ export function SharingPanel() {
     setError(null)
     try {
       await renewShareLink(uid, code)
-      setToast('Link renewed')
-      window.setTimeout(() => setToast(null), 2000)
+      showToast('Link renewed')
       await refreshLinks()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not renew link')
@@ -136,10 +150,9 @@ export function SharingPanel() {
   async function copyUrl(url: string) {
     try {
       await navigator.clipboard.writeText(url)
-      setToast('Link copied')
-      window.setTimeout(() => setToast(null), 2000)
+      showToast('Link copied')
     } catch {
-      setToast('Copy failed - select the URL manually')
+      showToast('Copy failed - select the URL manually', 0)
     }
   }
 
