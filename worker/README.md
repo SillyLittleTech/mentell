@@ -121,7 +121,9 @@ Frontend (GitHub **Variables**, not secrets): `VITE_VAPID_PUBLIC_KEY`, `VITE_PUS
 
 All users share one AI Search instance. Isolation is by request `userId` only:
 
-- Documents are stored at `journals/{userId}/{entryId}.md` with matching `userId` metadata.
+- Documents are stored at `journals/{userId}/pack-{n}.md` (packed) with matching `userId` metadata. Legacy per-entry keys `journals/{userId}/{entryId}.md` may still exist from earlier uploads.
+- Index sync packs as many entries as fit under a **~3.5 MB** soft file limit (Cloudflare hard limit is 4 MB). Each entry is wrapped in clear MD markers (`<!-- mentell-entry:start … -->` / `<!-- mentell-entry:end … -->`). Before appending an entry, the packer checks whether it would exceed the limit and starts a new pack when needed.
+- Entry IDs are recovered from chunk text markers (and metadata / legacy keys) after retrieval.
 - Every search request requires a non-empty `userId` and retrieves with filters on both `userId` and `folder: journals/{userId}/`.
 - Similarity cache is disabled per request (`cache.enabled = false`) so answers for one userId are never reused for another.
 - Retrieved chunks are ownership-checked before entry resolution or answer generation; answers are built via Workers AI from owned context only (not unscoped `chatCompletions` RAG).

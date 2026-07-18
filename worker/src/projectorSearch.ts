@@ -567,7 +567,7 @@ async function maybeSyncIndex(
   const skipped = !force && Boolean(indexDigest) && prev === indexDigest
   if (skipped) return 'skipped'
   try {
-    await syncEntriesToAiSearch(instance, userId, entries, { waitForFirst: 0 })
+    await syncEntriesToAiSearch(instance, userId, entries)
     if (indexDigest) {
       await env.RATE_LIMIT_KV.put(digestKey, indexDigest, { expirationTtl: 60 * 60 * 24 * 30 })
     }

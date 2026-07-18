@@ -1,13 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
+import { LimitedFieldLabel, LimitedInput, LimitedTextarea } from '../../components/LimitedField'
 import { MaterialIcon } from '../../components/MaterialIcon'
 import { ProgressLight, type ProgressState } from '../../components/ProgressLight'
 import { SentimentPills, type SentimentValue } from '../../components/SentimentPills'
 import { dateKeyForLocalDay } from '../../shared/dates'
 import { isDebugMode } from '../../shared/debug/debugFlags'
 import {
+  draftFieldsOverLimit,
   ENTRY_BEHAVIOURS_NOTED_MAX,
+  ENTRY_DETAILS_MAX,
+  ENTRY_EMOTION_NOTE_MAX,
   ENTRY_REOCCURRING_THEME_MAX,
+  ENTRY_SITUATION_MAX,
+  isOverLimit,
 } from '../../shared/limits/entryLimits'
 import { useBodyScrollLock } from '../../shared/motion/useBodyScrollLock'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
@@ -166,6 +172,9 @@ export function LetterComposer({
   const progressState: ProgressState =
     draftRisk?.warningLevel === 'warn' ? 'warn' : step === 'review' ? 'review' : 'write'
 
+  const activeDrafts = isBulkMode ? draftInputs : [draftInputs[0]]
+  const anyDraftOverLimit = activeDrafts.some((d) => draftFieldsOverLimit(d))
+
   const updateDraft = (id: string, updates: Partial<DraftInputState>) => {
     setDraftInputs((prev) =>
       prev.map((draft) => (draft.id === id ? { ...draft, ...updates } : draft))
@@ -177,7 +186,7 @@ export function LetterComposer({
   }
 
   async function handleSubmit() {
-    if (disabled || isSubmitting) return
+    if (disabled || isSubmitting || anyDraftOverLimit) return
     setIsSubmitting(true)
     setSubmitState('idle')
     setSubmittedRisk(null)
@@ -186,6 +195,9 @@ export function LetterComposer({
       let highestRisk: RiskAssessment | null = null
 
       for (const draft of (isBulkMode ? draftInputs : [draftInputs[0]])) {
+        if (draftFieldsOverLimit(draft)) {
+          throw new Error('One or more fields exceed the character limit.')
+        }
         let draftDateKey = dateKey
         if (draft.timeframe === 'yesterday') {
            // We need a helper to get yesterday. We can import subDays from date-fns
@@ -278,20 +290,27 @@ export function LetterComposer({
         </header>
 
         <div className="mt-6 grid gap-5">
-          <Field label="Situation">
-            <input
+          <Field
+            label="Situation"
+            overLimit={isOverLimit(draftInputs[0].situation, ENTRY_SITUATION_MAX)}
+          >
+            <LimitedInput
               disabled={disabled}
-              className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-lg"
+              maxChars={ENTRY_SITUATION_MAX}
               value={draftInputs[0].situation}
               onChange={(e) => updateDraft(draftInputs[0].id, { situation: e.target.value })}
               placeholder="What happened?"
             />
           </Field>
 
-          <Field label="Details">
-            <textarea
+          <Field
+            label="Details"
+            overLimit={isOverLimit(draftInputs[0].details, ENTRY_DETAILS_MAX)}
+          >
+            <LimitedTextarea
               disabled={disabled}
-              className="focus-ring min-h-[180px] w-full resize-y rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-lg leading-relaxed"
+              maxChars={ENTRY_DETAILS_MAX}
+              className="min-h-[180px]"
               value={draftInputs[0].details}
               onChange={(e) => updateDraft(draftInputs[0].id, { details: e.target.value })}
               placeholder="Write it like a letter you’re drafting…"
@@ -320,13 +339,19 @@ export function LetterComposer({
                   ))}
                 </select>
                 {draftInputs[0].emotion === 'other' ? (
-                  <input
-                    disabled={disabled}
-                    className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-lg"
-                    value={draftInputs[0].emotionNote}
-                    onChange={(e) => updateDraft(draftInputs[0].id, { emotionNote: e.target.value })}
-                    placeholder="What emotion would you call this?"
-                  />
+                  <div className="grid gap-2">
+                    <LimitedFieldLabel
+                      label="Emotion name"
+                      overLimit={isOverLimit(draftInputs[0].emotionNote, ENTRY_EMOTION_NOTE_MAX)}
+                    />
+                    <LimitedInput
+                      disabled={disabled}
+                      maxChars={ENTRY_EMOTION_NOTE_MAX}
+                      value={draftInputs[0].emotionNote}
+                      onChange={(e) => updateDraft(draftInputs[0].id, { emotionNote: e.target.value })}
+                      placeholder="What emotion would you call this?"
+                    />
+                  </div>
                 ) : null}
               </div>
             </Field>
@@ -356,19 +381,26 @@ export function LetterComposer({
                   <SentimentPills value={draft.sentiment} onChange={(val) => disabled ? {} : updateDraft(draft.id, { sentiment: val })} />
                 </div>
                 <div className="font-paper text-xl">Additional entry {index + 1}</div>
-                <Field label="Situation">
-                  <input
+                <Field
+                  label="Situation"
+                  overLimit={isOverLimit(draft.situation, ENTRY_SITUATION_MAX)}
+                >
+                  <LimitedInput
                     disabled={disabled}
-                    className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-lg"
+                    maxChars={ENTRY_SITUATION_MAX}
                     value={draft.situation}
                     onChange={(e) => updateDraft(draft.id, { situation: e.target.value })}
                     placeholder="What happened?"
                   />
                 </Field>
-                <Field label="Details">
-                  <textarea
+                <Field
+                  label="Details"
+                  overLimit={isOverLimit(draft.details, ENTRY_DETAILS_MAX)}
+                >
+                  <LimitedTextarea
                     disabled={disabled}
-                    className="focus-ring min-h-[120px] w-full resize-y rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-lg leading-relaxed"
+                    maxChars={ENTRY_DETAILS_MAX}
+                    className="min-h-[120px]"
                     value={draft.details}
                     onChange={(e) => updateDraft(draft.id, { details: e.target.value })}
                     placeholder="Details for this entry…"
@@ -438,6 +470,10 @@ export function LetterComposer({
                 <div className="font-medium" style={{ color: 'var(--danger)' }}>
                   Submit failed. Please try again.
                 </div>
+              ) : anyDraftOverLimit ? (
+                <div className="font-medium" style={{ color: 'var(--danger)' }}>
+                  Shorten the highlighted fields before you continue.
+                </div>
               ) : draftRisk?.warningLevel === 'warn' ? (
                 <DraftRiskNotice risk={draftRisk} />
               ) : step === 'write' ? (
@@ -475,7 +511,7 @@ export function LetterComposer({
             {step === 'write' ? (
               <button
                 type="button"
-                disabled={disabled}
+                disabled={disabled || anyDraftOverLimit}
                 className="btn-primary focus-ring rounded-2xl px-4 py-3 text-sm font-medium"
                 onClick={() => setStep('review')}
               >
@@ -486,7 +522,7 @@ export function LetterComposer({
                 type="button"
                 className="focus-ring rounded-2xl px-4 py-3 text-sm font-medium"
                 style={{ background: 'var(--success)', color: 'rgba(0,0,0,0.92)' }}
-                disabled={disabled || isSubmitting}
+                disabled={disabled || isSubmitting || anyDraftOverLimit}
                 onClick={handleSubmit}
               >
                 {isSubmitting ? <SubmitThrobber /> : 'Submit'}
@@ -627,6 +663,8 @@ function EntryExtrasFields({
   onChange: (updates: Partial<DraftInputState>) => void
 }) {
   const expanded = draft.extrasOpen
+  const behavioursOver = isOverLimit(draft.behavioursNoted, ENTRY_BEHAVIOURS_NOTED_MAX)
+  const themeOver = isOverLimit(draft.reoccurringTheme, ENTRY_REOCCURRING_THEME_MAX)
   return (
     <div className="grid gap-3">
       <button
@@ -643,22 +681,22 @@ function EntryExtrasFields({
 
       {expanded ? (
         <div className="grid gap-4 rounded-2xl border border-[var(--paper-border)] p-4">
-          <Field label="Behaviours noted">
-            <textarea
+          <Field label="Behaviours noted" overLimit={behavioursOver}>
+            <LimitedTextarea
               disabled={disabled}
-              className="focus-ring min-h-[88px] w-full resize-y rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-base leading-relaxed"
+              maxChars={ENTRY_BEHAVIOURS_NOTED_MAX}
+              className="min-h-[88px] text-base"
               value={draft.behavioursNoted}
-              maxLength={ENTRY_BEHAVIOURS_NOTED_MAX}
               onChange={(e) => onChange({ behavioursNoted: e.target.value })}
               placeholder="What behaviours stood out in this interaction?"
             />
           </Field>
-          <Field label="Reoccurring theme">
-            <input
+          <Field label="Reoccurring theme" overLimit={themeOver}>
+            <LimitedInput
               disabled={disabled}
-              className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 font-paper text-base"
+              maxChars={ENTRY_REOCCURRING_THEME_MAX}
+              className="text-base"
               value={draft.reoccurringTheme}
-              maxLength={ENTRY_REOCCURRING_THEME_MAX}
               onChange={(e) => onChange({ reoccurringTheme: e.target.value })}
               placeholder="A reoccurring interaction type or theme…"
             />
@@ -681,10 +719,18 @@ function SubmitThrobber() {
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+  overLimit = false,
+}: {
+  label: string
+  children: React.ReactNode
+  overLimit?: boolean
+}) {
   return (
     <label className="grid gap-2">
-      <div className="ink-muted text-sm font-medium">{label}</div>
+      <LimitedFieldLabel label={label} overLimit={overLimit} />
       {children}
     </label>
   )

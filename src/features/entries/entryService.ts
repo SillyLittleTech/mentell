@@ -7,6 +7,7 @@ import {
   type WarningLevel,
 } from '../../db/schema'
 import { makeId } from '../../shared/id'
+import { assertEntryFieldLimits } from '../../shared/limits/entryLimits'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
 export type EntryDraft = {
@@ -28,6 +29,8 @@ export type EntryDraft = {
 }
 
 export async function upsertEntryFromDraft(draft: EntryDraft) {
+  assertEntryFieldLimits(draft)
+
   const now = Date.now()
 
   const row: EntryRow = {
