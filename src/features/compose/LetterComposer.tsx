@@ -82,7 +82,7 @@ export function LetterComposer({
   const [step, setStep] = useState<'write' | 'review'>('write')
 
   const createDraftInput = (): DraftInputState => ({
-    id: Math.random().toString(36).slice(2),
+    id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2),
     sentiment: '+',
     emotion: 'happy',
     emotionNote: '',
@@ -123,7 +123,7 @@ export function LetterComposer({
       setStep('write')
       setDraftInputs([
         {
-          id: Math.random().toString(36).slice(2),
+          id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2),
           sentiment: detail.sentiment,
           emotion: detail.emotion,
           emotionNote: detail.emotionNote,
