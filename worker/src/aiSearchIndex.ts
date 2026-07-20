@@ -264,7 +264,6 @@ export async function syncEntriesToAiSearch(
   // Now that all entries are packed into `pack-N.md`, we fetch existing files.
   // We use the folder prefix to fetch only this user's files.
   try {
-    const validPackKeys = new Set(packs.map((p) => packItemKey(userId, p.packIndex)))
     const folderPrefix = userFolder(userId)
 
     let page = 1
