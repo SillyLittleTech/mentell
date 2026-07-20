@@ -18,6 +18,13 @@ export type AiSearchInstance = {
     }>
   }>
   items: {
+    list: (params?: {
+      page?: number
+      per_page?: number
+      search?: string
+      source?: string
+    }) => Promise<{ result: Array<{ id: string; key: string }> }>
+    delete: (itemId: string) => Promise<void>
     upload: (
       name: string,
       content: string,
@@ -251,6 +258,52 @@ export async function syncEntriesToAiSearch(
     const first = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
     const msg = first.reason instanceof Error ? first.reason.message : String(first.reason)
     throw new Error(`AI Search index upload failed for all ${failed} packs: ${msg}`)
+  }
+
+  // Cleanup: delete any legacy single-entry files in the user's folder
+  // Now that all entries are packed into `pack-N.md`, we fetch existing files.
+  // We use the folder prefix to fetch only this user's files.
+  try {
+    const validPackKeys = new Set(packs.map((p) => packItemKey(userId, p.packIndex)))
+    const folderPrefix = userFolder(userId)
+
+    let page = 1
+    const perPage = 100
+    let keepPaging = true
+
+    while (keepPaging) {
+      const listResponse = await instance.items.list({
+        page,
+        per_page: perPage,
+        search: folderPrefix,
+      })
+
+      if (!listResponse?.result || listResponse.result.length === 0) {
+        break
+      }
+
+      for (const item of listResponse.result) {
+        if (!item.key?.startsWith(folderPrefix)) continue
+
+        // If it doesn't match our expected pack format, it's a legacy item.
+        // We delete it. (e.g. journals/userId/entryId123.md)
+        if (!item.key.includes('/pack-')) {
+          try {
+            await instance.items.delete(item.id)
+          } catch (delErr) {
+            console.warn(`[projector-search] Failed to delete legacy item ${item.key}`, delErr)
+          }
+        }
+      }
+
+      if (listResponse.result.length < perPage) {
+        keepPaging = false
+      } else {
+        page++
+      }
+    }
+  } catch (err) {
+    console.warn('[projector-search] Failed to clean up legacy search items', err)
   }
 }
 
