@@ -6,6 +6,7 @@ import { useBodyScrollLock } from '../../shared/motion/useBodyScrollLock'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import { useAuthOptional } from '../../shared/firebase/authContext'
 import { ProjectorEntriesCarousel } from './ProjectorEntriesCarousel'
+import { useOnlineStatus } from '../../shared/offline/useOnlineStatus'
 import {
   ProjectorEntryDetail,
   ProjectorEntrySlide,
@@ -129,6 +130,7 @@ function ProjectorSearchModalInner({
   debugSeed: ProjectorSearchResult | null
 }) {
   const auth = useAuthOptional()
+  const isOnline = useOnlineStatus()
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState<BusyKind>(null)
   const [error, setError] = useState<string | null>(null)
@@ -295,21 +297,28 @@ function ProjectorSearchModalInner({
                 }}
               >
                 <input
-                  className="focus-ring min-w-0 flex-1 rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 text-sm"
-                  placeholder="Search or ask…"
+                  className="focus-ring min-w-0 flex-1 rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 text-sm disabled:opacity-50"
+                  placeholder={isOnline ? "Search or ask…" : "Offline: Search disabled"}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  disabled={Boolean(busy)}
+                  disabled={Boolean(busy) || !isOnline}
                   aria-label="Search journals"
                 />
+                <div className="relative group">
                 <button
                   type="submit"
-                  className="btn-primary focus-ring inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold"
-                  disabled={Boolean(busy) || !query.trim()}
+                  className="btn-primary focus-ring inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold disabled:opacity-50"
+                  disabled={Boolean(busy) || !query.trim() || !isOnline}
                   aria-label="Run search"
                 >
                   <MaterialIcon name="search" size={22} accent={false} />
                 </button>
+                {!isOnline && (
+                  <div className="absolute right-0 bottom-full mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                    Internet connection required
+                  </div>
+                )}
+                </div>
               </form>
             </div>
           ) : null}
@@ -363,21 +372,28 @@ function ProjectorSearchModalInner({
                 }}
               >
                 <input
-                  className="focus-ring min-w-0 flex-1 rounded-full border border-[var(--paper-border)] bg-transparent px-4 py-2.5 text-sm"
-                  placeholder="Ask a follow-up…"
+                  className="focus-ring min-w-0 flex-1 rounded-full border border-[var(--paper-border)] bg-transparent px-4 py-2.5 text-sm disabled:opacity-50"
+                  placeholder={isOnline ? "Ask a follow-up…" : "Offline: Follow-up disabled"}
                   value={followUp}
                   onChange={(e) => setFollowUp(e.target.value)}
-                  disabled={Boolean(busy)}
+                  disabled={Boolean(busy) || !isOnline}
                   aria-label="Follow-up question"
                 />
+                <div className="relative group">
                 <button
                   type="submit"
-                  className="btn-primary focus-ring inline-flex items-center justify-center rounded-full px-3.5 py-2.5 text-sm font-semibold"
-                  disabled={Boolean(busy) || !followUp.trim()}
+                  className="btn-primary focus-ring inline-flex items-center justify-center rounded-full px-3.5 py-2.5 text-sm font-semibold disabled:opacity-50"
+                  disabled={Boolean(busy) || !followUp.trim() || !isOnline}
                   aria-label="Send follow-up"
                 >
                   <MaterialIcon name="send" size={18} accent={false} />
                 </button>
+                {!isOnline && (
+                  <div className="absolute right-0 bottom-full mb-2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                    Internet connection required
+                  </div>
+                )}
+                </div>
               </form>
             </div>
           ) : null}

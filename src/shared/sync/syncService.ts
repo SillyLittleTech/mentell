@@ -414,7 +414,7 @@ export function disableSync() {
 }
 
 function canPushToCloud() {
-  return Boolean(currentUid && loadSyncState().enabled && isFirebaseSyncEnabled())
+  return Boolean(currentUid && loadSyncState().enabled && isFirebaseSyncEnabled() && navigator.onLine)
 }
 
 async function pushCurrentLocalToCloud() {

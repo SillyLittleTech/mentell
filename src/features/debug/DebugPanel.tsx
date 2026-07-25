@@ -965,6 +965,28 @@ export function DebugPanel() {
             </div>
 
             <div className="rounded-3xl border border-[var(--paper-border)] p-3">
+              <div className="font-mono text-xs font-bold">network state</div>
+              <div className="mt-2 grid gap-2">
+                <button
+                  type="button"
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm"
+                  onClick={() => {
+                    if (navigator.onLine) {
+                      window.dispatchEvent(new Event('offline'))
+                      Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
+                    } else {
+                      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
+                      window.dispatchEvent(new Event('online'))
+                    }
+                  }}
+                >
+                  Toggle network state (currently {navigator.onLine ? 'online' : 'offline'})
+                  <div className="ink-muted text-xs">Simulates online/offline events.</div>
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[var(--paper-border)] p-3">
               <div className="font-mono text-xs font-bold">storage inspector</div>
               <div className="mt-2 grid gap-2">
                 <button

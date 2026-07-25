@@ -1,0 +1,170 @@
+name: Release Builds
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-web-and-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Web App
+        env:
+          VITE_BASE: /
+        run: npm run build
+
+      - name: Package Web ZIP
+        run: zip -r mentell-web.zip dist
+
+      - name: Upload Web Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mentell-web
+          path: mentell-web.zip
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Build Android APK
+        run: |
+          npx cap add android
+          cd android
+          ./gradlew assembleDebug
+          cd ..
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mentell-android
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
+  build-tauri:
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Web App
+        env:
+          VITE_BASE: /
+        run: npm run build
+
+      - name: Build Tauri
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          releaseId: 'ignore' # Skip default release logic
+
+      - name: Upload Tauri Artifacts (macOS)
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mentell-macos
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/release/bundle/macos/*.app
+
+      - name: Upload Tauri Artifacts (Linux)
+        if: matrix.platform == 'ubuntu-22.04'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mentell-linux
+          path: |
+            src-tauri/target/release/bundle/deb/*.deb
+            src-tauri/target/release/bundle/appimage/*.AppImage
+
+      - name: Upload Tauri Artifacts (Windows)
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mentell-windows
+          path: |
+            src-tauri/target/release/bundle/msi/*.msi
+            src-tauri/target/release/bundle/nsis/*.exe
+
+  create-release:
+    needs: [build-web-and-android, build-tauri]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Get Version
+        id: version
+        run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Determine Release Info
+        id: release_info
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "TAG_NAME=v${{ steps.version.outputs.VERSION }}-pr${{ github.event.number }}-run${{ github.run_id }}" >> $GITHUB_OUTPUT
+            echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "TAG_NAME=v${{ steps.version.outputs.VERSION }}" >> $GITHUB_OUTPUT
+            echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_info.outputs.TAG_NAME }}
+          prerelease: ${{ steps.release_info.outputs.IS_PRERELEASE }}
+          generate_release_notes: true
+          files: |
+            ./artifacts/mentell-web/mentell-web.zip
+            ./artifacts/mentell-android/app-debug.apk
+            ./artifacts/mentell-macos/**/*.dmg
+            ./artifacts/mentell-linux/**/*.AppImage
+            ./artifacts/mentell-linux/**/*.deb
+            ./artifacts/mentell-windows/**/*.msi
+            ./artifacts/mentell-windows/**/*.exe
