@@ -16,6 +16,7 @@ import { SCORE_CHANGED_EVENT } from '../score/scoreEvents'
 import { useBodyScrollLock } from '../../shared/motion/useBodyScrollLock'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import { getLatestDeliveredWeeklyPackage } from '../packages/packageService'
+import { useOnlineStatus } from '../../shared/offline/useOnlineStatus'
 import {
   buildAiSummaryMarkdown,
   downloadTextFile,
@@ -85,6 +86,7 @@ export function WeeklyProjector() {
   const [loadingMore, setLoadingMore] = useState(false)
   const aiEnabled = weeklyAiSummaryEnabled()
   const searchEnabled = projectorSearchEnabled()
+  const isOnline = useOnlineStatus()
 
   const visibleOlderWeeks = useMemo(
     () => (stats && olderAnchorWeek === stats.weekKey ? olderWeeks : []),
@@ -334,8 +336,11 @@ export function WeeklyProjector() {
             {searchEnabled ? (
               <button
                 type="button"
-                className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm font-semibold"
+                className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => setSearchOpen(true)}
+                disabled={!isOnline}
+                title={!isOnline ? 'Internet connection required' : undefined}
+                aria-disabled={!isOnline}
               >
                 <MaterialIcon name="search" size={20} />
                 Search
@@ -346,9 +351,11 @@ export function WeeklyProjector() {
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className="btn-primary focus-ring inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold"
-              disabled={summaryBusy || stats.entries.length === 0}
+              className="btn-primary focus-ring inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={summaryBusy || stats.entries.length === 0 || !isOnline}
               onClick={handleGenerate}
+              title={!isOnline ? 'Internet connection required' : undefined}
+              aria-disabled={!isOnline || summaryBusy || stats.entries.length === 0}
             >
               <MaterialIcon name="auto_awesome" size={20} accent={false} />
               {summaryBusy ? 'Generating…' : 'Generate weekly AI summary'}
@@ -378,6 +385,12 @@ export function WeeklyProjector() {
               </button>
             ) : null}
           </div>
+
+          {!isOnline ? (
+            <div className="ink-muted mt-3 text-sm" role="status">
+              You&apos;re offline — AI search and summaries need a connection.
+            </div>
+          ) : null}
 
           {settingsStale ? (
             <div className="ink-muted mt-3 text-sm">
@@ -410,12 +423,20 @@ export function WeeklyProjector() {
         <div className="paper rounded-3xl p-6">
           <button
             type="button"
-            className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold"
+            className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setSearchOpen(true)}
+            disabled={!isOnline}
+            title={!isOnline ? 'Internet connection required' : undefined}
+            aria-disabled={!isOnline}
           >
             <MaterialIcon name="search" size={20} />
             Search journals
           </button>
+          {!isOnline ? (
+            <div className="ink-muted mt-3 text-sm" role="status">
+              You&apos;re offline — AI search needs a connection.
+            </div>
+          ) : null}
         </div>
       ) : null}
 
