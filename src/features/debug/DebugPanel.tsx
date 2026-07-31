@@ -13,6 +13,8 @@ import {
   setSkipSearchRateLimit,
   setSlowMo,
 } from '../../shared/debug/debugFlags'
+import { useOnlineStatus } from '../../shared/offline/useOnlineStatus'
+import { setForcedOnlineStatus } from '../../shared/offline/onlineStatus'
 import { clearWeeklyAiCache } from '../compilation/weeklyAiCache'
 import { weekKeyForDateKey } from '../compilation/weeklyStats'
 import { ensurePackage } from '../packages/packageService'
@@ -79,6 +81,7 @@ const DEBUG_AI_TESTS = [
 export function DebugPanel() {
   const enabled = useMemo(() => isDebugMode(), [])
   const auth = useAuthOptional()
+  const isOnline = useOnlineStatus()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [slowMo, setSlowMoState] = useState(getSlowMo())
@@ -959,6 +962,24 @@ export function DebugPanel() {
                   Simulate missed day
                   <div className="ink-muted text-xs">
                     Sets lastDay to two days ago; next submit tests freeze/break behavior.
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[var(--paper-border)] p-3">
+              <div className="font-mono text-xs font-bold">network state</div>
+              <div className="mt-2 grid gap-2">
+                <button
+                  type="button"
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm"
+                  onClick={() => {
+                    setForcedOnlineStatus(!isOnline)
+                  }}
+                >
+                  Toggle network state (currently {isOnline ? 'online' : 'offline'})
+                  <div className="ink-muted text-xs">
+                    Forces app online/offline for QA (does not change the browser network).
                   </div>
                 </button>
               </div>
