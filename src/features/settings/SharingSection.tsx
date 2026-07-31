@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { format } from 'date-fns'
 import { isShareLinksEnabled } from '../../shared/features/featureFlags'
 import { useAuthOptional } from '../../shared/firebase/AuthProvider'
+import { useToast } from '../../shared/ui/useToast'
 import {
   createShareLink,
   listShareLinks,
@@ -39,21 +40,13 @@ export function SharingPanel() {
   const [links, setLinks] = useState<ShareLinkRecord[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
-  const toastTimeoutRef = useRef<number | undefined>(undefined)
+  const { showToast: _showToast } = useToast()
   const [preset, setPreset] = useState<SharePreset>('family')
 
   function showToast(message: string, durationMs = TOAST_TIMEOUT_MS) {
-    setToast(message)
-    window.clearTimeout(toastTimeoutRef.current)
-    if (durationMs > 0) {
-      toastTimeoutRef.current = window.setTimeout(() => setToast(null), durationMs)
-    }
+    _showToast({ message, duration: durationMs > 0 ? durationMs : undefined, isSticky: durationMs === 0 })
   }
 
-  useEffect(() => {
-    return () => window.clearTimeout(toastTimeoutRef.current)
-  }, [])
   const [label, setLabel] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [hours, setHours] = useState(24 * 7)
@@ -335,7 +328,6 @@ export function SharingPanel() {
           {error}
         </div>
       ) : null}
-      {toast ? <div className="ink-muted mt-2 text-xs">{toast}</div> : null}
 
       {links.length > 0 ? (
         <div className="mt-6 space-y-2">
