@@ -38,17 +38,17 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ThemeProvider>
       <ToastProvider>
-      <SettingsProvider>
-        {isFirebaseEnabled() ? (
-          isDebugMode() ? (
-            <DebugAuthProvider>{app}</DebugAuthProvider>
+        <SettingsProvider>
+          {isFirebaseEnabled() ? (
+            isDebugMode() ? (
+              <DebugAuthProvider>{app}</DebugAuthProvider>
+            ) : (
+              <AuthProvider>{app}</AuthProvider>
+            )
           ) : (
-            <AuthProvider>{app}</AuthProvider>
-          )
-        ) : (
-          app
-        )}
-      </SettingsProvider>
+            app
+          )}
+        </SettingsProvider>
       </ToastProvider>
     </ThemeProvider>
   </StrictMode>,
