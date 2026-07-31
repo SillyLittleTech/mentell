@@ -42,6 +42,9 @@ import { CharacterTabIconSync } from './features/character/CharacterTabIconSync'
 import { isFirebaseSyncEnabled, isShareLinksEnabled } from './shared/features/featureFlags'
 import { useAuthOptional } from './shared/firebase/AuthProvider'
 import { ShopCosmeticEffects } from './features/shop/shopCosmetics'
+import { requestProjectorSearch } from './features/compilation/projectorSearch'
+import { emitBackgroundActivity } from './shared/backgroundActivity'
+import { BackgroundActivityToast } from './components/BackgroundActivityToast'
 import { scrollToTop } from './shared/motion/scroll'
 import { motionDuration } from './shared/motion/useMotionPrefs'
 
@@ -178,6 +181,7 @@ function App() {
       ) : null}
       {!shareRouteActive ? <LeftDeskMascot /> : null}
       {!shareRouteActive ? <StickyLayer /> : null}
+      <BackgroundActivityToast />
       <main
         className={
           shareRouteActive
@@ -585,7 +589,16 @@ function HomePlaceholder({
             }
 
             await runPackageDeliveryAndNotify()
-            void pushLocalChangesNow()
+            emitBackgroundActivity({ type: 'start', id: 'sync', message: 'Syncing to cloud...' })
+            pushLocalChangesNow().finally(() => {
+              emitBackgroundActivity({ type: 'stop', id: 'sync', message: '' })
+              emitBackgroundActivity({ type: 'start', id: 'index', message: 'Indexing for AI search...' })
+              requestProjectorSearch({ query: '', mode: 'index', forceIndex: true })
+                .catch(() => {})
+                .finally(() => {
+                  emitBackgroundActivity({ type: 'stop', id: 'index', message: '' })
+                })
+            })
             if (!loadAppSettings().disableNotifications) {
               void maybeRequestNotificationPermission()
             }
