@@ -1,0 +1,23 @@
+name: Benchmark Share Payload
+on: [push, pull_request]
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install benchmark deps
+        run: npm install --no-save fake-indexeddb tsx
+
+      - name: Run benchmark
+        run: npx tsx scripts/benchmark/benchmarkSharePayload.ts
