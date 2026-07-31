@@ -10,7 +10,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const showToast = useCallback(
     (toastInput: Omit<Toast, 'id'>) => {
-      const id = Math.random().toString(36).substring(2, 9)
+      const id = crypto.randomUUID()
       const toast: Toast = { ...toastInput, id }
 
       setToasts((prev) => [...prev, toast])

@@ -334,42 +334,32 @@ export function WeeklyProjector() {
             <ModeToggle mode={mode} onChange={setMode} />
             <WeeklyAiSettingsButton onClick={() => setSettingsOpen(true)} />
             {searchEnabled ? (
-              <div className="relative group inline-block">
               <button
                 type="button"
-                className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm font-semibold disabled:opacity-50"
+                className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => setSearchOpen(true)}
                 disabled={!isOnline}
+                title={!isOnline ? 'Internet connection required' : undefined}
+                aria-disabled={!isOnline}
               >
                 <MaterialIcon name="search" size={20} />
                 Search
               </button>
-              {!isOnline && (
-                <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                  Internet connection required
-                </div>
-              )}
-              </div>
             ) : null}
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <div className="relative group inline-block">
             <button
               type="button"
-              className="btn-primary focus-ring inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold disabled:opacity-50"
+              className="btn-primary focus-ring inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
               disabled={summaryBusy || stats.entries.length === 0 || !isOnline}
               onClick={handleGenerate}
+              title={!isOnline ? 'Internet connection required' : undefined}
+              aria-disabled={!isOnline || summaryBusy || stats.entries.length === 0}
             >
               <MaterialIcon name="auto_awesome" size={20} accent={false} />
               {summaryBusy ? 'Generating…' : 'Generate weekly AI summary'}
             </button>
-            {!isOnline && (
-              <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                Internet connection required
-              </div>
-            )}
-            </div>
             {summary ? (
               <button
                 type="button"
@@ -395,6 +385,12 @@ export function WeeklyProjector() {
               </button>
             ) : null}
           </div>
+
+          {!isOnline ? (
+            <div className="ink-muted mt-3 text-sm" role="status">
+              You&apos;re offline — AI search and summaries need a connection.
+            </div>
+          ) : null}
 
           {settingsStale ? (
             <div className="ink-muted mt-3 text-sm">
@@ -425,22 +421,22 @@ export function WeeklyProjector() {
       {/* Search available when AI search enabled even if weekly summary card is off but AI not disabled */}
       {!aiEnabled && searchEnabled && delivered ? (
         <div className="paper rounded-3xl p-6">
-          <div className="relative group inline-block">
           <button
             type="button"
-            className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold disabled:opacity-50"
+            className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setSearchOpen(true)}
             disabled={!isOnline}
+            title={!isOnline ? 'Internet connection required' : undefined}
+            aria-disabled={!isOnline}
           >
             <MaterialIcon name="search" size={20} />
             Search journals
           </button>
-          {!isOnline && (
-            <div className="absolute left-1/2 bottom-full mb-2 -translate-x-1/2 px-2 py-1 bg-black text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-              Internet connection required
+          {!isOnline ? (
+            <div className="ink-muted mt-3 text-sm" role="status">
+              You&apos;re offline — AI search needs a connection.
             </div>
-          )}
-          </div>
+          ) : null}
         </div>
       ) : null}
 

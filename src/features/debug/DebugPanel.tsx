@@ -13,6 +13,8 @@ import {
   setSkipSearchRateLimit,
   setSlowMo,
 } from '../../shared/debug/debugFlags'
+import { useOnlineStatus } from '../../shared/offline/useOnlineStatus'
+import { setForcedOnlineStatus } from '../../shared/offline/onlineStatus'
 import { clearWeeklyAiCache } from '../compilation/weeklyAiCache'
 import { weekKeyForDateKey } from '../compilation/weeklyStats'
 import { ensurePackage } from '../packages/packageService'
@@ -79,6 +81,7 @@ const DEBUG_AI_TESTS = [
 export function DebugPanel() {
   const enabled = useMemo(() => isDebugMode(), [])
   const auth = useAuthOptional()
+  const isOnline = useOnlineStatus()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [slowMo, setSlowMoState] = useState(getSlowMo())
@@ -971,17 +974,13 @@ export function DebugPanel() {
                   type="button"
                   className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm"
                   onClick={() => {
-                    if (navigator.onLine) {
-                      window.dispatchEvent(new Event('offline'))
-                      Object.defineProperty(navigator, 'onLine', { value: false, configurable: true })
-                    } else {
-                      Object.defineProperty(navigator, 'onLine', { value: true, configurable: true })
-                      window.dispatchEvent(new Event('online'))
-                    }
+                    setForcedOnlineStatus(!isOnline)
                   }}
                 >
-                  Toggle network state (currently {navigator.onLine ? 'online' : 'offline'})
-                  <div className="ink-muted text-xs">Simulates online/offline events.</div>
+                  Toggle network state (currently {isOnline ? 'online' : 'offline'})
+                  <div className="ink-muted text-xs">
+                    Forces app online/offline for QA (does not change the browser network).
+                  </div>
                 </button>
               </div>
             </div>

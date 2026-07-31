@@ -20,6 +20,7 @@ import {
 import { scopedStorageKey } from '../storage/storageScope'
 import { getFirebaseFirestore } from '../firebase/firebaseApp'
 import { isFirebaseSyncEnabled } from '../features/featureFlags'
+import { getOnlineStatus } from '../offline/onlineStatus'
 import { loadSyncState, saveSyncState } from './syncState'
 import { loadAppSettings, type AppSettings } from '../settings/appSettings'
 import {
@@ -414,7 +415,7 @@ export function disableSync() {
 }
 
 function canPushToCloud() {
-  return Boolean(currentUid && loadSyncState().enabled && isFirebaseSyncEnabled() && navigator.onLine)
+  return Boolean(currentUid && loadSyncState().enabled && isFirebaseSyncEnabled() && getOnlineStatus())
 }
 
 async function pushCurrentLocalToCloud() {
