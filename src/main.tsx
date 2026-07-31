@@ -15,6 +15,7 @@ import { registerSW } from 'virtual:pwa-register'
 import { ToastProvider } from './shared/ui/ToastProvider.tsx'
 import { ToastContainer } from './shared/ui/ToastContainer.tsx'
 import { OfflineSyncManager } from './shared/offline/OfflineSyncManager.tsx'
+import { UpdateChecker } from './features/update/UpdateChecker.tsx'
 
 if (isDebugMode()) {
   if (isWebPushConfigured()) {
@@ -31,6 +32,7 @@ const app = (
     <App />
     <ToastContainer />
     <OfflineSyncManager />
+    <UpdateChecker />
   </BrowserRouter>
 )
 
