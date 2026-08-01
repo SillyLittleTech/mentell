@@ -49,6 +49,11 @@ export function isShareLinksEnabled() {
   return isFirebaseEnabled() && envFlag('VITE_ENABLE_SHARE_LINKS')
 }
 
+/** Offline ↔ web account linking via one-time codes (requires Worker + service account). */
+export function isAuthHandoffEnabled() {
+  return isFirebaseEnabled() && envFlag('VITE_ENABLE_AUTH_HANDOFF')
+}
+
 /** Settings / dev tools: show the auth diagnostics panel. */
 export function isAuthDebugPanelEnabled(): boolean {
   if (isDebugMode()) return true

@@ -83,6 +83,7 @@ See [`docs/FIREBASE.md`](docs/FIREBASE.md). Off by default via `VITE_ENABLE_FIRE
 
 - **Sync:** Google sign-in, Firestore under `users/{uid}/`, local-first with Dexie + debounced push.
 - **Share:** Time-limited links → `publicShares/{code}` + viewer route `/share/:code`.
+- **Offline link codes:** Optional `VITE_ENABLE_AUTH_HANDOFF=1` + Worker `POST /auth/handoff/*` (see [`docs/FIREBASE.md`](docs/FIREBASE.md)) — hosted app creates a code; offline ZIP / desktop redeems it once online.
 - **Rules:** [`firestore.rules`](firestore.rules) — deploy with `firebase deploy --only firestore:rules` (project id in [`.firebaserc`](.firebaserc), e.g. `men-tell-prod` for this deployment).
 - **CI:** GitHub **Variables** for `VITE_FIREBASE_*` (not secrets). Wrangler unchanged.
 

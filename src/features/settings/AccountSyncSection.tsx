@@ -7,6 +7,10 @@ import {
 } from "../../shared/features/featureFlags";
 import { useAuthOptional } from "../../shared/firebase/AuthProvider";
 import { AccountSignInPanel } from "./AccountSignInPanel";
+import {
+  AuthHandoffCreateSection,
+  AuthHandoffRedeemSection,
+} from "./AuthHandoffSection";
 import { ScoreRecoverySection } from "./ScoreRecoverySection";
 
 export function AccountSyncSection() {
@@ -78,6 +82,7 @@ export function AccountSyncSection() {
                 </div>
               ) : null}
               <ScoreRecoverySection />
+              <AuthHandoffCreateSection />
             </>
           ) : (
             <button
@@ -94,6 +99,7 @@ export function AccountSyncSection() {
           <p className="text-sm">
             Sign in to sync entries, notes, score, and settings across devices.
           </p>
+          <AuthHandoffRedeemSection />
           {syncUi ? (
             <AccountSignInPanel />
           ) : (

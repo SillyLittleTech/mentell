@@ -35,6 +35,7 @@ import { loadSyncState, saveSyncState } from "../sync/syncState";
 import { buildHrefForEmailLinkCheck } from "./emailLinkHandoff";
 import { AuthContext, type AuthContextValue } from "./authContext";
 import { signInWithGoogleViaTauri } from "./tauriGoogleAuth";
+import { redeemAuthHandoffCode as redeemHandoffToken } from "./authHandoffClient";
 import { installTauriDeepLinkAuth } from "./tauriDeepLinkAuth";
 import {
   buildTauriEmailLinkSettings,
@@ -291,6 +292,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [completeEmailLinkSignIn],
   );
 
+  const redeemHandoffCode = useCallback(
+    async (code: string) => {
+      const auth = getFirebaseAuth();
+      if (!auth) throw new Error("Cloud sign-in is not configured");
+      try {
+        await redeemHandoffToken(code, postSignInCallbacks);
+        applyAuthUser(auth);
+        setSyncError(null);
+      } catch (e) {
+        const hint = formatAuthError(e);
+        setSyncError(hint);
+        throw new Error(hint, { cause: e });
+      }
+    },
+    [applyAuthUser, postSignInCallbacks],
+  );
+
   const signOut = useCallback(async () => {
     disableSync();
     saveSyncState({ enabled: false });
@@ -346,6 +364,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sendPasswordReset,
       sendSignInLink,
       confirmEmailLinkSignIn,
+      redeemHandoffCode,
       signOut,
       setSyncEnabled,
       syncNow,
@@ -365,6 +384,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sendPasswordReset,
       sendSignInLink,
       confirmEmailLinkSignIn,
+      redeemHandoffCode,
       signOut,
       setSyncEnabled,
       syncNow,

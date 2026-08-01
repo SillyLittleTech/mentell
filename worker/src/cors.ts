@@ -77,3 +77,44 @@ export function corsJson(
   }
   return new Response(JSON.stringify(payload), { status, headers })
 }
+
+/** CORS for auth handoff — allows `null` Origin (offline file:// copies). */
+function corsOriginHandoff(env: CorsEnv, requestOrigin: string | null) {
+  if (!requestOrigin || requestOrigin === 'null') return '*'
+  return corsOrigin(env, requestOrigin) ?? '*'
+}
+
+export function corsHeadersHandoff(env: CorsEnv, requestOrigin: string | null, methods = 'POST, OPTIONS') {
+  const allow = corsOriginHandoff(env, requestOrigin)
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Methods': methods,
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+    Vary: 'Origin',
+    'Access-Control-Allow-Origin': allow,
+  }
+  return headers
+}
+
+export function corsResponseHandoff(
+  body: BodyInit | null,
+  status: number,
+  env: CorsEnv,
+  requestOrigin: string | null,
+  methods?: string,
+) {
+  return new Response(body, { status, headers: corsHeadersHandoff(env, requestOrigin, methods) })
+}
+
+export function corsJsonHandoff(
+  payload: unknown,
+  status: number,
+  env: CorsEnv,
+  requestOrigin: string | null,
+  methods?: string,
+) {
+  const headers = {
+    ...corsHeadersHandoff(env, requestOrigin, methods),
+    'Content-Type': 'application/json',
+  }
+  return new Response(JSON.stringify(payload), { status, headers })
+}

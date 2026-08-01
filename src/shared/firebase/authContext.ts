@@ -16,6 +16,7 @@ export type AuthContextValue = {
   sendPasswordReset: (email: string) => Promise<void>
   sendSignInLink: (email: string) => Promise<void>
   confirmEmailLinkSignIn: (email: string) => Promise<void>
+  redeemHandoffCode: (code: string) => Promise<void>
   signOut: () => Promise<void>
   setSyncEnabled: (on: boolean) => Promise<void>
   syncNow: () => Promise<void>

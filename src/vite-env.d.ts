@@ -40,6 +40,8 @@ interface ImportMetaEnv {
   readonly VITE_DEBUG_ENABLE_AUTH?: string
   readonly VITE_VAPID_PUBLIC_KEY?: string
   readonly VITE_PUSH_API_BASE?: string
+  readonly VITE_ENABLE_AUTH_HANDOFF?: string
+  readonly VITE_AUTH_HANDOFF_API_BASE?: string
   /** When "1", build is embedded in the Tauri desktop shell. */
   readonly VITE_TAURI?: string
   /** Optional override for native/offline email-link continue URL. */

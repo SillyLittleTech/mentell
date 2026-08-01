@@ -104,6 +104,21 @@ wrangler secret put FIREBASE_SERVICE_ACCOUNT_JSON
 
 Frontend (GitHub **Variables**, not secrets): `VITE_VAPID_PUBLIC_KEY`, `VITE_PUSH_API_BASE` = worker URL without trailing slash.
 
+## Auth handoff (offline ↔ web link codes)
+
+Optional one-time codes so a user signed in on the hosted app can link an offline ZIP, Tauri build, or `file://` copy without Google/email there.
+
+Requires `FIREBASE_SERVICE_ACCOUNT_JSON` with **Firebase Authentication Admin** (same secret as push; service account can hold both Firestore User + Auth Admin roles).
+
+| Route | Auth | Purpose |
+|-------|------|---------|
+| `POST /auth/handoff/create` | `Authorization: Bearer <Firebase ID token>` | Returns `{ code, expiresInSec, expiresAt }` |
+| `POST /auth/handoff/redeem` | JSON `{ "code": "AB12CD34" }` | Returns `{ customToken }` for `signInWithCustomToken` |
+
+Codes live in `RATE_LIMIT_KV` (`auth-handoff:*`), expire in 10 minutes, and are single-use. Redeem CORS allows `null` Origin for offline `file://` clients.
+
+Frontend: `VITE_ENABLE_AUTH_HANDOFF=1`, optional `VITE_AUTH_HANDOFF_API_BASE` (defaults to `VITE_PUSH_API_BASE`). See [`docs/FIREBASE.md`](../docs/FIREBASE.md).
+
 ## Projector AI Search
 
 `GET|POST /projector-search` — natural-language search over journal entries (Cloudflare AI Search).

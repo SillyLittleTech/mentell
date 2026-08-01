@@ -9,6 +9,7 @@ Optional **Google**, **email/password**, and **email link** sign-in, **Firestore
 | `VITE_ENABLE_FIREBASE` | `0` | Load Firebase SDK |
 | `VITE_ENABLE_FIREBASE_SYNC` | `0` | Account UI + sync |
 | `VITE_ENABLE_SHARE_LINKS` | `0` | Share links + `/share/:code` viewer |
+| `VITE_ENABLE_AUTH_HANDOFF` | `0` | One-time link codes for offline / desktop sign-in |
 
 All `VITE_FIREBASE_*` config values are **public** in the client bundle (not GitHub Secrets).
 
@@ -59,7 +60,32 @@ No hosted relay page is required for desktop email sign-in. The web handoff bann
 
 ## Offline ZIP / file:// builds
 
-Cloud sign-in from a double-clicked offline `index.html` cannot use Google popups (`file://` is not an authorized origin). Email magic links use the same hosted continue URL as desktop. Google sign-in opens the hosted web app instead.
+**Loading without network:** A downloaded offline ZIP (`index.html` opened from disk) does **not** need the internet to open — assets are bundled in the file. The hosted PWA needs one online visit to install/cache; after that it can work offline too.
+
+**Cloud sign-in:** A double-clicked offline `index.html` cannot use Google popups (`file://` is not an authorized origin). Email magic links use the same hosted continue URL as desktop. Google sign-in opens the hosted web app instead.
+
+### Link codes (offline ↔ web)
+
+When `VITE_ENABLE_AUTH_HANDOFF=1` and the Worker has `FIREBASE_SERVICE_ACCOUNT_JSON` (with **Firebase Authentication Admin**), signed-in users on the **hosted** app can create a short-lived one-time code under **Settings → Account**. Offline ZIP, Tauri, or another browser can redeem it once (needs a brief network connection) via `signInWithCustomToken`.
+
+Client env (repo root):
+
+```env
+VITE_ENABLE_AUTH_HANDOFF=1
+# Same origin as push/AI worker; optional override:
+VITE_AUTH_HANDOFF_API_BASE=https://<your-worker>.workers.dev
+```
+
+If `VITE_AUTH_HANDOFF_API_BASE` is unset, the app uses `VITE_PUSH_API_BASE`.
+
+Worker routes:
+
+| Route | Auth | Purpose |
+|-------|------|---------|
+| `POST /auth/handoff/create` | Firebase ID token | Mint 8-char code (10 min TTL, stored in `RATE_LIMIT_KV`) |
+| `POST /auth/handoff/redeem` | None (code in body) | Exchange code for Firebase custom token |
+
+Redeem CORS allows `null` Origin so `file://` copies can call the API. After linking, journaling works offline; sync runs when the device is online.
 
 ## Firebase Hosting landing page
 

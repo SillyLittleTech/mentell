@@ -147,6 +147,7 @@ export function DebugAuthProvider({ children }: { children: ReactNode }) {
       sendPasswordReset: authDisabled,
       sendSignInLink: authDisabled,
       confirmEmailLinkSignIn: authDisabled,
+      redeemHandoffCode: authDisabled,
       signOut,
       setSyncEnabled,
       syncNow,
