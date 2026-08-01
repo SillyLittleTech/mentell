@@ -53,6 +53,26 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
         run: npm run build
 
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Build Android APK
+        run: |
+          npx cap sync android
+          cd android
+          ./gradlew --no-daemon assembleDebug --stacktrace --info
+          cd ..
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mentell-android
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
       - name: Build Offline ZIP
         env:
           VITE_ENABLE_WEEKLY_AI_SUMMARY: ${{ vars.VITE_ENABLE_WEEKLY_AI_SUMMARY }}
@@ -88,26 +108,6 @@ jobs:
         with:
           name: mentell-web
           path: mentell-web.zip
-
-      - name: Setup Java
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-          cache: 'gradle'
-
-      - name: Build Android APK
-        run: |
-          npx cap sync android
-          cd android
-          ./gradlew --no-daemon assembleDebug --stacktrace --info
-          cd ..
-
-      - name: Upload Android APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: mentell-android
-          path: android/app/build/outputs/apk/debug/app-debug.apk
 
   build-tauri:
     strategy:
