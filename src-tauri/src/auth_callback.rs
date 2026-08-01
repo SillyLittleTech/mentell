@@ -7,6 +7,9 @@ use std::time::Duration;
 
 use tauri::{AppHandle, Emitter, State};
 
+/// Fixed port for Google OAuth redirect_uri registration in Google Cloud Console.
+pub const AUTH_CALLBACK_PORT: u16 = 42831;
+
 const SUCCESS_HTML: &str = r#"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -145,9 +148,14 @@ pub fn start_auth_callback(
 ) -> Result<u16, String> {
   stop_auth_callback(state.clone())?;
 
-  let listener = TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], 0)))
-    .map_err(|err| err.to_string())?;
-  let port = listener.local_addr().map_err(|err| err.to_string())?.port();
+  let listener = TcpListener::bind(SocketAddr::from(([127, 0, 0, 1], AUTH_CALLBACK_PORT)))
+    .map_err(|err| {
+      format!(
+        "Could not bind auth callback on 127.0.0.1:{AUTH_CALLBACK_PORT}: {err}. \
+         Close other apps using this port and try again."
+      )
+    })?;
+  let port = AUTH_CALLBACK_PORT;
 
   state.stop.store(false, Ordering::SeqCst);
   {

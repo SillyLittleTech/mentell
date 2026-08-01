@@ -10,6 +10,10 @@
     "notification:default",
     "deep-link:default",
     "opener:default",
+    {
+      "identifier": "opener:allow-default-urls",
+      "allow": [{ "url": "mentell://*" }]
+    },
     "allow-start-auth-callback",
     "allow-stop-auth-callback"
   ]

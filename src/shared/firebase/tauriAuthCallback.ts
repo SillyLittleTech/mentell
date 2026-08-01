@@ -20,6 +20,9 @@ export function localhostContinueUrl(port: number): string {
   return `http://127.0.0.1:${port}`
 }
 
+/** Fixed desktop OAuth callback port (must match src-tauri auth_callback.rs). */
+export const AUTH_CALLBACK_PORT = 42831
+
 /** Wait for a single auth callback URL from the localhost server. */
 export async function waitForAuthCallback(port: number, timeoutMs = 300_000): Promise<string> {
   return new Promise<string>((resolve, reject) => {

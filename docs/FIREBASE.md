@@ -19,14 +19,16 @@ All `VITE_FIREBASE_*` config values are **public** in the client bundle (not Git
 3. **Authentication** → enable **Google**.
 4. **Authentication** → enable **Email/Password**, and turn on **Email link (passwordless sign-in)** on the same provider (required for magic links).
 5. **Authentication** → **Authorized domains**: `localhost`, `projects.sillylittle.tech`, `mentell.sillylittle.tech` (if used), and your custom auth host if used (e.g. `auth.mentell.sillylittle.tech`).
-6. **Google Cloud Console** (same project) → **APIs & Services** → **Credentials** → **OAuth 2.0 Client ID** (Web client, auto-created by Firebase) → **Authorized redirect URIs** must include exactly:
+6. **Google Cloud Console** (same project) → **APIs & Services** → **Credentials** → **OAuth 2.0 Client ID** (Web client, auto-created by Firebase) → **Authorized redirect URIs** must include:
    ```text
    https://<VITE_FIREBASE_AUTH_DOMAIN>/__/auth/handler
+   http://127.0.0.1:42831
    ```
    Examples:
    - Default: `https://men-tell-prod.firebaseapp.com/__/auth/handler`
    - Custom auth host: `https://auth.mentell.sillylittle.tech/__/auth/handler`
-   If you change `VITE_FIREBASE_AUTH_DOMAIN`, update this URI or Google returns **Error 400: redirect_uri_mismatch**.
+   - **Tauri desktop Google sign-in** uses the fixed localhost callback above. Without `http://127.0.0.1:42831`, Google returns **Error 400: redirect_uri_mismatch**.
+   If you change `VITE_FIREBASE_AUTH_DOMAIN`, update the handler URI as well.
 7. **Firestore** → create database (production mode), pick a region.
 8. **(Recommended)** Firestore **TTL** on collection `publicShares`, field `expiresAt`.
 
@@ -48,8 +50,8 @@ If links fail with a custom auth domain, the app sets `linkDomain` on `ActionCod
 
 The desktop app uses `tauri://localhost`, which Firebase Auth does not support for popups or redirects inside the WebView. Desktop sign-in uses a **built-in localhost callback server** (no third-party OAuth plugin):
 
-1. **Google:** Firebase `createAuthUri` opens your system browser; when you approve, the browser hits `http://127.0.0.1:<port>` and Mentell completes sign-in automatically.
-2. **Email link:** The magic link's continue URL is also `http://127.0.0.1:<port>`. Click the link in your mail app, approve in the browser, and Mentell completes sign-in while the app stays open.
+1. **Google:** Firebase `createAuthUri` opens your system browser; when you approve, the browser hits `http://127.0.0.1:42831` and Mentell completes sign-in automatically.
+2. **Email link:** The magic link's continue URL is also `http://127.0.0.1:42831` while the app is open. Click the link in your mail app, approve in the browser, and Mentell completes sign-in.
 3. **Firebase Authorized domains:** add `127.0.0.1` and `localhost` (required for both flows).
 4. **Tauri capabilities:** `src-tauri/tauri.conf.json` must list `"capabilities": ["default"]` so custom auth commands are allowed.
 
