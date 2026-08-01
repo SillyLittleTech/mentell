@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-start-auth-callback"
+description = "Start the localhost server used for desktop sign-in callbacks."
+commands.allow = ["start_auth_callback"]
+
+[[permission]]
+identifier = "allow-stop-auth-callback"
+description = "Stop the localhost server used for desktop sign-in callbacks."
+commands.allow = ["stop_auth_callback"]

@@ -39,6 +39,9 @@ import { DeskCharacterLayout } from './features/character/DeskCharacterLayout'
 import { LeftDeskMascot } from './features/character/LeftDeskMascot'
 import { MobileHeaderMascot } from './features/character/MobileHeaderMascot'
 import { CharacterTabIconSync } from './features/character/CharacterTabIconSync'
+import { AuthDeeplinkPage } from './features/auth/AuthDeeplinkPage'
+import { AuthLinkPage } from './features/auth/AuthLinkPage'
+import { EmailLinkDesktopHandoff } from './features/auth/EmailLinkDesktopHandoff'
 import { isFirebaseSyncEnabled, isShareLinksEnabled } from './shared/features/featureFlags'
 import { useAuthOptional } from './shared/firebase/AuthProvider'
 import { ShopCosmeticEffects } from './features/shop/shopCosmetics'
@@ -169,6 +172,7 @@ function App() {
 
   return (
     <div className={shareRouteActive ? 'min-h-[100svh]' : 'desk px-4 py-6'}>
+      <EmailLinkDesktopHandoff />
       {!shareRouteActive ? <CharacterTabIconSync /> : null}
       {!shareRouteActive ? <ShopCosmeticEffects /> : null}
       {!shareRouteActive ? (
@@ -206,6 +210,8 @@ function App() {
             element={<ShopPlaceholder onScoreChange={handleScoreChange} />}
           />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/auth/deeplink" element={<AuthDeeplinkPage />} />
+          <Route path="/auth/link" element={<AuthLinkPage />} />
           <Route path="/character-lab" element={<CharacterLabPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/feedback" element={<FeedbackPage />} />

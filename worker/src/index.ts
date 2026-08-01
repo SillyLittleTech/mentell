@@ -1,3 +1,4 @@
+import { handleAuthHandoffCreate, handleAuthHandoffRedeem } from './authHandoff'
 import { corsJson } from './cors'
 import type { Env } from './env'
 import {
@@ -36,6 +37,10 @@ export default {
         return handlePushStatus(request, env)
       case '/push/test-delayed':
         return handlePushTestDelayed(request, env, ctx)
+      case '/auth/handoff/create':
+        return handleAuthHandoffCreate(request, env)
+      case '/auth/handoff/redeem':
+        return handleAuthHandoffRedeem(request, env)
       default:
         return corsJson({ error: 'Not found' }, 404, env, origin)
     }

@@ -100,7 +100,7 @@ jobs:
           rm -rf mentell-offline
           mkdir -p mentell-offline
           cp -r dist/. mentell-offline/
-          printf '%s\n' 'Open index.html in your browser for offline use.' 'Routes use hash URLs (e.g. index.html#/settings).' > mentell-offline/README.txt
+          printf '%s\n' 'Open index.html in your browser for offline use (double-click or drag into a browser window).' 'Routes use hash URLs (e.g. index.html#/settings).' 'This build inlines assets so file:// works without a local server.' > mentell-offline/README.txt
           cd mentell-offline && zip -r ../mentell-web.zip .
 
       - name: Upload Web Artifact
@@ -141,6 +141,8 @@ jobs:
       - name: Build Web App
         env:
           VITE_BASE: /
+          VITE_TAURI: 1
+          VITE_NATIVE_AUTH_CONTINUE_URL: ${{ vars.VITE_NATIVE_AUTH_CONTINUE_URL }}
           VITE_ENABLE_WEEKLY_AI_SUMMARY: ${{ vars.VITE_ENABLE_WEEKLY_AI_SUMMARY }}
           VITE_WEEKLY_AI_ENDPOINT: ${{ vars.VITE_WEEKLY_AI_ENDPOINT }}
           VITE_WEEKLY_AI_TOKEN: ${{ secrets.WEEKLY_AI_TOKEN }}
@@ -168,6 +170,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VITE_BASE: /
+          VITE_TAURI: 1
+          VITE_NATIVE_AUTH_CONTINUE_URL: ${{ vars.VITE_NATIVE_AUTH_CONTINUE_URL }}
           VITE_ENABLE_WEEKLY_AI_SUMMARY: ${{ vars.VITE_ENABLE_WEEKLY_AI_SUMMARY }}
           VITE_WEEKLY_AI_ENDPOINT: ${{ vars.VITE_WEEKLY_AI_ENDPOINT }}
           VITE_WEEKLY_AI_TOKEN: ${{ secrets.WEEKLY_AI_TOKEN }}

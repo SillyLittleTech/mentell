@@ -53,6 +53,8 @@ import {
 } from './projectorDebug'
 import { dateKeyForLocalDay } from '../../shared/dates'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
+import { isAuthDebugPanelEnabled } from '../../shared/features/featureFlags'
+import { DebugAuthSection } from './DebugAuthSection'
 
 const DEBUG_AI_TESTS = [
   {
@@ -320,6 +322,8 @@ export function DebugPanel() {
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
               <div className="grid gap-2">
+            {isAuthDebugPanelEnabled() ? <DebugAuthSection /> : null}
+
             <div className="rounded-3xl border border-[var(--paper-border)] p-3">
               <div className="font-mono text-xs font-bold">ui toggles</div>
               <div className="mt-2 grid gap-2">

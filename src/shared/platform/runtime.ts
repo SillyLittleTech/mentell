@@ -1,6 +1,13 @@
+import { isTauri as apiIsTauri } from '@tauri-apps/api/core'
+
 /** True when running inside a Tauri desktop shell. */
 export function isTauri(): boolean {
-  return typeof window !== 'undefined' && '__TAURI__' in window
+  if (import.meta.env.VITE_TAURI === '1') return true
+  try {
+    return apiIsTauri()
+  } catch {
+    return typeof window !== 'undefined' && '__TAURI__' in window
+  }
 }
 
 /** True when running inside a Capacitor native shell. */

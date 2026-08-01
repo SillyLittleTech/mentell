@@ -1,15 +1,16 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Mentell",
-  "version": "1.17.16",
+  "version": "1.17.21",
   "identifier": "com.mentell.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm run dev:tauri",
     "beforeBuildCommand": "npm run build"
   },
   "app": {
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "Mentell",
@@ -20,7 +21,15 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": ["default"]
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["mentell"]
+      }
     }
   },
   "bundle": {

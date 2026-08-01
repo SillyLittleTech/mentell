@@ -9,6 +9,7 @@ Optional **Google**, **email/password**, and **email link** sign-in, **Firestore
 | `VITE_ENABLE_FIREBASE` | `0` | Load Firebase SDK |
 | `VITE_ENABLE_FIREBASE_SYNC` | `0` | Account UI + sync |
 | `VITE_ENABLE_SHARE_LINKS` | `0` | Share links + `/share/:code` viewer |
+| `VITE_ENABLE_AUTH_HANDOFF` | `0` | One-time link codes for offline / desktop sign-in |
 
 All `VITE_FIREBASE_*` config values are **public** in the client bundle (not GitHub Secrets).
 
@@ -19,14 +20,16 @@ All `VITE_FIREBASE_*` config values are **public** in the client bundle (not Git
 3. **Authentication** → enable **Google**.
 4. **Authentication** → enable **Email/Password**, and turn on **Email link (passwordless sign-in)** on the same provider (required for magic links).
 5. **Authentication** → **Authorized domains**: `localhost`, `projects.sillylittle.tech`, `mentell.sillylittle.tech` (if used), and your custom auth host if used (e.g. `auth.mentell.sillylittle.tech`).
-6. **Google Cloud Console** (same project) → **APIs & Services** → **Credentials** → **OAuth 2.0 Client ID** (Web client, auto-created by Firebase) → **Authorized redirect URIs** must include exactly:
+6. **Google Cloud Console** (same project) → **APIs & Services** → **Credentials** → **OAuth 2.0 Client ID** (Web client, auto-created by Firebase) → **Authorized redirect URIs** must include:
    ```text
    https://<VITE_FIREBASE_AUTH_DOMAIN>/__/auth/handler
+   http://127.0.0.1:42831
    ```
    Examples:
    - Default: `https://men-tell-prod.firebaseapp.com/__/auth/handler`
    - Custom auth host: `https://auth.mentell.sillylittle.tech/__/auth/handler`
-   If you change `VITE_FIREBASE_AUTH_DOMAIN`, update this URI or Google returns **Error 400: redirect_uri_mismatch**.
+   - **Tauri desktop Google sign-in** uses the fixed localhost callback above. Without `http://127.0.0.1:42831`, Google returns **Error 400: redirect_uri_mismatch**.
+   If you change `VITE_FIREBASE_AUTH_DOMAIN`, update the handler URI as well.
 7. **Firestore** → create database (production mode), pick a region.
 8. **(Recommended)** Firestore **TTL** on collection `publicShares`, field `expiresAt`.
 
@@ -36,12 +39,53 @@ The **Mentell app** is hosted on **GitHub Pages** (`https://projects.sillylittle
 
 The app implements [Firebase email link auth](https://firebase.google.com/docs/auth/web/email-link-auth):
 
-- **Continue URL:** `https://<your-app-origin>/<base>/settings` (e.g. `https://projects.sillylittle.tech/mentell/settings`). The origin must be in **Authorized domains**.
-- **`handleCodeInApp: true`** — completion runs in the Mentell SPA.
+- **Continue URL (web/PWA):** `https://<your-app-origin>/<base>/settings` (e.g. `https://projects.sillylittle.tech/mentell/settings`). The origin must be in **Authorized domains**.
+- **Continue URL (Tauri desktop):** `https://projects.sillylittle.tech/mentell/auth/deeplink.html` by default (`VITE_NATIVE_AUTH_CONTINUE_URL` to override). Firebase cannot redirect to `tauri://` origins; the relay page forwards the link into the app via the `mentell://` deep link scheme.
+- **`handleCodeInApp: true`** — completion runs in the Mentell SPA (web) or desktop app (via deep link).
 - Email is stored in `localStorage` as `emailForSignIn` when the link is sent (not in the redirect URL).
 - If the user opens the link on another device, they confirm their email in-app before `signInWithEmailLink` runs.
 
 If links fail with a custom auth domain, the app sets `linkDomain` on `ActionCodeSettings` from `VITE_FIREBASE_AUTH_DOMAIN` when it is not the default `*.firebaseapp.com` host.
+
+## Tauri desktop sign-in
+
+The desktop app uses `tauri://localhost`, which Firebase Auth does not support for popups or redirects inside the WebView. Desktop sign-in uses a **built-in localhost callback server** (no third-party OAuth plugin):
+
+1. **Google:** Firebase `createAuthUri` opens your system browser; when you approve, the browser hits `http://127.0.0.1:42831` and Mentell completes sign-in automatically.
+2. **Email link:** The magic link's continue URL is also `http://127.0.0.1:42831` while the app is open. Click the link in your mail app, approve in the browser, and Mentell completes sign-in.
+3. **Firebase Authorized domains:** add `127.0.0.1` and `localhost` (required for both flows).
+4. **Tauri capabilities:** `src-tauri/tauri.conf.json` must list `"capabilities": ["default"]` so custom auth commands are allowed.
+
+No hosted relay page is required for desktop email sign-in. The web handoff banner (`/auth/deeplink`) is only for users who open links in a browser intentionally (e.g. offline ZIP → web).
+
+## Offline ZIP / file:// builds
+
+**Loading without network:** A downloaded offline ZIP (`index.html` opened from disk) does **not** need the internet to open — assets are bundled in the file. The hosted PWA needs one online visit to install/cache; after that it can work offline too.
+
+**Cloud sign-in:** When link codes are enabled (`VITE_ENABLE_AUTH_HANDOFF=1`), offline copies use **Settings → Link accounts** (`/auth/link`) — sign in on the hosted app, generate a code, redeem it on the offline copy (brief network required). Without handoff, Google popups do not work on `file://`; email magic links use the hosted continue URL.
+
+### Link codes (offline ↔ web)
+
+When `VITE_ENABLE_AUTH_HANDOFF=1` and the Worker has `FIREBASE_SERVICE_ACCOUNT_JSON` (with **Firebase Authentication Admin**), signed-in users on the **hosted** app open **Settings → Link accounts** (hidden route `/auth/link`) to generate a short-lived one-time code. Offline ZIP, Tauri, or another browser redeem it once (needs a brief network connection) via `signInWithCustomToken`.
+
+Client env (repo root):
+
+```env
+VITE_ENABLE_AUTH_HANDOFF=1
+# Same origin as push/AI worker; optional override:
+VITE_AUTH_HANDOFF_API_BASE=https://<your-worker>.workers.dev
+```
+
+If `VITE_AUTH_HANDOFF_API_BASE` is unset, the app uses `VITE_PUSH_API_BASE`.
+
+Worker routes:
+
+| Route | Auth | Purpose |
+|-------|------|---------|
+| `POST /auth/handoff/create` | Firebase ID token | Mint 8-char code (10 min TTL, stored in `RATE_LIMIT_KV`) |
+| `POST /auth/handoff/redeem` | None (code in body) | Exchange code for Firebase custom token |
+
+Redeem CORS allows `null` Origin so `file://` copies can call the API. After linking, journaling works offline; sync runs when the device is online.
 
 ## Firebase Hosting landing page
 
@@ -86,8 +130,11 @@ Add `localhost` under **Authorized domains** if you test email links locally.
 
 ## Debug builds (`npm run dev:debug`)
 
-- Uses [`DebugAuthProvider`](../src/shared/firebase/DebugAuthProvider.tsx): **no** Google/email sign-in UI; Firebase Auth uses **in-memory** persistence so sessions do not leak into `npm run dev`.
-- Debug Firebase is **local-only/off** unless `VITE_DEBUG_FIREBASE_CUSTOM_TOKEN` is set. This avoids creating fresh anonymous Firebase Auth users during debug sessions.
+- Uses [`DebugAuthProvider`](../src/shared/firebase/DebugAuthProvider.tsx) by default: **no** Google/email sign-in; Firebase Auth uses **in-memory** persistence so sessions do not leak into `npm run dev`.
+- Firebase is **off** in debug mode unless you opt in:
+  - **`VITE_DEBUG_FIREBASE_CUSTOM_TOKEN`** — automated `DEBUGGER` uid via Admin SDK custom token (local-only cloud sync testing).
+  - **`VITE_DEBUG_ENABLE_AUTH=1`** or **`npm run dev:debug:auth`** — real Google/email sign-in with isolated debug storage.
+- **Tauri desktop** (`npm run tauri:dev`) always uses real [`AuthProvider`](../src/shared/firebase/AuthProvider.tsx) when `VITE_ENABLE_FIREBASE=1`; do **not** use `dev:debug` for desktop auth testing.
 - **Fixed uid `DEBUGGER`:** mint a custom token with the Firebase Admin SDK (`uid: 'DEBUGGER'`), add to `.env.local` as `VITE_DEBUG_FIREBASE_CUSTOM_TOKEN=…`. On load, debug mode signs out any existing user and uses `signInWithCustomToken`. Firestore rules already allow `request.auth.uid == userId`.
 
 ## GitHub Pages CI

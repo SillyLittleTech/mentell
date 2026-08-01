@@ -1,6 +1,5 @@
 import {
   createUserWithEmailAndPassword,
-  getRedirectResult,
   GoogleAuthProvider,
   isSignInWithEmailLink,
   onAuthStateChanged,
@@ -9,7 +8,6 @@ import {
   signInWithEmailAndPassword,
   signInWithEmailLink,
   signInWithPopup,
-  signInWithRedirect,
   signOut as firebaseSignOut,
   type Auth,
   type User,
@@ -18,6 +16,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isFirebaseEnabled, isFirebaseSyncEnabled } from "../features/featureFlags";
 import { isTauri } from "../platform/runtime";
 import { formatAuthError } from "./authErrors";
+import {
+  getHostedSignInUrl,
+  supportsInAppGoogleSignIn,
+} from "./authCapabilities";
 import { getOAuthRedirectUri } from "./config";
 import {
   clearEmailLinkUrl,
@@ -30,7 +32,15 @@ import { getFirebaseAuth } from "./firebaseApp";
 import { finishSignIn } from "./postSignIn";
 import { disableSync, enableSync } from "../sync/syncService";
 import { loadSyncState, saveSyncState } from "../sync/syncState";
+import { buildHrefForEmailLinkCheck } from "./emailLinkHandoff";
 import { AuthContext, type AuthContextValue } from "./authContext";
+import { signInWithGoogleViaTauri } from "./tauriGoogleAuth";
+import { redeemAuthHandoffCode as redeemHandoffToken } from "./authHandoffClient";
+import { installTauriDeepLinkAuth } from "./tauriDeepLinkAuth";
+import {
+  buildTauriEmailLinkSettings,
+  waitForTauriEmailLinkCompletion,
+} from "./tauriEmailLink";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const enabled = isFirebaseEnabled();
@@ -65,10 +75,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const completeEmailLinkSignIn = useCallback(
-    async (email: string) => {
+    async (email: string, linkUrl?: string) => {
       const auth = getFirebaseAuth();
       if (!auth) throw new Error("Cloud sign-in is not configured");
-      await signInWithEmailLink(auth, email.trim(), window.location.href);
+      const link = linkUrl ?? window.location.href;
+      await signInWithEmailLink(auth, email.trim(), link);
       applyAuthUser(auth);
       clearStoredEmailForSignIn();
       clearEmailLinkUrl();
@@ -76,6 +87,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await finishSignIn(auth, postSignInCallbacks);
     },
     [applyAuthUser, postSignInCallbacks],
+  );
+
+  const handleIncomingEmailLink = useCallback(
+    (linkUrl: string) => {
+      if (emailLinkHandled.current) return;
+      emailLinkHandled.current = true;
+      const stored = readStoredEmailForSignIn();
+      if (stored) {
+        void completeEmailLinkSignIn(stored, linkUrl).catch((e) => {
+          emailLinkHandled.current = false;
+          setSyncError(formatAuthError(e));
+        });
+      } else {
+        setPendingEmailLinkConfirm(true);
+        try {
+          sessionStorage.setItem('mentell.pendingEmailLink', linkUrl);
+        } catch {
+          // ignore quota errors
+        }
+      }
+    },
+    [completeEmailLinkSignIn],
   );
 
   useEffect(() => {
@@ -90,36 +123,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    let removeDeepLinkListener: (() => void) | undefined
+
+    void installTauriDeepLinkAuth(auth, handleIncomingEmailLink).then((unlisten) => {
+      removeDeepLinkListener = unlisten
+    })
+
     if (
       !emailLinkHandled.current &&
-      isSignInWithEmailLink(auth, window.location.href)
+      isSignInWithEmailLink(auth, buildHrefForEmailLinkCheck())
     ) {
-      emailLinkHandled.current = true;
-      const stored = readStoredEmailForSignIn();
-      if (stored) {
-        void completeEmailLinkSignIn(stored).catch((e) => {
-          setSyncError(formatAuthError(e));
-        });
-      } else {
-        setPendingEmailLinkConfirm(true);
-      }
-    }
-
-    if (isTauri()) {
-      void getRedirectResult(auth)
-        .then(async (result) => {
-          if (!result?.user) return;
-          applyAuthUser(auth);
-          await finishSignIn(auth, postSignInCallbacks);
-        })
-        .catch((e) => {
-          setSyncError(formatAuthError(e));
-        });
+      handleIncomingEmailLink(buildHrefForEmailLinkCheck());
     }
 
     applyAuthUser(auth);
 
-    return onAuthStateChanged(auth, async (next) => {
+    const unsubscribeAuth = onAuthStateChanged(auth, async (next) => {
       setUser(next);
 
       setLoading(false);
@@ -138,18 +157,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSyncEnabledState(false);
       }
     });
-  }, [enabled, applyAuthUser, completeEmailLinkSignIn, postSignInCallbacks]);
+
+    return () => {
+      removeDeepLinkListener?.()
+      unsubscribeAuth()
+    }
+  }, [enabled, applyAuthUser, handleIncomingEmailLink]);
 
   const signInWithGoogle = useCallback(async () => {
     const auth = getFirebaseAuth();
     if (!auth) throw new Error("Cloud sign-in is not configured");
     const redirectUri = getOAuthRedirectUri();
-    const provider = new GoogleAuthProvider();
     try {
+      if (!supportsInAppGoogleSignIn()) {
+        window.open(getHostedSignInUrl(), "_blank", "noopener,noreferrer");
+        throw new Error(
+          "Google sign-in opened in your browser. Use the hosted Mentell app or desktop app to connect cloud backup.",
+        );
+      }
       if (isTauri()) {
-        await signInWithRedirect(auth, provider);
+        await signInWithGoogleViaTauri(auth);
+        applyAuthUser(auth);
+        await finishSignIn(auth, postSignInCallbacks);
         return;
       }
+      const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
       applyAuthUser(auth);
       await finishSignIn(auth, postSignInCallbacks);
@@ -218,6 +250,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!auth) throw new Error("Cloud sign-in is not configured");
     try {
       storeEmailForSignIn(email);
+      if (isTauri()) {
+        const { settings, waitForLink } = await buildTauriEmailLinkSettings();
+        const linkPromise = waitForLink();
+        await sendSignInLinkToEmail(auth, email.trim(), settings);
+        setEmailLinkSent(true);
+        setSyncError(null);
+        void waitForTauriEmailLinkCompletion(auth, linkPromise)
+          .then((link) => completeEmailLinkSignIn(email, link))
+          .catch((e) => {
+            setSyncError(formatAuthError(e));
+          });
+        return;
+      }
       await sendSignInLinkToEmail(
         auth,
         email.trim(),
@@ -230,12 +275,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSyncError(hint);
       throw new Error(hint, { cause: e });
     }
-  }, []);
+  }, [completeEmailLinkSignIn]);
 
   const confirmEmailLinkSignIn = useCallback(
     async (email: string) => {
       try {
-        await completeEmailLinkSignIn(email);
+        const pendingLink = sessionStorage.getItem('mentell.pendingEmailLink') ?? undefined;
+        await completeEmailLinkSignIn(email, pendingLink);
+        sessionStorage.removeItem('mentell.pendingEmailLink');
       } catch (e) {
         const hint = formatAuthError(e);
         setSyncError(hint);
@@ -245,12 +292,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [completeEmailLinkSignIn],
   );
 
+  const redeemHandoffCode = useCallback(
+    async (code: string) => {
+      const auth = getFirebaseAuth();
+      if (!auth) throw new Error("Cloud sign-in is not configured");
+      try {
+        await redeemHandoffToken(code, postSignInCallbacks);
+        applyAuthUser(auth);
+        setSyncError(null);
+      } catch (e) {
+        const hint = formatAuthError(e);
+        setSyncError(hint);
+        throw new Error(hint, { cause: e });
+      }
+    },
+    [applyAuthUser, postSignInCallbacks],
+  );
+
   const signOut = useCallback(async () => {
     disableSync();
     saveSyncState({ enabled: false });
     setSyncEnabledState(false);
     setEmailLinkSent(false);
     setPendingEmailLinkConfirm(false);
+    sessionStorage.removeItem('mentell.pendingEmailLink');
     const auth = getFirebaseAuth();
     if (auth) await firebaseSignOut(auth);
   }, []);
@@ -299,6 +364,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sendPasswordReset,
       sendSignInLink,
       confirmEmailLinkSignIn,
+      redeemHandoffCode,
       signOut,
       setSyncEnabled,
       syncNow,
@@ -318,6 +384,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sendPasswordReset,
       sendSignInLink,
       confirmEmailLinkSignIn,
+      redeemHandoffCode,
       signOut,
       setSyncEnabled,
       syncNow,

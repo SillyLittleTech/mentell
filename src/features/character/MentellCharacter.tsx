@@ -104,9 +104,11 @@ export function MentellCharacter({
   useLayoutEffect(() => {
     const host = hostRef.current
     if (!host) return
-    host.innerHTML = SVG_SOURCE[asset]
-    const svg = host.querySelector('svg')
-    if (!svg) return
+    const doc = new DOMParser().parseFromString(SVG_SOURCE[asset], 'image/svg+xml')
+    const parsed = doc.documentElement
+    if (parsed.nodeName.toLowerCase() === 'parsererror') return
+    const svg = parsed as unknown as SVGSVGElement
+    host.replaceChildren(svg)
     svgRef.current = svg
     svg.setAttribute('width', '100%')
     svg.setAttribute('height', '100%')

@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Open Mentell</title>
+    <meta http-equiv="refresh" content="0; url=/mentell/auth/deeplink" />
+    <script>
+      ;(function () {
+        var target = '/mentell/auth/deeplink' + window.location.search + window.location.hash
+        window.location.replace(target)
+      })()
+    </script>
+  </head>
+  <body>
+    <p>
+      <a href="/mentell/auth/deeplink">Continue to Mentell sign-in</a>
+    </p>
+  </body>
+</html>

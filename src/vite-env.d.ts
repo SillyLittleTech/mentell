@@ -36,8 +36,16 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_MESSAGING_SENDER_ID?: string
   readonly VITE_FIREBASE_APP_ID?: string
   readonly VITE_DEBUG_FIREBASE_CUSTOM_TOKEN?: string
+  /** When "1" in debug mode, use real AuthProvider (Google/email) instead of DebugAuthProvider. */
+  readonly VITE_DEBUG_ENABLE_AUTH?: string
   readonly VITE_VAPID_PUBLIC_KEY?: string
   readonly VITE_PUSH_API_BASE?: string
+  readonly VITE_ENABLE_AUTH_HANDOFF?: string
+  readonly VITE_AUTH_HANDOFF_API_BASE?: string
+  /** When "1", build is embedded in the Tauri desktop shell. */
+  readonly VITE_TAURI?: string
+  /** Optional override for native/offline email-link continue URL. */
+  readonly VITE_NATIVE_AUTH_CONTINUE_URL?: string
   /** When "1", build for offline ZIP (hash routing, relative assets, no PWA). */
   readonly VITE_OFFLINE_ZIP?: string
 }
