@@ -1,8 +1,9 @@
+import React from 'react'
 import { createContext } from 'react'
 
 export type Toast = {
   id: string
-  message: string
+  message: React.ReactNode
   duration?: number
   type?: 'default' | 'error' | 'success'
   isSticky?: boolean
