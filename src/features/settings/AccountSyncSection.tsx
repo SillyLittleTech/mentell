@@ -7,6 +7,7 @@ import {
 } from "../../shared/features/featureFlags";
 import { useAuthOptional } from "../../shared/firebase/AuthProvider";
 import { AccountSignInPanel } from "./AccountSignInPanel";
+import { ScoreRecoverySection } from "./ScoreRecoverySection";
 
 export function AccountSyncSection() {
   const auth = useAuthOptional();
@@ -76,6 +77,7 @@ export function AccountSyncSection() {
                   {auth.syncError}
                 </div>
               ) : null}
+              <ScoreRecoverySection />
             </>
           ) : (
             <button

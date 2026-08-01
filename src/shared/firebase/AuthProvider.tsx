@@ -32,6 +32,7 @@ import { getFirebaseAuth } from "./firebaseApp";
 import { finishSignIn } from "./postSignIn";
 import { disableSync, enableSync } from "../sync/syncService";
 import { loadSyncState, saveSyncState } from "../sync/syncState";
+import { buildHrefForEmailLinkCheck } from "./emailLinkHandoff";
 import { AuthContext, type AuthContextValue } from "./authContext";
 import { signInWithGoogleViaTauri } from "./tauriGoogleAuth";
 import { installTauriDeepLinkAuth } from "./tauriDeepLinkAuth";
@@ -129,9 +130,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     if (
       !emailLinkHandled.current &&
-      isSignInWithEmailLink(auth, window.location.href)
+      isSignInWithEmailLink(auth, buildHrefForEmailLinkCheck())
     ) {
-      handleIncomingEmailLink(window.location.href);
+      handleIncomingEmailLink(buildHrefForEmailLinkCheck());
     }
 
     applyAuthUser(auth);

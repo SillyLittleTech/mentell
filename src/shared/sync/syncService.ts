@@ -25,10 +25,8 @@ import { loadSyncState, saveSyncState } from './syncState'
 import { loadAppSettings, type AppSettings } from '../settings/appSettings'
 import {
   getScoreSnapshot,
-  setStreakFreezesForSync,
-  setStreakRestoreForSync,
+  applyScoreSnapshotFromSync,
   SCORE_UPDATED_AT_KEY,
-  type StreakRestoreCandidate,
 } from '../../features/score/scoreService'
 import { loadAiProfile, type AiProfile } from '../../features/compilation/aiProfile'
 import { loadCatCollection } from '../../features/shop/catCollection'
@@ -39,6 +37,17 @@ import {
 import { loadShopInventory, applyShopInventoryFromCloud } from '../../features/shop/shopInventory'
 import { scheduleSharePayloadRefresh } from '../../features/share/shareRefresh'
 import { LOCAL_DATA_CHANGED_EVENT } from './localDataEvents'
+import {
+  type CloudScoreMeta,
+  type CloudScoreSnapshot,
+  MAX_SCORE_SNAPSHOTS,
+} from './scoreRecovery'
+import {
+  resolveScoreConflict,
+  shouldApplyRemoteScore,
+  shouldPushLocalScore,
+  type ScoreSyncContext,
+} from './scoreMerge'
 
 const PUSH_DEBOUNCE_MS = 1200
 
@@ -114,41 +123,42 @@ async function pullCollection<T extends { id: string; updatedAt?: number; create
   }
 }
 
-async function pullMeta(uid: string) {
+async function getScoreSyncContext(uid: string): Promise<ScoreSyncContext> {
+  const local = getScoreSnapshot()
+  const localUpdatedAtStr = localStorage.getItem(SCORE_UPDATED_AT_KEY)
+  const localUpdatedAt = localUpdatedAtStr ? Number(localUpdatedAtStr) : 0
+  const localEntryCount = await getDb().entries.count()
+  const remoteEntryCount = (await getDocs(collection(fs(), 'users', uid, 'entries'))).size
   const scoreSnap = await getDoc(userRef(uid, 'meta', 'score'))
-  if (scoreSnap.exists()) {
-    const data = scoreSnap.data() as {
-      total?: number
-      streak?: number
-      lastDay?: string | null
-      streakFreezes?: number
-      streakRestore?: StreakRestoreCandidate | null
-      updatedAt?: number
-    }
-    const remoteUpdatedAt = typeof data.updatedAt === 'number' ? data.updatedAt : 0
-    const localUpdatedAtStr = localStorage.getItem(SCORE_UPDATED_AT_KEY)
-    const localUpdatedAt = localUpdatedAtStr ? Number(localUpdatedAtStr) : 0
+  const remote = scoreSnap.exists() ? (scoreSnap.data() as CloudScoreMeta) : null
+  const remoteTotal = typeof remote?.total === 'number' ? Math.trunc(remote.total) : 0
+  const remoteUpdatedAt = typeof remote?.updatedAt === 'number' ? remote.updatedAt : 0
 
-    if (remoteUpdatedAt >= localUpdatedAt) {
-      if (typeof data.total === 'number') {
-        localStorage.setItem(scopedStorageKey('mentell.score.total'), String(Math.trunc(data.total)))
-      }
-      if (typeof data.streak === 'number') {
-        localStorage.setItem(scopedStorageKey('mentell.score.streak'), String(Math.trunc(data.streak)))
-      }
-      if (data.lastDay === null || typeof data.lastDay === 'string') {
-        if (data.lastDay) localStorage.setItem(scopedStorageKey('mentell.score.lastDay'), data.lastDay)
-        else localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))
-      }
-      if (typeof data.streakFreezes === 'number') {
-        setStreakFreezesForSync(data.streakFreezes)
-      }
-      if (data.streakRestore === null || typeof data.streakRestore === 'object') {
-        setStreakRestoreForSync(data.streakRestore ?? null)
-      }
-      localStorage.setItem(SCORE_UPDATED_AT_KEY, String(remoteUpdatedAt))
-    }
+  return {
+    localTotal: local.total,
+    remoteTotal,
+    localUpdatedAt,
+    remoteUpdatedAt,
+    localEntryCount,
+    remoteEntryCount,
   }
+}
+
+async function pullScoreMeta(uid: string) {
+  const scoreSnap = await getDoc(userRef(uid, 'meta', 'score'))
+  if (!scoreSnap.exists()) return
+
+  const data = scoreSnap.data() as CloudScoreMeta
+  const ctx = await getScoreSyncContext(uid)
+  const resolution = resolveScoreConflict(ctx)
+
+  if (shouldApplyRemoteScore(ctx, resolution)) {
+    applyScoreSnapshotFromSync(data, ctx.remoteUpdatedAt)
+  }
+}
+
+async function pullMeta(uid: string) {
+  await pullScoreMeta(uid)
 
   const settingsSnap = await getDoc(userRef(uid, 'meta', 'settings'))
   if (settingsSnap.exists()) {
@@ -252,22 +262,73 @@ async function pushCollection<T extends { id: string; updatedAt?: number; create
 }
 
 async function pushMeta(uid: string) {
-  const score = getScoreSnapshot()
+  const remoteSnap = await getDoc(userRef(uid, 'meta', 'score'))
+  const remote = remoteSnap.exists() ? (remoteSnap.data() as CloudScoreMeta) : null
+  const ctx = await getScoreSyncContext(uid)
+  const resolution = resolveScoreConflict(ctx)
   const shopInventory = loadShopInventory()
   const character = await getDb().characterAppearance.get(CHARACTER_APPEARANCE_ROW_ID)
   const now = Date.now()
   const localScoreUpdatedAtStr = localStorage.getItem(SCORE_UPDATED_AT_KEY)
   const localScoreUpdatedAt = localScoreUpdatedAtStr ? Number(localScoreUpdatedAtStr) : now
+  const remoteTotal = ctx.remoteTotal
+
+  if (remote && shouldApplyRemoteScore(ctx, resolution)) {
+    applyScoreSnapshotFromSync(remote, remote.updatedAt ?? now)
+  }
+
+  const scoreAfterGuard = getScoreSnapshot()
+  let snapshots: CloudScoreSnapshot[] = Array.isArray(remote?.snapshots) ? [...remote.snapshots] : []
+
+  const pushLocalScore = shouldPushLocalScore(ctx, resolution)
+  const scoreToWrite = pushLocalScore ? scoreAfterGuard : {
+    total: remoteTotal,
+    streak: typeof remote?.streak === 'number' ? Math.trunc(remote.streak) : scoreAfterGuard.streak,
+    lastDay: remote?.lastDay ?? scoreAfterGuard.lastDay,
+    streakFreezes:
+      typeof remote?.streakFreezes === 'number'
+        ? Math.trunc(remote.streakFreezes)
+        : scoreAfterGuard.streakFreezes,
+    streakRestore: remote?.streakRestore ?? scoreAfterGuard.streakRestore,
+  }
+
+  if (
+    remote &&
+    typeof remote.total === 'number' &&
+    pushLocalScore &&
+    Math.trunc(remote.total) !== scoreAfterGuard.total &&
+    Math.trunc(remote.total) > 0
+  ) {
+    snapshots = [
+      {
+        total: Math.trunc(remote.total),
+        streak: typeof remote.streak === 'number' ? Math.trunc(remote.streak) : 0,
+        lastDay: remote.lastDay ?? null,
+        streakFreezes:
+          typeof remote.streakFreezes === 'number' ? Math.trunc(remote.streakFreezes) : 0,
+        savedAt: remote.updatedAt ?? now,
+      },
+      ...snapshots,
+    ].slice(0, MAX_SCORE_SNAPSHOTS)
+  }
+
+  const peakTotal = Math.max(
+    scoreToWrite.total,
+    remoteTotal,
+    typeof remote?.peakTotal === 'number' ? Math.trunc(remote.peakTotal) : 0,
+  )
 
   await setDoc(
     userRef(uid, 'meta', 'score'),
     {
-      total: score.total,
-      streak: score.streak,
-      lastDay: score.lastDay,
-      streakFreezes: score.streakFreezes,
-      streakRestore: score.streakRestore,
-      updatedAt: localScoreUpdatedAt,
+      total: scoreToWrite.total,
+      streak: scoreToWrite.streak,
+      lastDay: scoreToWrite.lastDay,
+      streakFreezes: scoreToWrite.streakFreezes,
+      streakRestore: scoreToWrite.streakRestore,
+      peakTotal,
+      snapshots,
+      updatedAt: pushLocalScore ? localScoreUpdatedAt : (remote?.updatedAt ?? localScoreUpdatedAt),
     },
     { merge: true },
   )

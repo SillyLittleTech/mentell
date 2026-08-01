@@ -288,6 +288,40 @@ export function getScoreSnapshot() {
   }
 }
 
+export type ScoreSyncPayload = {
+  total?: number
+  streak?: number
+  lastDay?: string | null
+  streakFreezes?: number
+  streakRestore?: StreakRestoreCandidate | null
+}
+
+/** Apply a score document from cloud sync or recovery. */
+export function applyScoreSnapshotFromSync(payload: ScoreSyncPayload, updatedAt: number) {
+  if (typeof payload.total === 'number') {
+    setInt(SCORE_KEY, payload.total)
+  }
+  if (typeof payload.streak === 'number') {
+    setInt(STREAK_KEY, payload.streak)
+  }
+  if (payload.lastDay === null) {
+    localStorage.removeItem(LAST_DAY_KEY)
+  } else if (typeof payload.lastDay === 'string' && payload.lastDay) {
+    localStorage.setItem(LAST_DAY_KEY, payload.lastDay)
+  }
+  if (typeof payload.streakFreezes === 'number') {
+    setStreakFreezesForSync(payload.streakFreezes)
+  }
+  if (payload.streakRestore === null || typeof payload.streakRestore === 'object') {
+    setStreakRestoreForSync(payload.streakRestore ?? null)
+  }
+  localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Math.trunc(updatedAt)))
+  notifyLocalDataChanged()
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('mentell:score-changed'))
+  }
+}
+
 export function spendScore(spent: number): SpendScoreResult {
   if (!isPointsEnabled()) {
     return { ok: false, spent: 0, nextTotal: getInt(SCORE_KEY, 0), reason: 'invalid' }

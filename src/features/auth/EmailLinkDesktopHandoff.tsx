@@ -4,11 +4,12 @@ import { isSignInWithEmailLink } from 'firebase/auth'
 import {
   buildHrefForEmailLinkCheck,
   buildMentellEmailDeepLink,
+  buildSettingsPathWithLinkParams,
   currentPageHasFirebaseEmailLinkParams,
+  isOfflineEmailLinkHandoff,
 } from '../../shared/firebase/emailLinkHandoff'
 import { getFirebaseAuth } from '../../shared/firebase/firebaseApp'
 import { isFirebaseEnabled } from '../../shared/features/featureFlags'
-import { publicUrl } from '../../shared/publicUrl'
 import { isTauri } from '../../shared/platform/runtime'
 
 /**
@@ -32,7 +33,8 @@ export function EmailLinkDesktopHandoff() {
 
     return {
       deepLink: buildMentellEmailDeepLink(href),
-      settingsPath: publicUrl('settings'),
+      settingsPath: buildSettingsPathWithLinkParams(),
+      offlineHandoff: isOfflineEmailLinkHandoff(),
     }
   }, [location.pathname, location.search, location.hash])
 
@@ -44,28 +46,34 @@ export function EmailLinkDesktopHandoff() {
       role="status"
       aria-live="polite"
     >
-      <h2 className="font-paper text-lg">Finish sign-in in Mentell</h2>
+      <h2 className="font-paper text-lg">
+        {handoff.offlineHandoff ? 'Finish sign-in in your browser' : 'Finish sign-in in Mentell'}
+      </h2>
       <p className="ink-muted mt-1 text-sm">
-        You opened this link in a browser. To complete sign-in in the Mentell desktop app, tap the
-        button below.
+        {handoff.offlineHandoff
+          ? 'Complete sign-in here to link cloud backup. Your offline copy uses separate storage, but your account will stay signed in on the web.'
+          : 'You opened this link in a browser. To complete sign-in in the Mentell desktop app, tap the button below.'}
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        <a
-          href={handoff.deepLink}
-          className="focus-ring inline-flex items-center justify-center rounded-2xl border border-[var(--paper-ink)] bg-[var(--paper-ink)] px-4 py-2.5 text-center text-sm font-semibold text-[var(--paper-bg)]"
-        >
-          Open Mentell desktop app
-        </a>
+        {!handoff.offlineHandoff ? (
+          <a
+            href={handoff.deepLink}
+            className="focus-ring inline-flex items-center justify-center rounded-2xl border border-[var(--paper-ink)] bg-[var(--paper-ink)] px-4 py-2.5 text-center text-sm font-semibold text-[var(--paper-bg)]"
+          >
+            Open Mentell desktop app
+          </a>
+        ) : null}
         <Link
           to={handoff.settingsPath}
           className="focus-ring inline-flex items-center justify-center rounded-2xl border border-[var(--paper-border)] px-4 py-2.5 text-center text-sm font-semibold"
         >
-          Continue in browser instead
+          {handoff.offlineHandoff ? 'Continue to sign-in' : 'Continue in browser instead'}
         </Link>
       </div>
       <p className="ink-muted mt-2 text-xs">
-        Desktop app not installed? Use “Continue in browser instead”, then enter your email on
-        Settings → Account.
+        {handoff.offlineHandoff
+          ? 'You may need to confirm the email address where you received the link.'
+          : 'Desktop app not installed? Use “Continue in browser instead”, then enter your email on Settings → Account.'}
       </p>
     </section>
   )

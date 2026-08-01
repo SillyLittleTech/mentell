@@ -36,6 +36,19 @@ export function buildHrefForEmailLinkCheck(): string {
   return window.location.href
 }
 
+/** Build settings route path preserving Firebase email-link query params (React Router path). */
+export function buildSettingsPathWithLinkParams(): string {
+  const params = getMergedUrlParams()
+  if (!params.has('oobCode')) return '/settings'
+  return `/settings?${params.toString()}`
+}
+
+/** True when the email link was started from an offline ZIP / file:// build. */
+export function isOfflineEmailLinkHandoff(): boolean {
+  if (typeof window === 'undefined') return false
+  return getMergedUrlParams().get('offline') === '1'
+}
+
 /** Build a mentell:// deep link that carries the Firebase email sign-in URL. */
 export function buildMentellEmailDeepLink(pageUrl: string): string {
   const deepLink = new URL('mentell://auth/email')
