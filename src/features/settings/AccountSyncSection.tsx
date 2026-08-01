@@ -1,18 +1,21 @@
-import { format } from 'date-fns'
-import { useState } from 'react'
-import { isDebugMode } from '../../shared/debug/debugFlags'
-import { isFirebaseEnabled, isFirebaseSyncEnabled } from '../../shared/features/featureFlags'
-import { useAuthOptional } from '../../shared/firebase/AuthProvider'
-import { AccountSignInPanel } from './AccountSignInPanel'
+import { format } from "date-fns";
+import { useState } from "react";
+import { isDebugMode } from "../../shared/debug/debugFlags";
+import {
+  isFirebaseEnabled,
+  isFirebaseSyncEnabled,
+} from "../../shared/features/featureFlags";
+import { useAuthOptional } from "../../shared/firebase/AuthProvider";
+import { AccountSignInPanel } from "./AccountSignInPanel";
 
 export function AccountSyncSection() {
-  if (isDebugMode()) return null
-  if (!isFirebaseEnabled()) return null
+  const auth = useAuthOptional();
+  const [syncBusy, setSyncBusy] = useState(false);
 
-  const auth = useAuthOptional()
-  const [syncBusy, setSyncBusy] = useState(false)
-  if (!auth) return null
-  const syncUi = isFirebaseSyncEnabled()
+  if (isDebugMode()) return null;
+  if (!isFirebaseEnabled()) return null;
+  if (!auth) return null;
+  const syncUi = isFirebaseSyncEnabled();
 
   return (
     <section className="paper rounded-3xl p-6">
@@ -26,11 +29,16 @@ export function AccountSyncSection() {
       ) : auth.user ? (
         <div className="mt-4 space-y-4">
           <div className="rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm">
-            Signed in as <span className="font-medium">{auth.user.email ?? auth.user.uid}</span>
+            Signed in as{" "}
+            <span className="font-medium">
+              {auth.user.email ?? auth.user.uid}
+            </span>
             {syncUi && auth.syncEnabled ? (
               <div className="ink-muted mt-1 text-xs">Cloud sync is on.</div>
             ) : syncUi ? (
-              <div className="ink-muted mt-1 text-xs">Cloud sync is off (see Features).</div>
+              <div className="ink-muted mt-1 text-xs">
+                Cloud sync is off (see Features).
+              </div>
             ) : null}
           </div>
 
@@ -42,11 +50,11 @@ export function AccountSyncSection() {
                   className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold disabled:opacity-60"
                   disabled={syncBusy}
                   onClick={() => {
-                    setSyncBusy(true)
-                    void auth.syncNow().finally(() => setSyncBusy(false))
+                    setSyncBusy(true);
+                    void auth.syncNow().finally(() => setSyncBusy(false));
                   }}
                 >
-                  {syncBusy ? 'Syncing…' : 'Sync now'}
+                  {syncBusy ? "Syncing…" : "Sync now"}
                 </button>
                 <button
                   type="button"
@@ -60,11 +68,11 @@ export function AccountSyncSection() {
 
               {auth.lastSyncedAt ? (
                 <div className="ink-muted text-xs">
-                  Last synced {format(auth.lastSyncedAt, 'PPp')}
+                  Last synced {format(auth.lastSyncedAt, "PPp")}
                 </div>
               ) : null}
               {auth.syncError ? (
-                <div className="text-sm" style={{ color: 'var(--danger)' }}>
+                <div className="text-sm" style={{ color: "var(--danger)" }}>
                   {auth.syncError}
                 </div>
               ) : null}
@@ -81,19 +89,23 @@ export function AccountSyncSection() {
         </div>
       ) : (
         <div className="space-y-3">
-          <p className="text-sm">Sign in to sync entries, notes, score, and settings across devices.</p>
+          <p className="text-sm">
+            Sign in to sync entries, notes, score, and settings across devices.
+          </p>
           {syncUi ? (
             <AccountSignInPanel />
           ) : (
-            <div className="ink-muted text-xs">Sync flag is off in this build.</div>
+            <div className="ink-muted text-xs">
+              Sync flag is off in this build.
+            </div>
           )}
           {auth.syncError ? (
-            <div className="text-sm" style={{ color: 'var(--danger)' }}>
+            <div className="text-sm" style={{ color: "var(--danger)" }}>
               {auth.syncError}
             </div>
           ) : null}
         </div>
       )}
     </section>
-  )
+  );
 }

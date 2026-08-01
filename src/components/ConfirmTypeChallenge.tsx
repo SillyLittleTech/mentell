@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState } from "react";
 
 type Props = {
-  open: boolean
-  title: string
-  description: string
-  challengeWord: string
-  confirmLabel: string
-  busy?: boolean
-  onCancel: () => void
-  onConfirm: () => void
-}
+  open: boolean;
+  title: string;
+  description: string;
+  challengeWord: string;
+  confirmLabel: string;
+  busy?: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+};
 
 export function ConfirmTypeChallenge({
   open,
@@ -21,15 +21,16 @@ export function ConfirmTypeChallenge({
   onCancel,
   onConfirm,
 }: Props) {
-  const [typed, setTyped] = useState('')
+  const [typed, setTyped] = useState("");
 
   useEffect(() => {
-    if (open) setTyped('')
-  }, [open, challengeWord])
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (open) setTyped("");
+  }, [open, challengeWord]);
 
-  if (!open) return null
+  if (!open) return null;
 
-  const match = typed === challengeWord
+  const match = typed === challengeWord;
 
   return (
     <div
@@ -44,7 +45,8 @@ export function ConfirmTypeChallenge({
         </div>
         <p className="ink-muted mt-2 text-sm">{description}</p>
         <p className="mt-4 text-sm">
-          Type <span className="font-mono font-semibold">{challengeWord}</span> to confirm.
+          Type <span className="font-mono font-semibold">{challengeWord}</span>{" "}
+          to confirm.
         </p>
         <input
           type="text"
@@ -66,14 +68,14 @@ export function ConfirmTypeChallenge({
           <button
             type="button"
             className="focus-ring rounded-2xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            style={{ background: 'var(--danger)' }}
+            style={{ background: "var(--danger)" }}
             disabled={!match || busy}
             onClick={onConfirm}
           >
-            {busy ? 'Working…' : confirmLabel}
+            {busy ? "Working…" : confirmLabel}
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }
