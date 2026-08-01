@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Opening Mentell…</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+        background: #505153;
+        color: #f6f3ed;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        text-align: center;
+      }
+      main {
+        max-width: 24rem;
+      }
+      a {
+        color: #f6f3ed;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Opening Mentell…</h1>
+      <p id="status">If the desktop app does not open automatically, use the link below.</p>
+      <p><a id="manual" href="#">Open Mentell</a></p>
+    </main>
+    <script>
+      ;(function () {
+        var href = window.location.href
+        var deepLink =
+          'mentell://auth/email?link=' + encodeURIComponent(href)
+        var manual = document.getElementById('manual')
+        if (manual) manual.href = deepLink
+        window.location.replace(deepLink)
+        window.setTimeout(function () {
+          var status = document.getElementById('status')
+          if (status) {
+            status.textContent =
+              'Tap “Open Mentell” to finish sign-in in the desktop app.'
+          }
+        }, 1500)
+      })()
+    </script>
+  </body>
+</html>

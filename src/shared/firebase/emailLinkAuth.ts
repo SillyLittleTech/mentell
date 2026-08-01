@@ -1,14 +1,10 @@
 import type { ActionCodeSettings } from 'firebase/auth'
-import { publicUrl } from '../publicUrl'
+import { getEmailLinkContinueUrl } from './nativeAuthConfig'
 import { getFirebaseWebConfig } from './config'
 
-export const EMAIL_FOR_SIGN_IN_KEY = 'emailForSignIn'
+export { getEmailLinkContinueUrl } from './nativeAuthConfig'
 
-export function getEmailLinkContinueUrl(): string {
-  const path = publicUrl('settings').replace(/^\//, '')
-  const base = `${window.location.origin}/${path}`.replace(/([^:]\/)\/+/g, '$1')
-  return base
-}
+export const EMAIL_FOR_SIGN_IN_KEY = 'emailForSignIn'
 
 export function getEmailLinkActionCodeSettings(): ActionCodeSettings {
   const settings: ActionCodeSettings = {

@@ -4,8 +4,10 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { viteSingleFile } from 'vite-plugin-singlefile'
 
 const skipPwa = process.env.SKIP_PWA === '1'
+const offlineZip = process.env.VITE_OFFLINE_ZIP === '1'
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 /** Production: https://projects.sillylittle.tech/mentell/ — set via VITE_BASE in CI */
 const base = process.env.VITE_BASE ?? '/'
@@ -31,6 +33,7 @@ export default defineConfig(({ command, mode }) => {
     : undefined,
   plugins: [
     react(),
+    ...(offlineZip ? [viteSingleFile()] : []),
     ...(skipPwa
       ? []
       : [

@@ -36,12 +36,21 @@ The **Mentell app** is hosted on **GitHub Pages** (`https://projects.sillylittle
 
 The app implements [Firebase email link auth](https://firebase.google.com/docs/auth/web/email-link-auth):
 
-- **Continue URL:** `https://<your-app-origin>/<base>/settings` (e.g. `https://projects.sillylittle.tech/mentell/settings`). The origin must be in **Authorized domains**.
-- **`handleCodeInApp: true`** — completion runs in the Mentell SPA.
+- **Continue URL (web/PWA):** `https://<your-app-origin>/<base>/settings` (e.g. `https://projects.sillylittle.tech/mentell/settings`). The origin must be in **Authorized domains**.
+- **Continue URL (Tauri desktop):** `https://projects.sillylittle.tech/mentell/auth/deeplink.html` by default (`VITE_NATIVE_AUTH_CONTINUE_URL` to override). Firebase cannot redirect to `tauri://` origins; the relay page forwards the link into the app via the `mentell://` deep link scheme.
+- **`handleCodeInApp: true`** — completion runs in the Mentell SPA (web) or desktop app (via deep link).
 - Email is stored in `localStorage` as `emailForSignIn` when the link is sent (not in the redirect URL).
 - If the user opens the link on another device, they confirm their email in-app before `signInWithEmailLink` runs.
 
 If links fail with a custom auth domain, the app sets `linkDomain` on `ActionCodeSettings` from `VITE_FIREBASE_AUTH_DOMAIN` when it is not the default `*.firebaseapp.com` host.
+
+## Tauri desktop sign-in
+
+The desktop app uses `tauri://localhost`, which Firebase Auth does not support for popups, redirects, or email-link completion. Configure:
+
+1. **Google:** set GitHub variable `VITE_GOOGLE_OAUTH_CLIENT_ID` to the **Web client ID** from Google Cloud → Credentials. Add `http://127.0.0.1` to that client's **Authorized redirect URIs** (the desktop app uses a temporary localhost listener via `tauri-plugin-oauth`).
+2. **Email link:** ensure `projects.sillylittle.tech` (or your `VITE_NATIVE_AUTH_CONTINUE_URL` host) is in Firebase **Authorized domains**. Deploy `public/auth/deeplink.html` with the web app (GitHub Pages includes it automatically).
+3. **Deep link scheme:** `mentell://` is registered in `src-tauri/tauri.conf.json` for email-link handoff.
 
 ## Firebase Hosting landing page
 
