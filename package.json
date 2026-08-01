@@ -1,7 +1,7 @@
 {
   "name": "mentell",
   "private": true,
-  "version": "1.17.15",
+  "version": "1.17.16",
   "type": "module",
   "scripts": {
     "sync:assets": "node scripts/sync-assets.mjs",
@@ -10,6 +10,7 @@
     "dev": "vite",
     "dev:debug": "vite --mode debug",
     "build": "npm run sync:assets && tsc -b && vite build",
+    "build:offline-zip": "npm run sync:assets && tsc -b && VITE_OFFLINE_ZIP=1 VITE_BASE=./ SKIP_PWA=1 vite build",
     "build:check": "npm run sync:assets && tsc -b && SKIP_PWA=1 vite build",
     "build:debug": "tsc -b && vite build --mode debug",
     "lint": "eslint .",
