@@ -38,6 +38,8 @@ interface ImportMetaEnv {
   readonly VITE_DEBUG_FIREBASE_CUSTOM_TOKEN?: string
   readonly VITE_VAPID_PUBLIC_KEY?: string
   readonly VITE_PUSH_API_BASE?: string
+  /** When "1", build for offline ZIP (hash routing, relative assets, no PWA). */
+  readonly VITE_OFFLINE_ZIP?: string
 }
 
 interface ImportMeta {

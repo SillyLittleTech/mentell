@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { loadAiProfile } from '../compilation/aiProfile'
 import { useAppSettings } from '../../shared/settings/useAppSettings'
-import { notificationPermission, maybeRequestNotificationPermission } from '../../pwa/notifications'
+import { notificationPermission, maybeRequestNotificationPermission, notificationPermissionDeniedHint } from '../../pwa/notifications'
 import { isWebPushConfigured, syncPushSubscription, unsubscribePush } from '../../pwa/pushSubscribe'
 import { browserTimezone } from '../../shared/settings/appSettings'
 import { AccountSyncSection } from './AccountSyncSection'
@@ -130,8 +130,7 @@ export function SettingsPage() {
           </label>
           {!settings.disableNotifications && perm === 'denied' ? (
             <p className="text-sm" style={{ color: 'var(--danger)' }}>
-              Notifications are blocked in your browser. Enable them in your browser&apos;s site settings for
-              this page.
+              {notificationPermissionDeniedHint()}
             </p>
           ) : null}
           <div className="grid gap-3 rounded-2xl border border-[var(--paper-border)] p-4">

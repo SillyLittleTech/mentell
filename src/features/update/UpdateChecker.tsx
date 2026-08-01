@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { isNativeShell } from '../../shared/platform/runtime'
 import { useToast } from '../../shared/ui/useToast'
 import { appVersion } from '../../shared/version'
 
@@ -6,15 +7,6 @@ import { appVersion } from '../../shared/version'
 const VERSION_URL = 'https://raw.githubusercontent.com/SillyLittleTech/mentell/main/VERSION'
 const RELEASES_URL = 'https://github.com/SillyLittleTech/mentell/releases/latest'
 const CHECK_INTERVAL = 60 * 60 * 1000 // 1 hour in ms
-
-function isLocalVersion() {
-  // Check for Tauri or Capacitor indicating a local (desktop/mobile) app
-  // @ts-expect-error - __TAURI__ is injected globally by Tauri
-  const hasTauri = !!window.__TAURI__
-  // @ts-expect-error - Capacitor is injected globally by Capacitor
-  const hasCapacitor = !!window.Capacitor
-  return hasTauri || hasCapacitor
-}
 
 function parseVersion(versionString: string) {
   // Returns [major, minor, patch] or null
@@ -51,7 +43,7 @@ export function UpdateChecker() {
           // If we already showed a toast, don't show another one.
           if (toastIdRef.current) return
 
-          const local = isLocalVersion()
+          const local = isNativeShell()
 
           const messageNode = local ? (
             <span>

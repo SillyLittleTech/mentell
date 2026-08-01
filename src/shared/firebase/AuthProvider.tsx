@@ -1,5 +1,6 @@
 import {
   createUserWithEmailAndPassword,
+  getRedirectResult,
   GoogleAuthProvider,
   isSignInWithEmailLink,
   onAuthStateChanged,
@@ -8,15 +9,14 @@ import {
   signInWithEmailAndPassword,
   signInWithEmailLink,
   signInWithPopup,
+  signInWithRedirect,
   signOut as firebaseSignOut,
   type Auth,
   type User,
 } from "firebase/auth";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  isFirebaseEnabled,
-  isFirebaseSyncEnabled,
-} from "../features/featureFlags";
+import { isFirebaseEnabled, isFirebaseSyncEnabled } from "../features/featureFlags";
+import { isTauri } from "../platform/runtime";
 import { formatAuthError } from "./authErrors";
 import { getOAuthRedirectUri } from "./config";
 import {
@@ -105,6 +105,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    if (isTauri()) {
+      void getRedirectResult(auth)
+        .then(async (result) => {
+          if (!result?.user) return;
+          applyAuthUser(auth);
+          await finishSignIn(auth, postSignInCallbacks);
+        })
+        .catch((e) => {
+          setSyncError(formatAuthError(e));
+        });
+    }
+
     applyAuthUser(auth);
 
     return onAuthStateChanged(auth, async (next) => {
@@ -126,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSyncEnabledState(false);
       }
     });
-  }, [enabled, applyAuthUser, completeEmailLinkSignIn]);
+  }, [enabled, applyAuthUser, completeEmailLinkSignIn, postSignInCallbacks]);
 
   const signInWithGoogle = useCallback(async () => {
     const auth = getFirebaseAuth();
@@ -134,6 +146,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const redirectUri = getOAuthRedirectUri();
     const provider = new GoogleAuthProvider();
     try {
+      if (isTauri()) {
+        await signInWithRedirect(auth, provider);
+        return;
+      }
       await signInWithPopup(auth, provider);
       applyAuthUser(auth);
       await finishSignIn(auth, postSignInCallbacks);
