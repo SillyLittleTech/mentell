@@ -62,11 +62,11 @@ No hosted relay page is required for desktop email sign-in. The web handoff bann
 
 **Loading without network:** A downloaded offline ZIP (`index.html` opened from disk) does **not** need the internet to open — assets are bundled in the file. The hosted PWA needs one online visit to install/cache; after that it can work offline too.
 
-**Cloud sign-in:** A double-clicked offline `index.html` cannot use Google popups (`file://` is not an authorized origin). Email magic links use the same hosted continue URL as desktop. Google sign-in opens the hosted web app instead.
+**Cloud sign-in:** When link codes are enabled (`VITE_ENABLE_AUTH_HANDOFF=1`), offline copies use **Settings → Link accounts** (`/auth/link`) — sign in on the hosted app, generate a code, redeem it on the offline copy (brief network required). Without handoff, Google popups do not work on `file://`; email magic links use the hosted continue URL.
 
 ### Link codes (offline ↔ web)
 
-When `VITE_ENABLE_AUTH_HANDOFF=1` and the Worker has `FIREBASE_SERVICE_ACCOUNT_JSON` (with **Firebase Authentication Admin**), signed-in users on the **hosted** app can create a short-lived one-time code under **Settings → Account**. Offline ZIP, Tauri, or another browser can redeem it once (needs a brief network connection) via `signInWithCustomToken`.
+When `VITE_ENABLE_AUTH_HANDOFF=1` and the Worker has `FIREBASE_SERVICE_ACCOUNT_JSON` (with **Firebase Authentication Admin**), signed-in users on the **hosted** app open **Settings → Link accounts** (hidden route `/auth/link`) to generate a short-lived one-time code. Offline ZIP, Tauri, or another browser redeem it once (needs a brief network connection) via `signInWithCustomToken`.
 
 Client env (repo root):
 

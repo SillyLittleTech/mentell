@@ -1,4 +1,4 @@
-import { corsJson, corsJsonHandoff, corsResponseHandoff } from './cors'
+import { corsJsonHandoff, corsResponseHandoff } from './cors'
 import type { Env } from './env'
 import { verifyFirebaseIdToken } from './firebaseAuth'
 import { createFirebaseCustomToken, parseFirebaseServiceAccount } from './firebaseCustomToken'

@@ -24,7 +24,7 @@ export function isStaleLocalScore(ctx: ScoreSyncContext): boolean {
   if (remoteEntryCount <= 0) return false
 
   const scoreGap = remoteTotal - localTotal
-  const localShare = remoteEntryCount > 0 ? localEntryCount / remoteEntryCount : 1
+  const localShare = localEntryCount / remoteEntryCount
 
   return (
     scoreGap >= 500 &&

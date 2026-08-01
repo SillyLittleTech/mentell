@@ -4,13 +4,13 @@ import { isDebugMode } from "../../shared/debug/debugFlags";
 import {
   isFirebaseEnabled,
   isFirebaseSyncEnabled,
+  isAuthHandoffEnabled,
 } from "../../shared/features/featureFlags";
 import { useAuthOptional } from "../../shared/firebase/AuthProvider";
+import { AuthHandoffLinkButton } from "../auth/AuthHandoffLinkButton";
+import { isAuthHandoffConfigured } from "../../shared/firebase/authHandoffClient";
+import { isFileProtocol, isOfflineZipBuild } from "../../shared/platform/runtime";
 import { AccountSignInPanel } from "./AccountSignInPanel";
-import {
-  AuthHandoffCreateSection,
-  AuthHandoffRedeemSection,
-} from "./AuthHandoffSection";
 import { ScoreRecoverySection } from "./ScoreRecoverySection";
 
 export function AccountSyncSection() {
@@ -21,6 +21,12 @@ export function AccountSyncSection() {
   if (!isFirebaseEnabled()) return null;
   if (!auth) return null;
   const syncUi = isFirebaseSyncEnabled();
+  const handoffUi =
+    isAuthHandoffEnabled() &&
+    isAuthHandoffConfigured() &&
+    syncUi;
+  const offlineHandoffOnly =
+    handoffUi && (isOfflineZipBuild() || isFileProtocol());
 
   return (
     <section className="paper rounded-3xl p-6">
@@ -82,7 +88,7 @@ export function AccountSyncSection() {
                 </div>
               ) : null}
               <ScoreRecoverySection />
-              <AuthHandoffCreateSection />
+              {handoffUi ? <AuthHandoffLinkButton /> : null}
             </>
           ) : (
             <button
@@ -97,16 +103,17 @@ export function AccountSyncSection() {
       ) : (
         <div className="space-y-3">
           <p className="text-sm">
-            Sign in to sync entries, notes, score, and settings across devices.
+            {offlineHandoffOnly
+              ? "Link this copy to your cloud account with a one-time code from the hosted Mentell app."
+              : "Sign in to sync entries, notes, score, and settings across devices."}
           </p>
-          <AuthHandoffRedeemSection />
-          {syncUi ? (
-            <AccountSignInPanel />
-          ) : (
+          {handoffUi ? <AuthHandoffLinkButton /> : null}
+          {syncUi && !offlineHandoffOnly ? <AccountSignInPanel /> : null}
+          {!syncUi ? (
             <div className="ink-muted text-xs">
               Sync flag is off in this build.
             </div>
-          )}
+          ) : null}
           {auth.syncError ? (
             <div className="text-sm" style={{ color: "var(--danger)" }}>
               {auth.syncError}
