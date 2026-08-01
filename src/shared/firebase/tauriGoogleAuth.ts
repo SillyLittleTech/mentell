@@ -3,6 +3,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { createGoogleAuthUri } from './firebaseCreateAuthUri'
 import {
   localhostContinueUrl,
+  AUTH_CALLBACK_PORT,
   startAuthCallbackServer,
   waitForAuthCallback,
 } from './tauriAuthCallback'
@@ -22,11 +23,11 @@ function parseOAuthRedirect(url: string): { accessToken: string | null; idToken:
  * Requires `127.0.0.1` and `localhost` in Firebase Authorized domains.
  */
 export async function signInWithGoogleViaTauri(auth: Auth): Promise<void> {
-  const port = await startAuthCallbackServer()
-  const continueUri = localhostContinueUrl(port)
+  await startAuthCallbackServer()
+  const continueUri = localhostContinueUrl(AUTH_CALLBACK_PORT)
   const authUri = await createGoogleAuthUri(continueUri)
 
-  const callbackPromise = waitForAuthCallback(port)
+  const callbackPromise = waitForAuthCallback(AUTH_CALLBACK_PORT)
   await openUrl(authUri)
 
   const callbackUrl = await callbackPromise
