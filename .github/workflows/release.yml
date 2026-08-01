@@ -8,6 +8,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   build-web-and-android:
     runs-on: ubuntu-latest
