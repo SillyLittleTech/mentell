@@ -40,9 +40,7 @@ interface ImportMetaEnv {
   readonly VITE_PUSH_API_BASE?: string
   /** When "1", build is embedded in the Tauri desktop shell. */
   readonly VITE_TAURI?: string
-  /** Google OAuth Web client ID for Tauri desktop sign-in. */
-  readonly VITE_GOOGLE_OAUTH_CLIENT_ID?: string
-  /** HTTPS relay page for native email-link sign-in (defaults to GitHub Pages deeplink.html). */
+  /** Optional override for native/offline email-link continue URL. */
   readonly VITE_NATIVE_AUTH_CONTINUE_URL?: string
   /** When "1", build for offline ZIP (hash routing, relative assets, no PWA). */
   readonly VITE_OFFLINE_ZIP?: string

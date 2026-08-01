@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { GoogleGIcon } from '../../components/GoogleGIcon'
 import { useAuthOptional } from '../../shared/firebase/AuthProvider'
+import {
+  getHostedSignInUrl,
+  getOfflineAuthNotice,
+  supportsInAppGoogleSignIn,
+} from '../../shared/firebase/authCapabilities'
+import { isTauri } from '../../shared/platform/runtime'
 import { AccountEmailSignInForm } from './AccountEmailSignInForm'
 
 /** Full sign-in block for Settings (Google + inline email). */
@@ -11,6 +17,8 @@ export function AccountSignInPanel() {
   if (!auth) return null
 
   const authApi = auth
+  const offlineNotice = getOfflineAuthNotice()
+  const inAppGoogle = supportsInAppGoogleSignIn()
   const btnPrimary =
     'focus-ring rounded-2xl border border-[var(--paper-border)] bg-[rgba(42,155,88,0.12)] px-4 py-2 text-sm font-semibold disabled:opacity-60'
 
@@ -40,14 +48,32 @@ export function AccountSignInPanel() {
 
   return (
     <div className="mt-4 space-y-4">
+      {offlineNotice ? (
+        <p className="ink-muted rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-xs">
+          {offlineNotice}
+        </p>
+      ) : null}
+      {isTauri() ? (
+        <p className="ink-muted rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-xs">
+          Email sign-in links open in your browser, then return to the Mentell desktop app. Google
+          sign-in also uses your browser.
+        </p>
+      ) : null}
+
       <button
         type="button"
         className={`${btnPrimary} inline-flex w-full items-center justify-center gap-2`}
         disabled={busy}
-        onClick={() => void signInGoogle()}
+        onClick={() => {
+          if (inAppGoogle) {
+            void signInGoogle()
+            return
+          }
+          window.open(getHostedSignInUrl(), '_blank', 'noopener,noreferrer')
+        }}
       >
         <GoogleGIcon />
-        Continue with Google
+        {inAppGoogle ? 'Continue with Google' : 'Open web app to sign in with Google'}
       </button>
 
       <div className="flex items-center gap-3">

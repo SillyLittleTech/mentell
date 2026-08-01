@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuthOptional } from '../../shared/firebase/AuthProvider'
+import { isTauri } from '../../shared/platform/runtime'
 
 export function AccountEmailSignInForm({ onSuccess }: { onSuccess?: () => void }) {
   const auth = useAuthOptional()
@@ -136,7 +137,10 @@ export function AccountEmailSignInForm({ onSuccess }: { onSuccess?: () => void }
         </button>
         {auth.emailLinkSent ? (
           <p className="ink-muted text-xs">
-            Check your email for a sign-in link. You can close this until you open the link.
+            Check your email for a sign-in link.
+            {isTauri()
+              ? ' Open the link in your browser, then return to the Mentell desktop app to finish.'
+              : ' You can close this until you open the link.'}
           </p>
         ) : null}
       </div>

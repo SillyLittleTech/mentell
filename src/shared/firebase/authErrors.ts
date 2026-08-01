@@ -23,6 +23,10 @@ export function formatAuthError(e: unknown): string {
       return 'Enter a valid email address.'
     case 'auth/network-request-failed':
       return 'Network error. Check your connection and try again.'
+    case 'auth/unauthorized-domain':
+      return 'This app origin is not authorized for sign-in. Use the hosted Mentell app, desktop app, or add this origin in Firebase Authorized domains.'
+    case 'auth/unauthorized-continue-uri':
+      return 'This sign-in link destination is not authorized. For desktop/offline builds, ensure projects.sillylittle.tech is in Firebase Authorized domains.'
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
       return 'Sign-in was cancelled.'

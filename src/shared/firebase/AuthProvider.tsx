@@ -16,6 +16,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isFirebaseEnabled, isFirebaseSyncEnabled } from "../features/featureFlags";
 import { isTauri } from "../platform/runtime";
 import { formatAuthError } from "./authErrors";
+import {
+  getHostedSignInUrl,
+  supportsInAppGoogleSignIn,
+} from "./authCapabilities";
 import { getOAuthRedirectUri } from "./config";
 import {
   clearEmailLinkUrl,
@@ -159,6 +163,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!auth) throw new Error("Cloud sign-in is not configured");
     const redirectUri = getOAuthRedirectUri();
     try {
+      if (!supportsInAppGoogleSignIn()) {
+        window.open(getHostedSignInUrl(), "_blank", "noopener,noreferrer");
+        throw new Error(
+          "Google sign-in opened in your browser. Use the hosted Mentell app or desktop app to connect cloud backup.",
+        );
+      }
       if (isTauri()) {
         await signInWithGoogleViaTauri(auth);
         applyAuthUser(auth);

@@ -48,9 +48,13 @@ If links fail with a custom auth domain, the app sets `linkDomain` on `ActionCod
 
 The desktop app uses `tauri://localhost`, which Firebase Auth does not support for popups, redirects, or email-link completion. Configure:
 
-1. **Google:** set GitHub variable `VITE_GOOGLE_OAUTH_CLIENT_ID` to the **Web client ID** from Google Cloud → Credentials. Add `http://127.0.0.1` to that client's **Authorized redirect URIs** (the desktop app uses a temporary localhost listener via `tauri-plugin-oauth`).
-2. **Email link:** ensure `projects.sillylittle.tech` (or your `VITE_NATIVE_AUTH_CONTINUE_URL` host) is in Firebase **Authorized domains**. Deploy `public/auth/deeplink.html` with the web app (GitHub Pages includes it automatically).
+1. **Google:** add `127.0.0.1` and `localhost` to Firebase **Authorized domains**. Desktop Google sign-in uses Firebase `createAuthUri` + your system browser + a temporary localhost listener (no separate OAuth client ID env var).
+2. **Email link:** ensure `projects.sillylittle.tech` (or your `VITE_NATIVE_AUTH_CONTINUE_URL` host) is in Firebase **Authorized domains**. Email links use `https://projects.sillylittle.tech/mentell/auth/deeplink.html`, which forwards into the app via the `mentell://` deep link scheme. Deploy `public/auth/deeplink.html` with the web app (GitHub Pages includes it automatically).
 3. **Deep link scheme:** `mentell://` is registered in `src-tauri/tauri.conf.json` for email-link handoff.
+
+## Offline ZIP / file:// builds
+
+Cloud sign-in from a double-clicked offline `index.html` cannot use Google popups (`file://` is not an authorized origin). Email magic links use the same hosted continue URL as desktop. Google sign-in opens the hosted web app instead.
 
 ## Firebase Hosting landing page
 
