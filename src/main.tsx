@@ -7,7 +7,7 @@ import { SettingsProvider } from './shared/settings/SettingsProvider.tsx'
 import { AuthProvider } from './shared/firebase/AuthProvider.tsx'
 import { DebugAuthProvider } from './shared/firebase/DebugAuthProvider.tsx'
 import { isDebugMode } from './shared/debug/debugFlags.ts'
-import { isFirebaseEnabled } from './shared/features/featureFlags.ts'
+import { isFirebaseEnabled, shouldUseDebugAuthProvider } from './shared/features/featureFlags.ts'
 import { isOfflineZipBuild } from './shared/platform/runtime.ts'
 import { isWebPushConfigured } from './pwa/pushSubscribe.ts'
 import { registerDebugPushServiceWorker } from './pwa/registerDebugPushSw.ts'
@@ -30,7 +30,7 @@ createRoot(document.getElementById('root')!).render(
       <ToastProvider>
         <SettingsProvider>
           {isFirebaseEnabled() ? (
-            isDebugMode() ? (
+            shouldUseDebugAuthProvider() ? (
               <DebugAuthProvider>
                 <AppRouter />
               </DebugAuthProvider>

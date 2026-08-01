@@ -9,6 +9,9 @@ import { SettingsAccountFeatures } from './SettingsAccountFeatures'
 import { SettingsDebugCloudSection } from './SettingsDebugCloudSection'
 import { DeskCharacterLayout } from '../character/DeskCharacterLayout'
 import { pushLocalChangesNow } from '../../shared/sync/syncService'
+import { isAuthDebugPanelEnabled } from '../../shared/features/featureFlags'
+import { isDebugMode } from '../../shared/debug/debugFlags'
+import { DebugAuthSection } from '../debug/DebugAuthSection'
 
 const WEEKDAY_OPTIONS = [
   { value: 0, label: 'Sunday' },
@@ -182,6 +185,11 @@ export function SettingsPage() {
       </section>
 
       <SettingsDebugCloudSection />
+      {isAuthDebugPanelEnabled() && !isDebugMode() ? (
+        <section className="paper rounded-3xl p-6">
+          <DebugAuthSection />
+        </section>
+      ) : null}
       <AccountSyncSection />
 
       <section className="paper rounded-3xl p-6">

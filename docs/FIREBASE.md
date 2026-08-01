@@ -102,8 +102,11 @@ Add `localhost` under **Authorized domains** if you test email links locally.
 
 ## Debug builds (`npm run dev:debug`)
 
-- Uses [`DebugAuthProvider`](../src/shared/firebase/DebugAuthProvider.tsx): **no** Google/email sign-in UI; Firebase Auth uses **in-memory** persistence so sessions do not leak into `npm run dev`.
-- Debug Firebase is **local-only/off** unless `VITE_DEBUG_FIREBASE_CUSTOM_TOKEN` is set. This avoids creating fresh anonymous Firebase Auth users during debug sessions.
+- Uses [`DebugAuthProvider`](../src/shared/firebase/DebugAuthProvider.tsx) by default: **no** Google/email sign-in; Firebase Auth uses **in-memory** persistence so sessions do not leak into `npm run dev`.
+- Firebase is **off** in debug mode unless you opt in:
+  - **`VITE_DEBUG_FIREBASE_CUSTOM_TOKEN`** — automated `DEBUGGER` uid via Admin SDK custom token (local-only cloud sync testing).
+  - **`VITE_DEBUG_ENABLE_AUTH=1`** or **`npm run dev:debug:auth`** — real Google/email sign-in with isolated debug storage.
+- **Tauri desktop** (`npm run tauri:dev`) always uses real [`AuthProvider`](../src/shared/firebase/AuthProvider.tsx) when `VITE_ENABLE_FIREBASE=1`; do **not** use `dev:debug` for desktop auth testing.
 - **Fixed uid `DEBUGGER`:** mint a custom token with the Firebase Admin SDK (`uid: 'DEBUGGER'`), add to `.env.local` as `VITE_DEBUG_FIREBASE_CUSTOM_TOKEN=…`. On load, debug mode signs out any existing user and uses `signInWithCustomToken`. Firestore rules already allow `request.auth.uid == userId`.
 
 ## GitHub Pages CI
