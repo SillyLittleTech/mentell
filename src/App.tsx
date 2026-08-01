@@ -40,6 +40,7 @@ import { LeftDeskMascot } from './features/character/LeftDeskMascot'
 import { MobileHeaderMascot } from './features/character/MobileHeaderMascot'
 import { CharacterTabIconSync } from './features/character/CharacterTabIconSync'
 import { AuthDeeplinkPage } from './features/auth/AuthDeeplinkPage'
+import { EmailLinkDesktopHandoff } from './features/auth/EmailLinkDesktopHandoff'
 import { isFirebaseSyncEnabled, isShareLinksEnabled } from './shared/features/featureFlags'
 import { useAuthOptional } from './shared/firebase/AuthProvider'
 import { ShopCosmeticEffects } from './features/shop/shopCosmetics'
@@ -170,6 +171,7 @@ function App() {
 
   return (
     <div className={shareRouteActive ? 'min-h-[100svh]' : 'desk px-4 py-6'}>
+      <EmailLinkDesktopHandoff />
       {!shareRouteActive ? <CharacterTabIconSync /> : null}
       {!shareRouteActive ? <ShopCosmeticEffects /> : null}
       {!shareRouteActive ? (

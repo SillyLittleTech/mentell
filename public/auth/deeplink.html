@@ -4,106 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Open Mentell</title>
-    <style>
-      body {
-        margin: 0;
-        min-height: 100vh;
-        font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-        background: #505153;
-        color: #f6f3ed;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 1.5rem;
-        text-align: center;
-      }
-      main {
-        max-width: 26rem;
-      }
-      h1 {
-        font-size: 1.5rem;
-        margin: 0 0 0.75rem;
-      }
-      p {
-        line-height: 1.5;
-        margin: 0 0 1rem;
-        color: rgba(246, 243, 237, 0.85);
-      }
-      .cta {
-        display: inline-block;
-        margin-top: 0.5rem;
-        padding: 0.85rem 1.25rem;
-        border-radius: 1rem;
-        background: #f6f3ed;
-        color: #2a2a2a;
-        font-weight: 700;
-        text-decoration: none;
-      }
-      .cta:hover {
-        background: #fff;
-      }
-      .hint {
-        font-size: 0.85rem;
-        margin-top: 1.25rem;
-        color: rgba(246, 243, 237, 0.7);
-      }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>Finish sign-in in Mentell</h1>
-      <p id="status">
-        Your email link is ready. Open the Mentell desktop app to complete sign-in.
-      </p>
-      <a id="open-app" class="cta" href="#">Open Mentell app</a>
-      <p class="hint">
-        If nothing happens, make sure Mentell is installed, then tap the button above. You can also
-        finish sign-in in the
-        <a href="https://mentell.sillylittle.tech/settings" style="color: inherit">web app</a>.
-      </p>
-    </main>
+    <meta http-equiv="refresh" content="0; url=/mentell/auth/deeplink" />
     <script>
       ;(function () {
-        var href = window.location.href
-        var deepLink = new URL('mentell://auth/email')
-        deepLink.searchParams.set('link', href)
-
-        var params = new URLSearchParams(window.location.search)
-        ;['oobCode', 'mode', 'apiKey', 'lang', 'continueUrl', 'tenantId'].forEach(function (key) {
-          var value = params.get(key)
-          if (value) deepLink.searchParams.set(key, value)
-        })
-
-        var target = deepLink.toString()
-        var openApp = document.getElementById('open-app')
-        if (openApp) {
-          openApp.href = target
-          openApp.addEventListener('click', function (event) {
-            event.preventDefault()
-            window.location.href = target
-          })
-        }
-
-        function tryOpen() {
-          var anchor = document.createElement('a')
-          anchor.href = target
-          anchor.style.display = 'none'
-          document.body.appendChild(anchor)
-          anchor.click()
-          anchor.remove()
-        }
-
-        tryOpen()
-        window.setTimeout(tryOpen, 400)
-
-        window.setTimeout(function () {
-          var status = document.getElementById('status')
-          if (status) {
-            status.textContent =
-              'Tap “Open Mentell app” to finish sign-in in the desktop app.'
-          }
-        }, 1200)
+        var target = '/mentell/auth/deeplink' + window.location.search + window.location.hash
+        window.location.replace(target)
       })()
     </script>
+  </head>
+  <body>
+    <p>
+      <a href="/mentell/auth/deeplink">Continue to Mentell sign-in</a>
+    </p>
   </body>
 </html>

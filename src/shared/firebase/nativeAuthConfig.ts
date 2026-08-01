@@ -1,9 +1,9 @@
 import { publicUrl } from '../publicUrl'
 import { shouldUseHostedEmailContinueUrl } from './authCapabilities'
 
-/** HTTPS relay page that forwards Firebase email-link params into the desktop app. */
+/** Hosted SPA route that shows the desktop-app handoff UI for email links. */
 const DEFAULT_HOSTED_EMAIL_LINK_CONTINUE_URL =
-  'https://projects.sillylittle.tech/mentell/auth/deeplink.html'
+  'https://projects.sillylittle.tech/mentell/auth/deeplink'
 
 /** Optional override for hosted/native email-link continue URL. */
 export function getHostedEmailLinkContinueUrl(): string {
