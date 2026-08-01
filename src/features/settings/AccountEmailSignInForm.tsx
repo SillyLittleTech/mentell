@@ -139,7 +139,7 @@ export function AccountEmailSignInForm({ onSuccess }: { onSuccess?: () => void }
           <p className="ink-muted text-xs">
             Check your email for a sign-in link.
             {isTauri()
-              ? ' Open the link in your browser, then return to the Mentell desktop app to finish.'
+              ? ' Open the link in your browser — Mentell will finish sign-in automatically.'
               : ' You can close this until you open the link.'}
           </p>
         ) : null}

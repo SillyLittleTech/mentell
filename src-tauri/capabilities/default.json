@@ -10,7 +10,7 @@
     "notification:default",
     "deep-link:default",
     "opener:allow-default-urls",
-    "oauth:allow-start",
-    "oauth:allow-cancel"
+    "allow-start-auth-callback",
+    "allow-stop-auth-callback"
   ]
 }

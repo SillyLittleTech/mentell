@@ -1,7 +1,7 @@
 {
   "name": "mentell",
   "private": true,
-  "version": "1.17.19",
+  "version": "1.17.20",
   "type": "module",
   "scripts": {
     "sync:assets": "node scripts/sync-assets.mjs",
@@ -20,7 +20,6 @@
   },
   "dependencies": {
     "@capacitor/core": "^6.1.2",
-    "@fabianlars/tauri-plugin-oauth": "^2.1.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-deep-link": "^2.4.9",
     "@tauri-apps/plugin-opener": "^2.5.4",

@@ -35,6 +35,10 @@ import { loadSyncState, saveSyncState } from "../sync/syncState";
 import { AuthContext, type AuthContextValue } from "./authContext";
 import { signInWithGoogleViaTauri } from "./tauriGoogleAuth";
 import { installTauriDeepLinkAuth } from "./tauriDeepLinkAuth";
+import {
+  buildTauriEmailLinkSettings,
+  waitForTauriEmailLinkCompletion,
+} from "./tauriEmailLink";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const enabled = isFirebaseEnabled();
@@ -244,6 +248,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!auth) throw new Error("Cloud sign-in is not configured");
     try {
       storeEmailForSignIn(email);
+      if (isTauri()) {
+        const { settings, waitForLink } = await buildTauriEmailLinkSettings();
+        const linkPromise = waitForLink();
+        await sendSignInLinkToEmail(auth, email.trim(), settings);
+        setEmailLinkSent(true);
+        setSyncError(null);
+        void waitForTauriEmailLinkCompletion(auth, linkPromise)
+          .then((link) => completeEmailLinkSignIn(email, link))
+          .catch((e) => {
+            setSyncError(formatAuthError(e));
+          });
+        return;
+      }
       await sendSignInLinkToEmail(
         auth,
         email.trim(),
@@ -256,7 +273,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSyncError(hint);
       throw new Error(hint, { cause: e });
     }
-  }, []);
+  }, [completeEmailLinkSignIn]);
 
   const confirmEmailLinkSignIn = useCallback(
     async (email: string) => {

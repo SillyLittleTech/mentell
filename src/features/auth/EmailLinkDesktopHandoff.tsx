@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { isSignInWithEmailLink } from 'firebase/auth'
 import {
+  buildHrefForEmailLinkCheck,
   buildMentellEmailDeepLink,
   currentPageHasFirebaseEmailLinkParams,
 } from '../../shared/firebase/emailLinkHandoff'
@@ -21,9 +22,10 @@ export function EmailLinkDesktopHandoff() {
     if (!isFirebaseEnabled() || isTauri()) return null
 
     const auth = getFirebaseAuth()
-    const href = window.location.href
+    const href = buildHrefForEmailLinkCheck()
     const isEmailLink =
-      (auth && isSignInWithEmailLink(auth, href)) || currentPageHasFirebaseEmailLinkParams()
+      currentPageHasFirebaseEmailLinkParams() ||
+      (auth ? isSignInWithEmailLink(auth, href) : false)
 
     if (!isEmailLink) return null
     if (location.pathname === '/auth/deeplink') return null

@@ -1,4 +1,4 @@
-import { isFileProtocol, isNativeShell, isOfflineZipBuild, isTauri } from '../platform/runtime'
+import { isCapacitor, isFileProtocol, isOfflineZipBuild, isTauri } from '../platform/runtime'
 
 const HOSTED_SIGN_IN_URL = 'https://mentell.sillylittle.tech/settings'
 
@@ -25,5 +25,7 @@ export function getHostedSignInUrl(): string {
 }
 
 export function shouldUseHostedEmailContinueUrl(): boolean {
-  return isNativeShell() || isOfflineZipBuild() || isFileProtocol()
+  if (isTauri()) return false
+  if (isCapacitor()) return true
+  return isOfflineZipBuild() || isFileProtocol()
 }

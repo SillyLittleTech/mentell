@@ -46,11 +46,14 @@ If links fail with a custom auth domain, the app sets `linkDomain` on `ActionCod
 
 ## Tauri desktop sign-in
 
-The desktop app uses `tauri://localhost`, which Firebase Auth does not support for popups, redirects, or email-link completion. Configure:
+The desktop app uses `tauri://localhost`, which Firebase Auth does not support for popups or redirects inside the WebView. Desktop sign-in uses a **built-in localhost callback server** (no third-party OAuth plugin):
 
-1. **Google:** add `127.0.0.1` and `localhost` to Firebase **Authorized domains**. Desktop Google sign-in uses Firebase `createAuthUri` + your system browser + a temporary localhost listener (no separate OAuth client ID env var).
-2. **Email link:** ensure `projects.sillylittle.tech` (or your `VITE_NATIVE_AUTH_CONTINUE_URL` host) is in Firebase **Authorized domains**. Email links use `https://projects.sillylittle.tech/mentell/auth/deeplink` (SPA handoff route). Static `public/auth/deeplink.html` redirects there for older links.
-3. **Deep link scheme:** `mentell://` is registered in `src-tauri/tauri.conf.json` for email-link handoff.
+1. **Google:** Firebase `createAuthUri` opens your system browser; when you approve, the browser hits `http://127.0.0.1:<port>` and Mentell completes sign-in automatically.
+2. **Email link:** The magic link's continue URL is also `http://127.0.0.1:<port>`. Click the link in your mail app, approve in the browser, and Mentell completes sign-in while the app stays open.
+3. **Firebase Authorized domains:** add `127.0.0.1` and `localhost` (required for both flows).
+4. **Tauri capabilities:** `src-tauri/tauri.conf.json` must list `"capabilities": ["default"]` so custom auth commands are allowed.
+
+No hosted relay page is required for desktop email sign-in. The web handoff banner (`/auth/deeplink`) is only for users who open links in a browser intentionally (e.g. offline ZIP → web).
 
 ## Offline ZIP / file:// builds
 

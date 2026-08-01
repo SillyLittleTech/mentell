@@ -7,32 +7,54 @@ const FIREBASE_LINK_PARAMS = [
   'tenantId',
 ] as const
 
+/** Merge query params from search and hash (HashRouter / email links). */
+export function getMergedUrlParams(): URLSearchParams {
+  const merged = new URLSearchParams(window.location.search)
+  const hash = window.location.hash
+  if (hash.includes('?')) {
+    const hashQuery = hash.slice(hash.indexOf('?') + 1)
+    const hashParams = new URLSearchParams(hashQuery)
+    hashParams.forEach((value, key) => merged.set(key, value))
+  }
+  return merged
+}
+
+export function currentPageHasFirebaseEmailLinkParams(): boolean {
+  if (typeof window === 'undefined') return false
+  const params = getMergedUrlParams()
+  return params.has('oobCode') && params.get('mode') === 'signIn'
+}
+
+export function buildHrefForEmailLinkCheck(): string {
+  if (typeof window === 'undefined') return ''
+  if (currentPageHasFirebaseEmailLinkParams() && !window.location.search.includes('oobCode=')) {
+    const params = getMergedUrlParams()
+    const url = new URL(window.location.href.split('#')[0] || window.location.origin)
+    params.forEach((value, key) => url.searchParams.set(key, value))
+    return url.toString()
+  }
+  return window.location.href
+}
+
 /** Build a mentell:// deep link that carries the Firebase email sign-in URL. */
 export function buildMentellEmailDeepLink(pageUrl: string): string {
   const deepLink = new URL('mentell://auth/email')
   deepLink.searchParams.set('link', pageUrl)
 
   try {
-    const params = new URL(pageUrl).searchParams
+    const url = new URL(pageUrl)
+    const params = new URLSearchParams(url.search)
     for (const key of FIREBASE_LINK_PARAMS) {
       const value = params.get(key)
       if (value) deepLink.searchParams.set(key, value)
     }
   } catch {
-    // ignore malformed URLs
+    const params = getMergedUrlParams()
+    for (const key of FIREBASE_LINK_PARAMS) {
+      const value = params.get(key)
+      if (value) deepLink.searchParams.set(key, value)
+    }
   }
 
   return deepLink.toString()
-}
-
-export function currentPageHasFirebaseEmailLinkParams(): boolean {
-  if (typeof window === 'undefined') return false
-  const href = window.location.href
-  const search = window.location.search
-  const hash = window.location.hash
-  return (
-    href.includes('oobCode=') &&
-    href.includes('mode=') &&
-    (search.includes('mode=signIn') || hash.includes('mode=signIn'))
-  )
 }

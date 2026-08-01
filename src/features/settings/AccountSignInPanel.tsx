@@ -55,8 +55,8 @@ export function AccountSignInPanel() {
       ) : null}
       {isTauri() ? (
         <p className="ink-muted rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-xs">
-          Email sign-in links open in your browser, then return to the Mentell desktop app. Google
-          sign-in also uses your browser.
+          Email and Google sign-in open your browser briefly. Keep Mentell open — sign-in
+          completes automatically when you approve in the browser.
         </p>
       ) : null}
 
