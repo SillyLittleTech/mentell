@@ -37,6 +37,5 @@ worker/.wrangler
 .agents
 .cursor
 *.py
-android/
 ios/
 src-tauri/target/

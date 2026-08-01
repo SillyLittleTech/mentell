@@ -44,12 +44,13 @@ jobs:
         with:
           distribution: 'zulu'
           java-version: '17'
+          cache: 'gradle'
 
       - name: Build Android APK
         run: |
-          npx cap add android
+          npx cap sync android
           cd android
-          ./gradlew assembleDebug
+          ./gradlew --no-daemon assembleDebug --stacktrace --info
           cd ..
 
       - name: Upload Android APK
@@ -146,11 +147,12 @@ jobs:
       - name: Determine Release Info
         id: release_info
         run: |
+          TIMESTAMP=$(date +'%Y%m%d%H%M%S')
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            echo "TAG_NAME=v${{ steps.version.outputs.VERSION }}-pr${{ github.event.number }}-run${{ github.run_id }}" >> $GITHUB_OUTPUT
+            echo "TAG_NAME=v${{ steps.version.outputs.VERSION }}-pr${{ github.event.number }}-run${{ github.run_id }}-${TIMESTAMP}" >> $GITHUB_OUTPUT
             echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
           else
-            echo "TAG_NAME=v${{ steps.version.outputs.VERSION }}" >> $GITHUB_OUTPUT
+            echo "TAG_NAME=v${{ steps.version.outputs.VERSION }}-${TIMESTAMP}" >> $GITHUB_OUTPUT
             echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
           fi
 
