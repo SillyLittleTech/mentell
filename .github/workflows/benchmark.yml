@@ -1,25 +1,68 @@
 name: Benchmark Share Payload
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - src/**
+      - worker/**
+      - package.json
+      - package-lock.json
+      - android/**
+      - src-tauri/**
+      - vite.config.ts
+      - tailwind.config.ts
+      - tsconfig.*
+      - .github/workflows/benchmark.yml
+  pull_request:
 permissions:
   contents: read
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'src/**'
+              - 'worker/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'android/**'
+              - 'src-tauri/**'
+              - 'vite.config.ts'
+              - 'tailwind.config.ts'
+              - 'tsconfig.*'
+              - '.github/workflows/benchmark.yml'
   benchmark:
     runs-on: ubuntu-latest
     steps:
+      - name: Pass (No App Changes)
+        if: needs.check-changes.outputs.app != 'true'
+        run: echo "No application code was changed. Skipping build but marking as passed to satisfy PR requirements."
       - uses: actions/checkout@v3
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
           cache: 'npm'
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Install dependencies
         run: npm ci
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Install benchmark deps
         run: npm install --no-save fake-indexeddb tsx
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Run benchmark
         run: npx tsx scripts/benchmark/benchmarkSharePayload.ts
+        if: needs.check-changes.outputs.app == 'true'
+    needs: check-changes
