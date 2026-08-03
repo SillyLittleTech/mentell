@@ -28,7 +28,7 @@ jobs:
     outputs:
       app: ${{ steps.filter.outputs.app }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -50,7 +50,7 @@ jobs:
       - name: Pass (No App Changes)
         if: needs.check-changes.outputs.app != 'true'
         run: echo "No application code was changed. Skipping build but marking as passed to satisfy PR requirements."
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
         if: needs.check-changes.outputs.app == 'true'
@@ -165,7 +165,7 @@ jobs:
       - name: Pass (No App Changes)
         if: needs.check-changes.outputs.app != 'true'
         run: echo "No application code was changed. Skipping build but marking as passed to satisfy PR requirements."
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
         if: needs.check-changes.outputs.app == 'true'
@@ -287,7 +287,7 @@ jobs:
       - name: Pass (No App Changes)
         if: needs.check-changes.outputs.app != 'true'
         run: echo "No application code was changed. Skipping build but marking as passed to satisfy PR requirements."
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Get Version
