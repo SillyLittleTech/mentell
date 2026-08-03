@@ -1,0 +1,64 @@
+name: Sync Versions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'VERSION'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'VERSION'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run sync script
+        run: node scripts/sync-versions.mjs
+
+      - name: Check for changes
+        id: git-check
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit changes (PR)
+        if: steps.git-check.outputs.changes == 'true' && github.event_name == 'pull_request'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: sync versions to match VERSION file"
+          commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          branch: ${{ github.head_ref }}
+
+      - name: Create Pull Request (main)
+        if: steps.git-check.outputs.changes == 'true' && github.event_name == 'push'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          title: "chore: sync versions to match VERSION file"
+          commit-message: "chore: sync versions to match VERSION file"
+          branch: "chore/sync-versions"
+          body: "This PR automatically synchronizes version files (package.json, package-lock.json, tauri.conf.json, build.gradle) to match the latest update in the `VERSION` file."
+          author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          committer: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"

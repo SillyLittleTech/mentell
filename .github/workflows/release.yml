@@ -4,6 +4,17 @@ on:
   push:
     branches:
       - main
+    paths:
+      - src/**
+      - worker/**
+      - package.json
+      - package-lock.json
+      - android/**
+      - src-tauri/**
+      - vite.config.ts
+      - tailwind.config.ts
+      - tsconfig.*
+      - .github/workflows/release.yml
   pull_request:
     branches:
       - main
@@ -12,21 +23,48 @@ permissions:
   contents: read
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'src/**'
+              - 'worker/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'android/**'
+              - 'src-tauri/**'
+              - 'vite.config.ts'
+              - 'tailwind.config.ts'
+              - 'tsconfig.*'
+              - '.github/workflows/release.yml'
   build-web-and-android:
     runs-on: ubuntu-latest
     steps:
+      - name: Pass (No App Changes)
+        if: needs.check-changes.outputs.app != 'true'
+        run: echo "No application code was changed. Skipping build but marking as passed to satisfy PR requirements."
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Install dependencies
         run: npm ci
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Build Web App
         env:
@@ -52,6 +90,7 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
         run: npm run build
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Setup Java
         uses: actions/setup-java@v3
@@ -59,6 +98,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
           cache: 'gradle'
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Build Android APK
         run: |
@@ -66,12 +106,14 @@ jobs:
           cd android
           ./gradlew --no-daemon assembleDebug --stacktrace --info
           cd ..
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: mentell-android
           path: android/app/build/outputs/apk/debug/app-debug.apk
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Build Offline ZIP
         env:
@@ -94,6 +136,7 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
         run: npm run build:offline-zip
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Package Web ZIP
         run: |
@@ -102,41 +145,51 @@ jobs:
           cp -r dist/. mentell-offline/
           printf '%s\n' 'Open index.html in your browser for offline use (double-click or drag into a browser window).' 'Routes use hash URLs (e.g. index.html#/settings).' 'This build inlines assets so file:// works without a local server.' > mentell-offline/README.txt
           cd mentell-offline && zip -r ../mentell-web.zip .
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Upload Web Artifact
         uses: actions/upload-artifact@v4
         with:
           name: mentell-web
           path: mentell-web.zip
+        if: needs.check-changes.outputs.app == 'true'
+    needs: check-changes
 
   build-tauri:
     strategy:
       fail-fast: false
       matrix:
-        platform: [macos-latest, ubuntu-22.04, windows-latest]
+        platform: [ macos-latest, ubuntu-22.04, windows-latest ]
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: Pass (No App Changes)
+        if: needs.check-changes.outputs.app != 'true'
+        run: echo "No application code was changed. Skipping build but marking as passed to satisfy PR requirements."
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Install dependencies
         run: npm ci
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Install Linux dependencies
-        if: matrix.platform == 'ubuntu-22.04'
+        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'ubuntu-22.04')
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Build Web App
         env:
@@ -164,6 +217,7 @@ jobs:
           VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.VITE_FIREBASE_MESSAGING_SENDER_ID }}
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
         run: npm run build
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Build Tauri
         uses: tauri-apps/tauri-action@v0
@@ -194,9 +248,10 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
         with:
           releaseId: 'ignore' # Skip default release logic
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Upload Tauri Artifacts (macOS)
-        if: matrix.platform == 'macos-latest'
+        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'macos-latest')
         uses: actions/upload-artifact@v4
         with:
           name: mentell-macos
@@ -205,7 +260,7 @@ jobs:
             src-tauri/target/release/bundle/macos/*.app
 
       - name: Upload Tauri Artifacts (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'ubuntu-22.04')
         uses: actions/upload-artifact@v4
         with:
           name: mentell-linux
@@ -214,30 +269,37 @@ jobs:
             src-tauri/target/release/bundle/appimage/*.AppImage
 
       - name: Upload Tauri Artifacts (Windows)
-        if: matrix.platform == 'windows-latest'
+        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'windows-latest')
         uses: actions/upload-artifact@v4
         with:
           name: mentell-windows
           path: |
             src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*.exe
+    needs: check-changes
 
   create-release:
-    needs: [build-web-and-android, build-tauri]
+    needs: [ build-web-and-android, build-tauri, check-changes ]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - name: Pass (No App Changes)
+        if: needs.check-changes.outputs.app != 'true'
+        run: echo "No application code was changed. Skipping build but marking as passed to satisfy PR requirements."
       - uses: actions/checkout@v5
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Get Version
         id: version
         run: echo "VERSION=$(cat VERSION)" >> $GITHUB_OUTPUT
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Determine Release Info
         id: release_info
@@ -250,6 +312,7 @@ jobs:
             echo "TAG_NAME=v${{ steps.version.outputs.VERSION }}-${TIMESTAMP}" >> $GITHUB_OUTPUT
             echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
           fi
+        if: needs.check-changes.outputs.app == 'true'
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -265,3 +328,4 @@ jobs:
             ./artifacts/mentell-linux/**/*.deb
             ./artifacts/mentell-windows/**/*.msi
             ./artifacts/mentell-windows/**/*.exe
+        if: needs.check-changes.outputs.app == 'true'
