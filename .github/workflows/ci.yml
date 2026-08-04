@@ -1,0 +1,159 @@
+name: CI and E2E Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test
+
+      - name: Build the app
+        run: npm run build:check
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        run: npx playwright test
+        env:
+          CI: true
+
+      - name: Upload screenshots as artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: e2e-screenshots/
+          retention-days: 7
+
+      - name: Upload to e2e-assets branch for PR comments
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Configure Git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # We need to save the screenshots outside the repo directory temporarily
+          cp -r e2e-screenshots /tmp/e2e-screenshots
+
+          # Fetch and checkout the e2e-assets branch (or create if it doesn't exist)
+          if git ls-remote --exit-code --heads origin e2e-assets; then
+            git fetch origin e2e-assets:e2e-assets
+            git checkout e2e-assets
+          else
+            git checkout --orphan e2e-assets
+            git rm -rf .
+          fi
+
+          # Create a directory for this specific PR
+          PR_DIR="pr-${{ github.event.pull_request.number }}"
+          mkdir -p $PR_DIR
+
+          # Copy screenshots in
+          cp /tmp/e2e-screenshots/*.png $PR_DIR/
+
+          # Commit and push
+          git add $PR_DIR/
+          git commit -m "Update screenshots for PR ${{ github.event.pull_request.number }}" || echo "No changes to commit"
+          git push origin e2e-assets
+
+      - name: Comment PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.issue.number;
+            const repoOwner = context.repo.owner;
+            const repoName = context.repo.repo;
+            const branchName = 'e2e-assets';
+
+            // Construct raw URLs for the images
+            const baseUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${branchName}/pr-${prNumber}`;
+
+            const commentBody = `
+            ### 📸 E2E Visual Tests Complete!
+
+            The E2E suite has successfully run and captured the following states of the app:
+
+            <details>
+              <summary>Home - Light Mode</summary>
+              <img src="${baseUrl}/home-light.png" alt="Home Light Mode" />
+            </details>
+
+            <details>
+              <summary>Home - Dark Mode</summary>
+              <img src="${baseUrl}/home-dark.png" alt="Home Dark Mode" />
+            </details>
+
+            <details>
+              <summary>Settings - Light Mode</summary>
+              <img src="${baseUrl}/settings-light.png" alt="Settings Light Mode" />
+            </details>
+
+            <details>
+              <summary>Settings - Dark Mode</summary>
+              <img src="${baseUrl}/settings-dark.png" alt="Settings Dark Mode" />
+            </details>
+
+            <details>
+              <summary>Lab - Light Mode</summary>
+              <img src="${baseUrl}/lab-light.png" alt="Lab Light Mode" />
+            </details>
+
+            <details>
+              <summary>Lab - Dark Mode</summary>
+              <img src="${baseUrl}/lab-dark.png" alt="Lab Dark Mode" />
+            </details>
+            `;
+
+            // Get existing comments
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            // Find our previous comment (if any)
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' && comment.body.includes('E2E Visual Tests Complete!')
+            );
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+            }
