@@ -70,7 +70,7 @@ jobs:
           fi
 
           # Create a directory for this specific PR
-          PR_DIR="(ee)/pr-${{ github.event.pull_request.number }}"
+          PR_DIR="(ee)"
           mkdir -p "$PR_DIR"
 
           # Copy screenshots in
@@ -107,7 +107,7 @@ jobs:
             const testIcon = unitTestsPass ? "✅" : "❌";
 
             // Construct raw URLs for the images
-            const baseUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${branchName}/(ee)/pr-${prNumber}`;
+            const baseUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${branchName}/(ee)`;
 
             const groupSections = [
               {
