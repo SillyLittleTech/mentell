@@ -61,6 +61,7 @@ jobs:
           cp -r e2e-screenshots /tmp/e2e-screenshots
 
           # Checkout the current pull request branch
+          git fetch origin ${{ github.head_ref }}
           git checkout ${{ github.head_ref }}
 
           # Create the (ee) folder if it doesn't exist
