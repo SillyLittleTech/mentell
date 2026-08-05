@@ -120,13 +120,13 @@ jobs:
             </details>
 
             <details>
-              <summary>Lab - Light Mode</summary>
-              <img src="${baseUrl}/lab-light.png" alt="Lab Light Mode" />
+              <summary>Shop - Light Mode</summary>
+              <img src="${baseUrl}/shop-light.png" alt="Shop Light Mode" />
             </details>
 
             <details>
-              <summary>Lab - Dark Mode</summary>
-              <img src="${baseUrl}/lab-dark.png" alt="Lab Dark Mode" />
+              <summary>Shop - Dark Mode</summary>
+              <img src="${baseUrl}/shop-dark.png" alt="Shop Dark Mode" />
             </details>
             `;
 

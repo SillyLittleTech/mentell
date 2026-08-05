@@ -54,14 +54,13 @@ test.describe("App Screenshots", () => {
       fullPage: true,
     });
 
-    // 3. Shop/Lab/Character Pages if accessible via navigation links
-    // Look for settings, shop, or character icons
-    await page.goto("/lab");
+    // 3. Shop Page
+    await page.goto("/shop");
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(1000);
 
     await page.screenshot({
-      path: "e2e-screenshots/lab-light.png",
+      path: "e2e-screenshots/shop-light.png",
       fullPage: true,
     });
 
@@ -71,7 +70,7 @@ test.describe("App Screenshots", () => {
     await page.waitForTimeout(1000);
 
     await page.screenshot({
-      path: "e2e-screenshots/lab-dark.png",
+      path: "e2e-screenshots/shop-dark.png",
       fullPage: true,
     });
   });
