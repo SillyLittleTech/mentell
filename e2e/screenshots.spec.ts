@@ -23,6 +23,10 @@ test.describe("App Screenshots", () => {
       fullPage: true,
     });
 
+    // Force dark mode in local storage
+    await page.evaluate(() => {
+      localStorage.setItem("mentell.theme", "dark");
+    });
     // Toggle dark mode
     await page.emulateMedia({ colorScheme: "dark" });
     await page.reload();
@@ -44,6 +48,9 @@ test.describe("App Screenshots", () => {
       fullPage: true,
     });
 
+    await page.evaluate(() => {
+      localStorage.setItem("mentell.theme", "light");
+    });
     await page.emulateMedia({ colorScheme: "light" });
     await page.reload();
     await page.waitForLoadState("networkidle");
@@ -64,6 +71,9 @@ test.describe("App Screenshots", () => {
       fullPage: true,
     });
 
+    await page.evaluate(() => {
+      localStorage.setItem("mentell.theme", "dark");
+    });
     await page.emulateMedia({ colorScheme: "dark" });
     await page.reload();
     await page.waitForLoadState("networkidle");
