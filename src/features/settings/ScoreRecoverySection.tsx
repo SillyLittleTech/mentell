@@ -18,6 +18,7 @@ export function ScoreRecoverySection() {
 
   useEffect(() => {
     if (!auth?.user?.uid) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMeta(null)
       return
     }
