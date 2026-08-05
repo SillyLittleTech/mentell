@@ -48,7 +48,7 @@ jobs:
           path: e2e-screenshots/
           retention-days: 7
 
-      - name: Upload to gh-pages branch for PR comments
+      - name: Upload screenshots to (ee) folder
         if: github.event_name == 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -57,29 +57,16 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # We need to save the screenshots outside the repo directory temporarily
-          cp -r e2e-screenshots /tmp/e2e-screenshots
+          # Create the (ee) folder if it doesn't exist
+          mkdir -p "(ee)"
 
-          # Fetch and checkout the gh-pages branch (or create if it doesn't exist)
-          if git ls-remote --exit-code --heads origin gh-pages; then
-            git fetch origin gh-pages:gh-pages
-            git checkout gh-pages
-          else
-            git checkout --orphan gh-pages
-            git rm -rf .
-          fi
+          # Copy screenshots in, overwriting existing files
+          cp -r e2e-screenshots/*.png "(ee)/"
 
-          # Create a directory for this specific PR
-          PR_DIR="(ee)"
-          mkdir -p "$PR_DIR"
-
-          # Copy screenshots in
-          cp /tmp/e2e-screenshots/*.png "$PR_DIR/"
-
-          # Commit and push
-          git add "$PR_DIR/"
+          # Commit and push directly to the current PR branch
+          git add "(ee)/"
           git commit -m "Update screenshots for PR ${{ github.event.pull_request.number }}" || echo "No changes to commit"
-          git push origin gh-pages
+          git push origin HEAD:${{ github.head_ref }}
 
       - name: Comment PR
         uses: actions/github-script@v7
@@ -91,7 +78,7 @@ jobs:
             const prNumber = context.issue.number;
             const repoOwner = context.repo.owner;
             const repoName = context.repo.repo;
-            const branchName = 'gh-pages';
+            const branchName = context.payload.pull_request.head.ref;
 
             let unitTestsPass = false;
             let unitTestsSummary = "No test results found.";
