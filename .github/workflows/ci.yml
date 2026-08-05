@@ -48,44 +48,50 @@ jobs:
           path: e2e-screenshots/
           retention-days: 7
 
-      - name: Write to Job Summary
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
+      - name: Upload to gh-pages branch for PR comments
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Configure Git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-            let unitTestsPass = false;
-            let unitTestsSummary = "No test results found.";
-            try {
-              if (fs.existsSync('test-results.json')) {
-                const results = JSON.parse(fs.readFileSync('test-results.json', 'utf8'));
-                unitTestsPass = results.success;
-                unitTestsSummary = `${results.numPassedTests} passed, ${results.numFailedTests} failed.`;
-              }
-            } catch (e) {
-              console.error("Could not parse test results", e);
-            }
-            const testIcon = unitTestsPass ? "✅" : "❌";
+          # We need to save the screenshots outside the repo directory temporarily
+          cp -r e2e-screenshots /tmp/e2e-screenshots
 
-            const summaryBody = `
-            ### 📸 Automated Checks Complete!
+          # Fetch and checkout the gh-pages branch (or create if it doesn't exist)
+          if git ls-remote --exit-code --heads origin gh-pages; then
+            git fetch origin gh-pages:gh-pages
+            git checkout gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf .
+          fi
 
-            **Unit Tests:** ${testIcon} ${unitTestsSummary}
+          # Create a directory for this specific PR
+          PR_DIR="(ee)/pr-${{ github.event.pull_request.number }}"
+          mkdir -p "$PR_DIR"
 
-            The E2E suite has successfully run. To view the captured visual states of the app (Desktop and Mobile across Light and Dark mode), please download the \`e2e-screenshots\` artifact attached to this workflow run.
-            `;
+          # Copy screenshots in
+          cp /tmp/e2e-screenshots/*.png "$PR_DIR/"
 
-            await core.summary
-              .addRaw(summaryBody)
-              .write()
+          # Commit and push
+          git add "$PR_DIR/"
+          git commit -m "Update screenshots for PR ${{ github.event.pull_request.number }}" || echo "No changes to commit"
+          git push origin gh-pages
 
-      - name: Comment PR (Simplified)
+      - name: Comment PR
         uses: actions/github-script@v7
         if: github.event_name == 'pull_request'
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
+            const prNumber = context.issue.number;
+            const repoOwner = context.repo.owner;
+            const repoName = context.repo.repo;
+            const branchName = 'gh-pages';
 
             let unitTestsPass = false;
             let unitTestsSummary = "No test results found.";
@@ -100,12 +106,51 @@ jobs:
             }
             const testIcon = unitTestsPass ? "✅" : "❌";
 
+            // Construct raw URLs for the images
+            const baseUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${branchName}/(ee)/pr-${prNumber}`;
+
+            const groupSections = [
+              {
+                title: "Primary App",
+                pages: ["home", "projector", "notes"]
+              },
+              {
+                title: "Features",
+                pages: ["shop", "lab"]
+              },
+              {
+                title: "Meta",
+                pages: ["settings", "feedback", "privacy"]
+              }
+            ];
+
+            let detailsSections = "";
+            for (const group of groupSections) {
+              detailsSections += `<details>\n  <summary>${group.title}</summary>\n`;
+              for (const page of group.pages) {
+                detailsSections += `  <h4>${page}</h4>\n`;
+                detailsSections += `  <table>\n`;
+                detailsSections += `    <tr>\n`;
+                detailsSections += `      <td><img src="${baseUrl}/desktop-${page}-light.png" alt="Desktop ${page} Light" width="400"/></td>\n`;
+                detailsSections += `      <td><img src="${baseUrl}/desktop-${page}-dark.png" alt="Desktop ${page} Dark" width="400"/></td>\n`;
+                detailsSections += `    </tr>\n`;
+                detailsSections += `    <tr>\n`;
+                detailsSections += `      <td><img src="${baseUrl}/mobile-${page}-light.png" alt="Mobile ${page} Light" width="200"/></td>\n`;
+                detailsSections += `      <td><img src="${baseUrl}/mobile-${page}-dark.png" alt="Mobile ${page} Dark" width="200"/></td>\n`;
+                detailsSections += `    </tr>\n`;
+                detailsSections += `  </table>\n`;
+              }
+              detailsSections += `</details>\n`;
+            }
+
             const commentBody = `
             ### 📸 Automated Checks Complete!
 
             **Unit Tests:** ${testIcon} ${unitTestsSummary}
 
-            The E2E suite has successfully run. To view the captured visual states of the app, please download the \`e2e-screenshots\` artifact attached to this workflow run.
+            The E2E suite has successfully run and captured the following visual states of the app:
+
+            ${detailsSections}
             `;
 
             // Get existing comments
@@ -117,21 +162,25 @@ jobs:
 
             // Find our previous comment (if any). The bot is "github-actions[bot]".
             const botComment = comments.find(comment =>
-              comment.user.login === 'github-actions[bot]' && comment.body.includes('Automated Checks Complete!')
+              comment.user.login === 'github-actions[bot]' && comment.body.includes('E2E Visual Tests Complete!')
             );
+
+            // To bust GitHub's aggressive caching on raw image URLs, we append a query parameter
+            const timestamp = new Date().getTime();
+            const cacheBustedBody = commentBody.replace(/\.png"/g, `.png?t=${timestamp}"`);
 
             if (botComment) {
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 comment_id: botComment.id,
-                body: commentBody
+                body: cacheBustedBody
               });
             } else {
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
-                body: commentBody
+                body: cacheBustedBody
               });
             }
