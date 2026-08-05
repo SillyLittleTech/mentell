@@ -27,9 +27,13 @@ export default defineConfig({
   /* Configure projects for major browsers */
   projects: [
     {
-      name: 'chromium',
+      name: 'desktop',
       use: { ...devices['Desktop Chrome'] },
     },
+    {
+      name: 'mobile',
+      use: { ...devices['Pixel 5'] },
+    }
   ],
 
   /* Run your local dev server before starting the tests */

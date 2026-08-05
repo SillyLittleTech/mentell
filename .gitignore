@@ -44,3 +44,4 @@ src-tauri/target/
 playwright-report/
 test-results/
 e2e-screenshots/
+test-results.json

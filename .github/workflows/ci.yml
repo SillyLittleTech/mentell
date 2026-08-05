@@ -26,7 +26,8 @@ jobs:
         run: npm ci
 
       - name: Run unit tests
-        run: npm run test
+        run: npm run test -- --reporter=json --outputFile=test-results.json
+        continue-on-error: true # Let it continue so we can report failures
 
       - name: Build the app
         run: npm run build:check
@@ -86,48 +87,70 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const fs = require('fs');
             const prNumber = context.issue.number;
             const repoOwner = context.repo.owner;
             const repoName = context.repo.repo;
             const branchName = 'e2e-assets';
 
+            let unitTestsPass = false;
+            let unitTestsSummary = "No test results found.";
+            try {
+              if (fs.existsSync('test-results.json')) {
+                const results = JSON.parse(fs.readFileSync('test-results.json', 'utf8'));
+                unitTestsPass = results.success;
+                unitTestsSummary = `${results.numPassedTests} passed, ${results.numFailedTests} failed.`;
+              }
+            } catch (e) {
+              console.error("Could not parse test results", e);
+            }
+            const testIcon = unitTestsPass ? "✅" : "❌";
+
             // Construct raw URLs for the images
             const baseUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${branchName}/pr-${prNumber}`;
 
+            const groupSections = [
+              {
+                title: "Primary App",
+                pages: ["home", "projector", "notes"]
+              },
+              {
+                title: "Features",
+                pages: ["shop", "lab"]
+              },
+              {
+                title: "Meta",
+                pages: ["settings", "feedback", "privacy"]
+              }
+            ];
+
+            let detailsSections = "";
+            for (const group of groupSections) {
+              detailsSections += `<details>\n  <summary>${group.title}</summary>\n`;
+              for (const page of group.pages) {
+                detailsSections += `  <h4>${page}</h4>\n`;
+                detailsSections += `  <table>\n`;
+                detailsSections += `    <tr>\n`;
+                detailsSections += `      <td><img src="${baseUrl}/desktop-${page}-light.png" alt="Desktop ${page} Light" width="400"/></td>\n`;
+                detailsSections += `      <td><img src="${baseUrl}/desktop-${page}-dark.png" alt="Desktop ${page} Dark" width="400"/></td>\n`;
+                detailsSections += `    </tr>\n`;
+                detailsSections += `    <tr>\n`;
+                detailsSections += `      <td><img src="${baseUrl}/mobile-${page}-light.png" alt="Mobile ${page} Light" width="200"/></td>\n`;
+                detailsSections += `      <td><img src="${baseUrl}/mobile-${page}-dark.png" alt="Mobile ${page} Dark" width="200"/></td>\n`;
+                detailsSections += `    </tr>\n`;
+                detailsSections += `  </table>\n`;
+              }
+              detailsSections += `</details>\n`;
+            }
+
             const commentBody = `
-            ### 📸 E2E Visual Tests Complete!
+            ### 📸 Automated Checks Complete!
 
-            The E2E suite has successfully run and captured the following states of the app:
+            **Unit Tests:** ${testIcon} ${unitTestsSummary}
 
-            <details>
-              <summary>Home - Light Mode</summary>
-              <img src="${baseUrl}/home-light.png" alt="Home Light Mode" />
-            </details>
+            The E2E suite has successfully run and captured the following visual states of the app:
 
-            <details>
-              <summary>Home - Dark Mode</summary>
-              <img src="${baseUrl}/home-dark.png" alt="Home Dark Mode" />
-            </details>
-
-            <details>
-              <summary>Settings - Light Mode</summary>
-              <img src="${baseUrl}/settings-light.png" alt="Settings Light Mode" />
-            </details>
-
-            <details>
-              <summary>Settings - Dark Mode</summary>
-              <img src="${baseUrl}/settings-dark.png" alt="Settings Dark Mode" />
-            </details>
-
-            <details>
-              <summary>Shop - Light Mode</summary>
-              <img src="${baseUrl}/shop-light.png" alt="Shop Light Mode" />
-            </details>
-
-            <details>
-              <summary>Shop - Dark Mode</summary>
-              <img src="${baseUrl}/shop-dark.png" alt="Shop Dark Mode" />
-            </details>
+            ${detailsSections}
             `;
 
             // Get existing comments
