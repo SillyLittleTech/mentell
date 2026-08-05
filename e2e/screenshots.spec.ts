@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test } from "@playwright/test";
 
 test.describe("App Screenshots", () => {
   test("capture major app states", async ({ page }) => {
