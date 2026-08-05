@@ -42,6 +42,7 @@ function AuthLinkGeneratePanel() {
 
   if (!auth?.user) return null
 
+  // eslint-disable-next-line react-hooks/purity
   const expired = handoff ? Date.now() >= handoff.expiresAt : false
 
   return (

@@ -12,7 +12,7 @@ global.localStorage = {
   clear: () => {},
   length: 0,
   key: () => null,
-} as any;
+} as unknown as Storage;
 
 async function runBenchmark() {
   console.log("Setting up in-memory IndexedDB...");
