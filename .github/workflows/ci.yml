@@ -137,9 +137,9 @@ jobs:
               issue_number: context.issue.number,
             });
 
-            // Find our previous comment (if any)
+            // Find our previous comment (if any). The bot is "github-actions[bot]".
             const botComment = comments.find(comment =>
-              comment.user.type === 'Bot' && comment.body.includes('E2E Visual Tests Complete!')
+              comment.user.login === 'github-actions[bot]' && comment.body.includes('E2E Visual Tests Complete!')
             );
 
             // To bust GitHub's aggressive caching on raw image URLs, we append a query parameter
