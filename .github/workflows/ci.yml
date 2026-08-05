@@ -144,7 +144,7 @@ jobs:
 
             // To bust GitHub's aggressive caching on raw image URLs, we append a query parameter
             const timestamp = new Date().getTime();
-            const cacheBustedBody = commentBody.replace(/\.png"/g, \`.png?t=\${timestamp}"\`);
+            const cacheBustedBody = commentBody.replace(/\.png"/g, `.png?t=${timestamp}"`);
 
             if (botComment) {
               await github.rest.issues.updateComment({
