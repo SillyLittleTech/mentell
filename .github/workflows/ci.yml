@@ -57,11 +57,17 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
+          # We need to save the screenshots outside the repo directory temporarily
+          cp -r e2e-screenshots /tmp/e2e-screenshots
+
+          # Checkout the current pull request branch
+          git checkout ${{ github.head_ref }}
+
           # Create the (ee) folder if it doesn't exist
           mkdir -p "(ee)"
 
           # Copy screenshots in, overwriting existing files
-          cp -r e2e-screenshots/*.png "(ee)/"
+          cp /tmp/e2e-screenshots/*.png "(ee)/"
 
           # Commit and push directly to the current PR branch
           git add "(ee)/"

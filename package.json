@@ -24,7 +24,7 @@
     "worker:deploy": "cd worker && npm run deploy"
   },
   "dependencies": {
-    "@capacitor/core": "^6.1.2",
+    "@capacitor/core": "^8.5.0",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-deep-link": "^2.4.9",
     "@tauri-apps/plugin-opener": "^2.5.4",
@@ -39,14 +39,14 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@capacitor/android": "^6.1.2",
-    "@capacitor/cli": "^6.1.2",
-    "@capacitor/ios": "^6.1.2",
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4.3.0",
     "@tauri-apps/cli": "^2.0.0",
-    "@types/node": "^24.12.4",
+    "@types/node": "24.12.4",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
