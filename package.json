@@ -37,7 +37,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@capacitor/android": "^6.1.2",
+    "@capacitor/android": "^8.5.0",
     "@capacitor/cli": "^6.1.2",
     "@capacitor/ios": "^6.1.2",
     "@eslint/js": "^10.0.1",
