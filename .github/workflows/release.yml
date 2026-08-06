@@ -58,7 +58,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
         if: needs.check-changes.outputs.app == 'true'
 
@@ -93,7 +93,7 @@ jobs:
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Setup Java
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '21'
@@ -173,7 +173,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
         if: needs.check-changes.outputs.app == 'true'
 
