@@ -23,7 +23,6 @@ export function DebugAuthSection() {
   )
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSnap(getAuthDebugSnapshot())
   }, [])
 
@@ -33,8 +32,7 @@ export function DebugAuthSection() {
     try {
       const message = await fn()
       setResult(`${label}: ${message}`)
-
-    setSnap(getAuthDebugSnapshot())
+      setSnap(getAuthDebugSnapshot())
     } catch (error) {
       setResult(`${label}: ${error instanceof Error ? error.message : String(error)}`)
     } finally {

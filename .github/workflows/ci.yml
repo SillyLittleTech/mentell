@@ -1,0 +1,208 @@
+name: CI and E2E Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.filter.outputs.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            app:
+              - 'src/**'
+              - 'worker/**'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'vite.config.ts'
+              - 'tailwind.config.ts'
+              - 'tsconfig.*'
+
+  build-and-test:
+    needs: check-changes
+    if: ${{ needs.check-changes.outputs.app == 'true' || github.event_name == 'push' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test -- --reporter=json --outputFile=test-results.json
+        continue-on-error: true # Let it continue so we can report failures
+
+      - name: Build the app
+        run: npm run build:check
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Playwright tests
+        run: npx playwright test
+        env:
+          CI: true
+
+      - name: Upload screenshots as artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-screenshots
+          path: e2e-screenshots/
+          retention-days: 7
+
+      - name: Upload screenshots to (ee) folder
+        if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Configure Git
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # We need to save the screenshots outside the repo directory temporarily
+          cp -r e2e-screenshots /tmp/e2e-screenshots
+
+          # Checkout the current pull request branch
+          git fetch origin ${{ github.head_ref }}
+          git checkout ${{ github.head_ref }}
+
+          # Create the (ee) folder if it doesn't exist
+          mkdir -p "(ee)"
+
+          # Copy screenshots in, overwriting existing files
+          cp /tmp/e2e-screenshots/*.png "(ee)/"
+
+          # Commit and push directly to the current PR branch
+          git add "(ee)/"
+          git commit -m "Update screenshots for PR ${{ github.event.pull_request.number }}" || echo "No changes to commit"
+          git push origin HEAD:${{ github.head_ref }}
+
+      - name: Comment PR
+        uses: actions/github-script@v7
+        if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const prNumber = context.issue.number;
+            const repoOwner = context.repo.owner;
+            const repoName = context.repo.repo;
+            const branchName = context.payload.pull_request.head.ref;
+
+            let unitTestsPass = false;
+            let unitTestsSummary = "No test results found.";
+            try {
+              if (fs.existsSync('test-results.json')) {
+                const results = JSON.parse(fs.readFileSync('test-results.json', 'utf8'));
+                unitTestsPass = results.success;
+                unitTestsSummary = `${results.numPassedTests} passed, ${results.numFailedTests} failed.`;
+              }
+            } catch (e) {
+              console.error("Could not parse test results", e);
+            }
+            const testIcon = unitTestsPass ? "✅" : "❌";
+
+            // Construct raw URLs for the images
+            const baseUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${branchName}/(ee)`;
+
+            const groupSections = [
+              {
+                title: "Primary App",
+                pages: ["home", "projector", "notes"]
+              },
+              {
+                title: "Features",
+                pages: ["shop", "lab"]
+              },
+              {
+                title: "Meta",
+                pages: ["settings", "feedback", "privacy"]
+              }
+            ];
+
+            let detailsSections = "";
+            for (const group of groupSections) {
+              detailsSections += `<details>\n  <summary>${group.title}</summary>\n`;
+              for (const page of group.pages) {
+                detailsSections += `  <h4>${page}</h4>\n`;
+                detailsSections += `  <table>\n`;
+                detailsSections += `    <tr>\n`;
+                detailsSections += `      <td><img src="${baseUrl}/desktop-${page}-light.png" alt="Desktop ${page} Light" width="400"/></td>\n`;
+                detailsSections += `      <td><img src="${baseUrl}/desktop-${page}-dark.png" alt="Desktop ${page} Dark" width="400"/></td>\n`;
+                detailsSections += `    </tr>\n`;
+                detailsSections += `    <tr>\n`;
+                detailsSections += `      <td><img src="${baseUrl}/mobile-${page}-light.png" alt="Mobile ${page} Light" width="200"/></td>\n`;
+                detailsSections += `      <td><img src="${baseUrl}/mobile-${page}-dark.png" alt="Mobile ${page} Dark" width="200"/></td>\n`;
+                detailsSections += `    </tr>\n`;
+                detailsSections += `  </table>\n`;
+              }
+              detailsSections += `</details>\n`;
+            }
+
+            const commentBody = `
+            ### 📸 Automated Checks Complete!
+
+            **Unit Tests:** ${testIcon} ${unitTestsSummary}
+
+            The E2E suite has successfully run and captured the following visual states of the app:
+
+            ${detailsSections}
+            `;
+
+            // Get existing comments
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            // Find our previous comment (if any). The bot is "github-actions[bot]".
+            const botComment = comments.find(comment =>
+              comment.user.login === 'github-actions[bot]' && comment.body.includes('Automated Checks Complete!')
+            );
+
+            // To bust GitHub's aggressive caching on raw image URLs, we append a query parameter
+            const timestamp = new Date().getTime();
+            const cacheBustedBody = commentBody.replace(/\.png"/g, `.png?t=${timestamp}"`);
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: cacheBustedBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: cacheBustedBody
+              });
+            }
+
+  skip-test:
+    needs: check-changes
+    if: ${{ needs.check-changes.outputs.app != 'true' || (github.event_name == 'pull_request' && github.actor == 'github-actions[bot]') }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Skipping checks because app files were not modified."

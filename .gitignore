@@ -39,3 +39,9 @@ worker/.wrangler
 *.py
 ios/
 src-tauri/target/
+
+# Testing
+playwright-report/
+test-results/
+e2e-screenshots/
+test-results.json

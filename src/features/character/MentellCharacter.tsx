@@ -122,7 +122,6 @@ export function MentellCharacter({
     }
     namespaceSvgPaintServers(svg)
     applyCharacterAppearance(svg, appearance, accessories)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSvgGeneration((g) => g + 1)
   }, [appearance, appearanceKey, accessories, accessoryKey, asset])
 
