@@ -9,6 +9,8 @@ on:
 jobs:
   check-changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       app: ${{ steps.filter.outputs.app }}
     steps:
