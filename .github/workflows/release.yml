@@ -50,15 +50,15 @@ jobs:
       - name: Pass (No App Changes)
         if: needs.check-changes.outputs.app != 'true'
         run: echo "No application code was changed. Skipping build but marking as passed to satisfy PR requirements."
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: npm
         if: needs.check-changes.outputs.app == 'true'
 
@@ -165,15 +165,15 @@ jobs:
       - name: Pass (No App Changes)
         if: needs.check-changes.outputs.app != 'true'
         run: echo "No application code was changed. Skipping build but marking as passed to satisfy PR requirements."
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: npm
         if: needs.check-changes.outputs.app == 'true'
 
@@ -287,7 +287,7 @@ jobs:
       - name: Pass (No App Changes)
         if: needs.check-changes.outputs.app != 'true'
         run: echo "No application code was changed. Skipping build but marking as passed to satisfy PR requirements."
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Get Version
