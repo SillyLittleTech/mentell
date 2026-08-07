@@ -585,14 +585,16 @@ function HomePlaceholder({
             const submitDateKey = dateKeyForLocalDay(new Date())
             const award = await awardForSubmission(submitDateKey)
 
-            for (const draft of drafts) {
-              await upsertEntryFromDraft({
-                ...draft,
-                dateKey: draft.dateKey,
-                scoreDelta: award.totalDelta,
-                streakAtSubmit: award.nextStreak,
-              })
-            }
+            await Promise.all(
+              drafts.map((draft) =>
+                upsertEntryFromDraft({
+                  ...draft,
+                  dateKey: draft.dateKey,
+                  scoreDelta: award.totalDelta,
+                  streakAtSubmit: award.nextStreak,
+                })
+              )
+            )
 
             await runPackageDeliveryAndNotify()
             emitBackgroundActivity({ type: 'start', id: 'sync', message: 'Syncing to cloud...' })

@@ -159,7 +159,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ macos-latest, ubuntu-latest, windows-latest ]
+        platform: [ macos-latest, ubuntu-22.04, windows-latest ]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Pass (No App Changes)
@@ -182,7 +182,7 @@ jobs:
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Install Linux dependencies
-        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'ubuntu-latest')
+        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'ubuntu-22.04')
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
@@ -260,7 +260,7 @@ jobs:
             src-tauri/target/release/bundle/macos/*.app
 
       - name: Upload Tauri Artifacts (Linux)
-        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'ubuntu-latest')
+        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'ubuntu-22.04')
         uses: actions/upload-artifact@v4
         with:
           name: mentell-linux
