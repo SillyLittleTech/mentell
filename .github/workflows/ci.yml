@@ -9,6 +9,9 @@ on:
 jobs:
   check-changes:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       app: ${{ steps.filter.outputs.app }}
     steps:
@@ -73,6 +76,8 @@ jobs:
         if: github.event_name == 'pull_request' && github.actor != 'github-actions[bot]'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           # Configure Git
           git config --global user.name "github-actions[bot]"
@@ -82,8 +87,8 @@ jobs:
           cp -r e2e-screenshots /tmp/e2e-screenshots
 
           # Checkout the current pull request branch
-          git fetch origin ${{ github.head_ref }}
-          git checkout ${{ github.head_ref }}
+          git fetch origin $HEAD_REF
+          git checkout $HEAD_REF
 
           # Create the (ee) folder if it doesn't exist
           mkdir -p "(ee)"
@@ -93,8 +98,8 @@ jobs:
 
           # Commit and push directly to the current PR branch
           git add "(ee)/"
-          git commit -m "Update screenshots for PR ${{ github.event.pull_request.number }}" || echo "No changes to commit"
-          git push origin HEAD:${{ github.head_ref }}
+          git commit -m "Update screenshots for PR $PR_NUMBER" || echo "No changes to commit"
+          git push origin HEAD:$HEAD_REF
 
       - name: Comment PR
         uses: actions/github-script@v7
@@ -204,5 +209,7 @@ jobs:
     needs: check-changes
     if: ${{ needs.check-changes.outputs.app != 'true' || (github.event_name == 'pull_request' && github.actor == 'github-actions[bot]') }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - run: echo "Skipping checks because app files were not modified."
