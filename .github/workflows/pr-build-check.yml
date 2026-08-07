@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   check-changes:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     outputs:
       app: ${{ steps.filter.outputs.app }}
     steps:
@@ -31,7 +31,7 @@ jobs:
               - 'tsconfig.*'
               - '.github/workflows/pr-build-check.yml'
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Pass (No App Changes)
         if: needs.check-changes.outputs.app != 'true'

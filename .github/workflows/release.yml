@@ -24,7 +24,7 @@ permissions:
 
 jobs:
   check-changes:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     outputs:
       app: ${{ steps.filter.outputs.app }}
     steps:
@@ -45,7 +45,7 @@ jobs:
               - 'tsconfig.*'
               - '.github/workflows/release.yml'
   build-web-and-android:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
       - name: Pass (No App Changes)
         if: needs.check-changes.outputs.app != 'true'
@@ -159,7 +159,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ macos-13, ubuntu-22.04, windows-latest ]
+        platform: [ macos-latest, ubuntu-latest, windows-latest ]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Pass (No App Changes)
@@ -182,7 +182,7 @@ jobs:
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Install Linux dependencies
-        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'ubuntu-22.04')
+        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'ubuntu-latest')
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
@@ -251,7 +251,7 @@ jobs:
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Upload Tauri Artifacts (macOS)
-        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'macos-13')
+        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'macos-latest')
         uses: actions/upload-artifact@v4
         with:
           name: mentell-macos
@@ -260,7 +260,7 @@ jobs:
             src-tauri/target/release/bundle/macos/*.app
 
       - name: Upload Tauri Artifacts (Linux)
-        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'ubuntu-22.04')
+        if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'ubuntu-latest')
         uses: actions/upload-artifact@v4
         with:
           name: mentell-linux
@@ -280,7 +280,7 @@ jobs:
 
   create-release:
     needs: [ build-web-and-android, build-tauri, check-changes ]
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
