@@ -8,6 +8,8 @@ on:
 
 jobs:
   check-changes:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     outputs:
       app: ${{ steps.filter.outputs.app }}
