@@ -36,6 +36,7 @@ export function EmailLinkDesktopHandoff() {
       settingsPath: buildSettingsPathWithLinkParams(),
       offlineHandoff: isOfflineEmailLinkHandoff(),
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.pathname, location.search, location.hash])
 
   if (!handoff) return null

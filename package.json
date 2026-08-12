@@ -1,7 +1,11 @@
 {
   "name": "mentell",
   "private": true,
+<<<<<<< HEAD
   "version": "1.18.10",
+=======
+  "version": "1.18.3",
+>>>>>>> origin/main
   "type": "module",
   "scripts": {
     "sync:assets": "node scripts/sync-assets.mjs",
