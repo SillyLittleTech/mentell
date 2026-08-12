@@ -1,11 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Mentell",
-<<<<<<< HEAD
   "version": "1.18.10",
-=======
-  "version": "1.18.3",
->>>>>>> origin/main
   "identifier": "com.mentell.app",
   "build": {
     "frontendDist": "../dist",
