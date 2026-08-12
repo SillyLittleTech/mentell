@@ -138,12 +138,15 @@ All users share one AI Search instance. Isolation is by request `userId` only:
 
 - Documents are stored at `journals/{userId}/pack-{n}.md` (packed) with matching `userId` metadata. Legacy per-entry keys `journals/{userId}/{entryId}.md` may still exist from earlier uploads.
 - Index sync packs as many entries as fit under a **~3.5 MB** soft file limit (Cloudflare hard limit is 4 MB). Each entry is wrapped in clear MD markers (`<!-- mentell-entry:start … -->` / `<!-- mentell-entry:end … -->`). Before appending an entry, the packer checks whether it would exceed the limit and starts a new pack when needed.
+- Every sync (`syncEntriesToAiSearch`) first deletes **all** existing items under `journals/{userId}/` before re-uploading the fresh pack set. The Items API rejects uploads to a key that already exists (`409 item_key_already_exist`) and has no "update" call, so re-uploading `pack-0.md` with the same key on a later sync would otherwise silently fail and leave stale/duplicate content indexed forever. The client must always pass the signed-in Firebase `uid` as `userId` when the user is authenticated — see below — otherwise entries get indexed under the browser's local anon id even while signed in.
 - Entry IDs are recovered from chunk text markers (and metadata / legacy keys) after retrieval.
 - Every search request requires a non-empty `userId` and retrieves with filters on both `userId` and `folder: journals/{userId}/`.
 - Similarity cache is disabled per request (`cache.enabled = false`) so answers for one userId are never reused for another.
 - Retrieved chunks are ownership-checked before entry resolution or answer generation; answers are built via Workers AI from owned context only (not unscoped `chatCompletions` RAG).
 
 Different browser contexts (incognito, debug mode) use different local anon ids and must not see each other’s indexed journals. Sign-out does not rotate the local anon id.
+
+Every caller of `requestProjectorSearch` (search, chat, and background re-index after submit) must resolve `userId` as `auth?.user?.uid || getOrCreateAnonSearchUserId()` — never omit `userId` and let it default to the anon id, or a signed-in user's entries will be indexed under their anon folder instead of their account.
 
 ### API
 

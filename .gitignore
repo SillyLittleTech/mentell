@@ -45,3 +45,8 @@ playwright-report/
 test-results/
 e2e-screenshots/
 test-results.json
+
+#macOS
+* 2.*
+* 3.*
+

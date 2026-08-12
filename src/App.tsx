@@ -45,7 +45,7 @@ import { EmailLinkDesktopHandoff } from './features/auth/EmailLinkDesktopHandoff
 import { isFirebaseSyncEnabled, isShareLinksEnabled } from './shared/features/featureFlags'
 import { useAuthOptional } from './shared/firebase/AuthProvider'
 import { ShopCosmeticEffects } from './features/shop/shopCosmetics'
-import { requestProjectorSearch } from './features/compilation/projectorSearch'
+import { getOrCreateAnonSearchUserId, requestProjectorSearch } from './features/compilation/projectorSearch'
 import { emitBackgroundActivity } from './shared/backgroundActivity'
 import { BackgroundActivityToast } from './components/BackgroundActivityToast'
 import { scrollToTop } from './shared/motion/scroll'
@@ -601,7 +601,12 @@ function HomePlaceholder({
             pushLocalChangesNow().finally(() => {
               emitBackgroundActivity({ type: 'stop', id: 'sync', message: '' })
               emitBackgroundActivity({ type: 'start', id: 'index', message: 'Indexing for AI search...' })
-              requestProjectorSearch({ query: '', mode: 'index', forceIndex: true })
+              requestProjectorSearch({
+                query: '',
+                mode: 'index',
+                forceIndex: true,
+                userId: auth?.user?.uid || getOrCreateAnonSearchUserId(),
+              })
                 .catch(() => {})
                 .finally(() => {
                   emitBackgroundActivity({ type: 'stop', id: 'index', message: '' })
