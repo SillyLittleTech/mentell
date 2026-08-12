@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { addDays } from 'date-fns'
+import { useNavigate } from 'react-router-dom'
 import { getDb } from '../../db/schema'
 import { makeId } from '../../shared/id'
 import {
@@ -82,6 +83,7 @@ const DEBUG_AI_TESTS = [
 
 export function DebugPanel() {
   const enabled = useMemo(() => isDebugMode(), [])
+  const navigate = useNavigate()
   const auth = useAuthOptional()
   const isOnline = useOnlineStatus()
   const [open, setOpen] = useState(false)
@@ -323,6 +325,25 @@ export function DebugPanel() {
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
               <div className="grid gap-2">
             {isAuthDebugPanelEnabled() ? <DebugAuthSection /> : null}
+
+            <div className="rounded-3xl border border-[var(--paper-border)] p-3">
+              <div className="font-mono text-xs font-bold">playground</div>
+              <div className="mt-2 grid gap-2">
+                <button
+                  type="button"
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm font-semibold"
+                  onClick={() => {
+                    setOpen(false)
+                    navigate('/debug/ui-playground')
+                  }}
+                >
+                  Open UI Playground
+                  <div className="ink-muted mt-1 text-xs">
+                    Direct route for animation + button testing.
+                  </div>
+                </button>
+              </div>
+            </div>
 
             <div className="rounded-3xl border border-[var(--paper-border)] p-3">
               <div className="font-mono text-xs font-bold">ui toggles</div>

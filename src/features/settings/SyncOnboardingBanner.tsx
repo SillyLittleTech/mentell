@@ -15,7 +15,13 @@ import { EmailSignInModal } from "./EmailSignInModal";
 const bannerActionBtn =
   "focus-ring inline-flex items-center justify-center rounded-2xl border border-[var(--paper-border)] bg-[var(--paper-bg)] px-3.5 py-2 text-sm font-medium text-[var(--paper-ink)] shadow-sm transition-colors hover:bg-[var(--pill-surface)]";
 
-export function SyncOnboardingBanner({ shakeKey = 0 }: { shakeKey?: number }) {
+export function SyncOnboardingBanner({
+  shakeKey = 0,
+  mode = 'inline',
+}: {
+  shakeKey?: number
+  mode?: 'inline' | 'overlay'
+}) {
   const { settings, updateSettings } = useAppSettings();
   const auth = useAuthOptional();
   const reduced = shouldReduceMotion();
@@ -47,7 +53,9 @@ export function SyncOnboardingBanner({ shakeKey = 0 }: { shakeKey?: number }) {
   return (
     <>
       <motion.div
-        className="paper mb-4 rounded-3xl border-l-[3px] border-l-[var(--success)] px-4 py-3.5"
+        className={`paper w-full rounded-3xl border-l-[3px] border-l-[var(--success)] px-4 py-3.5 ${
+          mode === 'inline' ? 'mb-4' : ''
+        }`}
         animate={
           shakeKey > 0 && !reduced
             ? { x: [0, -10, 10, -8, 8, -4, 4, 0] }

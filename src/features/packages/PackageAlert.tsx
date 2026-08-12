@@ -6,14 +6,16 @@ import { TruckDrop } from './TruckDrop'
 import type { PackageRow } from '../../db/schema'
 import { getForcePackages, isDebugMode } from '../../shared/debug/debugFlags'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
-import { publicUrl } from '../../shared/publicUrl'
+import { MaterialIcon } from '../../components/MaterialIcon'
 
 export function PackageAlert({
   onAward,
   placement = 'floating',
+  size = 'md',
 }: {
   onAward: (delta: number, hint: string | null) => void
   placement?: 'floating' | 'inline'
+  size?: 'sm' | 'md' | 'lg'
 }) {
   const [pkgs, setPkgs] = useState<PackageRow[]>([])
   const [truck, setTruck] = useState(false)
@@ -43,28 +45,57 @@ export function PackageAlert({
     }
   }, [])
 
-  const level = useMemo(() => iconLevelForPackages(pkgs), [pkgs])
   const count = pkgs.length
+
+  const kindCounts = useMemo(() => {
+    const counts: Record<string, number> = { weekly: 0, monthly: 0, yearly: 0 }
+    for (const p of pkgs) counts[p.kind] = (counts[p.kind] ?? 0) + 1
+    return counts as { weekly: number; monthly: number; yearly: number }
+  }, [pkgs])
+
+  const rewardKind: 'weekly' | 'monthly' | 'yearly' | null =
+    kindCounts.yearly > 0
+      ? 'yearly'
+      : kindCounts.monthly > 0
+        ? 'monthly'
+        : kindCounts.weekly > 0
+          ? 'weekly'
+          : null
+
+  // Keep the existing "truck" animation trigger semantics based on icon level,
+  // but render a kind-specific present icon instead of gift PNGs.
+  const level = useMemo(() => iconLevelForPackages(pkgs), [pkgs])
 
   const forced = isDebugMode() && getForcePackages()
   if (level === 0 && !forced) return null
 
-  const icon =
-    level >= 3
-      ? publicUrl('/asset/gift_large.png')
-      : level === 2
-        ? publicUrl('/asset/gift_med.png')
-        : publicUrl('/asset/gift_small.png')
+  const presentColorClass =
+    rewardKind === 'yearly'
+      ? 'text-[var(--danger)]'
+      : rewardKind === 'monthly'
+        ? 'text-[var(--primary-action)]'
+        : 'text-[var(--success)]'
+
+  const dims =
+    placement === 'floating'
+      ? { outer: 'h-12 w-12', img: 'h-10 w-10', padX: 'px-4', padY: 'py-3' }
+      : size === 'sm'
+        ? { outer: 'h-10 w-10', img: 'h-8 w-8', padX: 'px-3', padY: 'py-2' }
+        : size === 'lg'
+          ? { outer: 'h-12 w-12', img: 'h-10 w-10', padX: 'px-4', padY: 'py-3' }
+          : { outer: 'h-11 w-11', img: 'h-9 w-9', padX: 'px-4', padY: 'py-3' }
 
   return (
-    <div className={placement === 'floating' ? 'fixed bottom-5 right-5 z-30' : 'relative z-10'}>
+    <div
+      className={placement === 'floating' ? 'fixed bottom-5 right-5 z-30' : 'relative z-10'}
+    >
       <div className="relative">
         <AnimatePresence>{truck ? <TruckDrop /> : null}</AnimatePresence>
 
         <motion.button
           type="button"
           className={`focus-ring paper flex items-center gap-3 rounded-3xl ${
-            placement === 'inline' ? 'px-3 py-2' : 'px-4 py-3'
+            placement === 'inline' ? `${dims.padX} ${dims.padY}` : 'px-4 py-3'
           }`}
           initial={shouldReduceMotion() ? false : { scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -82,14 +113,14 @@ export function PackageAlert({
         >
           <div
             className={`relative flex items-center justify-center rounded-2xl border border-[var(--paper-border)] ${
-              placement === 'inline' ? 'h-10 w-10' : 'h-12 w-12'
+              placement === 'inline' ? dims.outer : 'h-12 w-12'
             }`}
           >
-            <img
-              alt=""
-              src={icon}
-              className={`${placement === 'inline' ? 'h-8 w-8' : 'h-10 w-10'} select-none object-contain`}
-              draggable={false}
+            <MaterialIcon
+              name="card_giftcard"
+              accent={false}
+              className={`${placement === 'inline' ? 'opacity-90' : 'opacity-95'} ${presentColorClass}`}
+              size={placement === 'inline' ? 22 : 24}
             />
           </div>
           <div className="text-left">

@@ -79,12 +79,27 @@ body {
   position: relative;
   min-height: 100svh;
   background-color: var(--desk-bg);
+  transition: background-color 350ms ease;
   background-image:
     var(--shop-theme-overlay),
     radial-gradient(circle at 1px 1px, var(--desk-dot) 1px, transparent 0);
   background-repeat: no-repeat, repeat;
   background-size: auto, 22px 22px;
   background-attachment: fixed;
+}
+
+/* Mobile-only sync status glow border (visible when sync state UI is cramped). */
+.mobile-sync-glow {
+  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
+  box-shadow: none;
+}
+
+@media (max-width: 767px) {
+  .mobile-sync-glow {
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--sync-glow-tone) 45%, transparent),
+      0 0 24px color-mix(in srgb, var(--sync-glow-tone) 40%, transparent);
+  }
 }
 
 .desk::before {
@@ -96,6 +111,10 @@ body {
   background-repeat: repeat;
   background-size: 22px 22px;
   opacity: 0.95;
+  transition:
+    opacity 250ms ease,
+    mask-image 350ms ease,
+    -webkit-mask-image 350ms ease;
   mask-image: radial-gradient(260px circle at var(--spot-x, 50vw) var(--spot-y, 12vh), black 0%, transparent 65%);
   -webkit-mask-image: radial-gradient(260px circle at var(--spot-x, 50vw) var(--spot-y, 12vh), black 0%, transparent 65%);
 }
@@ -214,6 +233,36 @@ html[data-reduced-motion='true'] *::after {
   font-size: 2rem;
   opacity: 0.1;
   pointer-events: none;
+}
+
+.skeleton-block {
+  border: 1px solid var(--paper-border);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--paper-bg) 65%, transparent);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-block::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-40%);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.25) 50%, transparent 100%);
+  animation: skeleton-shimmer 1.2s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(50%);
+  }
+}
+
+html[data-reduced-motion='true'] .skeleton-block::after {
+  animation: none !important;
 }
 
 .sentiment-pill:hover {

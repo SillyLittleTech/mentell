@@ -76,8 +76,8 @@ export function SidebarNav() {
       </nav>
 
       {/* Empty-space companion placement: sits below the nav stack */}
-      <div className="flex flex-1 items-end justify-center overflow-hidden pt-4">
-        <CharacterCorner className="h-64 w-auto translate-y-3" />
+      <div className="flex flex-1 items-start justify-center pt-1">
+        <CharacterCorner className="h-64 w-auto translate-y-0" />
       </div>
     </aside>
   )

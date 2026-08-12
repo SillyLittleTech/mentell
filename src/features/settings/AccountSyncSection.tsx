@@ -12,6 +12,7 @@ import { isAuthHandoffConfigured } from "../../shared/firebase/authHandoffClient
 import { isFileProtocol, isOfflineZipBuild } from "../../shared/platform/runtime";
 import { AccountSignInPanel } from "./AccountSignInPanel";
 import { ScoreRecoverySection } from "./ScoreRecoverySection";
+import { MaterialIcon } from "../../components/MaterialIcon";
 
 export function AccountSyncSection() {
   const auth = useAuthOptional();
@@ -65,7 +66,15 @@ export function AccountSyncSection() {
                     void auth.syncNow().finally(() => setSyncBusy(false));
                   }}
                 >
-                  {syncBusy ? "Syncing…" : "Sync now"}
+                  <span className="inline-flex items-center gap-2">
+                    <MaterialIcon
+                      name="sync"
+                      size={20}
+                      accent={false}
+                      className="text-[var(--paper-ink)] opacity-85"
+                    />
+                    {syncBusy ? "Syncing…" : "Sync now"}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -73,7 +82,15 @@ export function AccountSyncSection() {
                   disabled={syncBusy}
                   onClick={() => void auth.signOut()}
                 >
-                  Sign out
+                  <span className="inline-flex items-center gap-2">
+                    <MaterialIcon
+                      name="logout"
+                      size={20}
+                      accent={false}
+                      className="text-[var(--paper-ink)] opacity-85"
+                    />
+                    Sign out
+                  </span>
                 </button>
               </div>
 
@@ -96,7 +113,15 @@ export function AccountSyncSection() {
               className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm"
               onClick={() => void auth.signOut()}
             >
-              Sign out
+              <span className="inline-flex items-center gap-2">
+                <MaterialIcon
+                  name="logout"
+                  size={20}
+                  accent={false}
+                  className="text-[var(--paper-ink)] opacity-85"
+                />
+                Sign out
+              </span>
             </button>
           )}
         </div>

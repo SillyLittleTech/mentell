@@ -14,6 +14,7 @@ import { Notepad } from './features/notes/Notepad'
 import { StickyDock } from './features/stickies/StickyDock'
 import { StickyLayer } from './features/stickies/StickyLayer'
 import { DebugPanel } from './features/debug/DebugPanel'
+import { UiPlaygroundPage } from './features/debug/UiPlaygroundPage'
 import { runPackageDeliveryAndNotify } from './features/packages/runPackageDelivery'
 import { maybeRequestNotificationPermission } from './pwa/notifications'
 import { dateKeyForLocalDay } from './shared/dates'
@@ -42,6 +43,7 @@ import { AuthDeeplinkPage } from './features/auth/AuthDeeplinkPage'
 import { AuthLinkPage } from './features/auth/AuthLinkPage'
 import { EmailLinkDesktopHandoff } from './features/auth/EmailLinkDesktopHandoff'
 import { isFirebaseSyncEnabled, isShareLinksEnabled } from './shared/features/featureFlags'
+import { isDebugMode } from './shared/debug/debugFlags'
 import { useAuthOptional } from './shared/firebase/AuthProvider'
 import { ShopCosmeticEffects } from './features/shop/shopCosmetics'
 import { getOrCreateAnonSearchUserId, requestProjectorSearch } from './features/compilation/projectorSearch'
@@ -72,6 +74,7 @@ function App() {
   const [streakOutcome, setStreakOutcome] = useState<StreakOutcomeAnimation | null>(null)
   const [streakFocusActive, setStreakFocusActive] = useState(false)
   const streakOutcomeTimer = useRef<number | null>(null)
+  const [syncBusy, setSyncBusy] = useState(false)
 
   useEffect(() => {
     void runPackageDeliveryAndNotify()
@@ -82,11 +85,27 @@ function App() {
 
   const auth = useAuthOptional()
   const authUid = auth?.user?.uid
+
+  useEffect(() => {
+    return listenToBackgroundActivity((event) => {
+      if (event.id !== 'sync') return
+      setSyncBusy(event.type === 'start')
+    })
+  }, [])
+
   useEffect(() => {
     if (authUid && !loadAppSettings().disableNotifications && isWebPushConfigured()) {
       void syncPushSubscription()
     }
   }, [authUid])
+
+  const mobileSyncTone = auth?.syncError
+    ? 'var(--danger)'
+    : syncBusy
+      ? '#3b82f6'
+      : auth?.user && auth.syncEnabled
+        ? 'var(--success)'
+        : 'rgba(148, 163, 184, 0.9)'
 
   useEffect(() => {
     const tick = () => {
@@ -175,7 +194,14 @@ function App() {
   return (
     <div
       className={
-        shareRouteActive ? 'min-h-[100svh]' : 'desk px-4 py-6 pb-24 md:pb-6'
+        shareRouteActive
+          ? 'min-h-[100svh]'
+          : 'desk px-4 py-6 pb-24 md:pb-6 mobile-sync-glow'
+      }
+      style={
+        shareRouteActive
+          ? undefined
+          : ({ '--sync-glow-tone': mobileSyncTone } as Record<string, string>)
       }
     >
       <EmailLinkDesktopHandoff />
@@ -212,6 +238,9 @@ function App() {
             <Route path="/feedback/thanks" element={<FeedbackThankYouPage />} />
             {isShareLinksEnabled() ? (
               <Route path="/share/:code" element={<ShareDashboardPage />} />
+            ) : null}
+            {isDebugMode() ? (
+              <Route path="/debug/ui-playground" element={<UiPlaygroundPage />} />
             ) : null}
             <Route path="/archive" element={<ArchivePlaceholder />} />
             <Route path="*" element={<Navigate to="/" replace />} />
@@ -260,6 +289,9 @@ function App() {
                 <Route path="/feedback/thanks" element={<FeedbackThankYouPage />} />
                 {isShareLinksEnabled() ? (
                   <Route path="/share/:code" element={<ShareDashboardPage />} />
+                ) : null}
+                {isDebugMode() ? (
+                  <Route path="/debug/ui-playground" element={<UiPlaygroundPage />} />
                 ) : null}
                 <Route path="/archive" element={<ArchivePlaceholder />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
@@ -329,7 +361,7 @@ function TopBar({
   return (
     <>
       <header className={`w-full space-y-3 ${focusActive ? 'streak-focus-target' : ''}`}>
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(13rem,18rem)_auto] md:items-start">
+        <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-start">
           <div className="flex flex-wrap items-start gap-3">
             <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3 md:hidden">
               <img
@@ -362,11 +394,11 @@ function TopBar({
             )}
           </div>
 
-          <div className="hidden min-h-[5rem] items-center justify-center md:flex">
-            <PackageAlert onAward={onPackageAward} placement="inline" />
+          <div className="hidden min-h-[5rem] items-center justify-center md:flex md:justify-self-center">
+            <PackageAlert onAward={onPackageAward} placement="inline" size="lg" />
           </div>
 
-          <div className="flex items-start justify-between gap-3 md:justify-end">
+          <div className="flex items-start justify-between gap-3 md:justify-end md:justify-self-end">
             <div className="flex flex-1 items-center justify-between gap-3 md:hidden">
               <Link
                 to="/feedback"
@@ -377,7 +409,7 @@ function TopBar({
                 <SpeechBubbleIcon className="h-5 w-5" />
               </Link>
               <div className="flex min-h-[3rem] items-center justify-center">
-                <PackageAlert onAward={onPackageAward} placement="inline" />
+                <PackageAlert onAward={onPackageAward} placement="inline" size="sm" />
               </div>
               <ThemeToggleButton mode={mode} onToggle={toggle} className="rounded-full" />
             </div>
@@ -402,7 +434,10 @@ function TopBar({
                   className="paper focus-ring flex h-12 w-12 items-center justify-center rounded-full border border-[var(--paper-border)]"
                   aria-label="Open account and sync settings"
                   title="Account and sync"
-                  style={{ color: syncStatusTone }}
+                  style={{
+                    color: syncStatusTone,
+                    boxShadow: `0 0 0 3px color-mix(in srgb, ${syncStatusTone} 25%, transparent), 0 0 22px color-mix(in srgb, ${syncStatusTone} 28%, transparent)`,
+                  }}
                 >
                   <MaterialIcon name="person" size={22} accent={false} />
                 </Link>
@@ -509,11 +544,15 @@ function HomePlaceholder({
       subtitle="Draft it like stationery — then review and submit."
     >
       <DeskCharacterLayout>
-      <SyncOnboardingBanner shakeKey={shakeBanner} />
       <div
         className="relative"
         onPointerDownCapture={composerLocked ? onBlockedComposerInteraction : undefined}
       >
+        {composerLocked ? (
+          <div className="absolute inset-x-0 top-0 z-20">
+            <SyncOnboardingBanner shakeKey={shakeBanner} mode="overlay" />
+          </div>
+        ) : null}
         {composerLocked ? (
           <div
             className="absolute inset-0 z-10 cursor-not-allowed"
