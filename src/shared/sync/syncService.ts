@@ -136,10 +136,10 @@ async function pullCollection<
   const remoteIds = remotes.map((r) => r.id);
 
   // Cast table to any to call bulkGet/bulkPut since its union type confuses TS
-  const locals = (await (table as any).bulkGet(remoteIds)) as (T | undefined)[];
+  const locals = (await (table as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).bulkGet(remoteIds)) as (T | undefined)[];
 
   const resolved = remotes.map((remote, idx) => resolve(locals[idx], remote));
-  await (table as any).bulkPut(resolved);
+  await (table as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).bulkPut(resolved);
 }
 
 async function getScoreSyncContext(uid: string): Promise<ScoreSyncContext> {
@@ -455,10 +455,14 @@ export async function pushLocalToCloud(uid: string) {
 export async function pullAndMerge(uid: string) {
   const pull = async () => {
     await Promise.all([
-      pullCollection(uid, "entries", getDb().entries, resolveEntry as any),
-      pullCollection(uid, "notes", getDb().notes, resolveNote as any),
-      pullCollection(uid, "stickies", getDb().stickies, resolveSticky as any),
-      pullCollection(uid, "packages", getDb().packages, resolvePackage as any),
+      pullCollection(uid, "entries", getDb().entries, resolveEntry as any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ),
+      pullCollection(uid, "notes", getDb().notes, resolveNote as any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ),
+      pullCollection(uid, "stickies", getDb().stickies, resolveSticky as any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ),
+      pullCollection(uid, "packages", getDb().packages, resolvePackage as any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ),
     ]);
     await pullMeta(uid);
     window.dispatchEvent(new CustomEvent("mentell:score-changed"));
@@ -498,19 +502,19 @@ function watchCollection<T extends { id: string }>(
       }
 
       if (removedIds.length > 0) {
-        await (table as any).bulkDelete(removedIds);
+        await (table as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).bulkDelete(removedIds);
       }
 
       if (upsertRemotes.length > 0) {
         const remoteIds = upsertRemotes.map((r) => r.id);
-        const locals = (await (table as any).bulkGet(remoteIds)) as (
+        const locals = (await (table as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).bulkGet(remoteIds)) as (
           | T
           | undefined
         )[];
         const resolved = upsertRemotes.map((remote, idx) =>
           resolve(locals[idx], remote),
         );
-        await (table as any).bulkPut(resolved);
+        await (table as any /* eslint-disable-line @typescript-eslint/no-explicit-any */).bulkPut(resolved);
       }
 
       saveSyncState({ lastSyncedAt: Date.now(), lastError: null });
@@ -522,10 +526,14 @@ function watchCollection<T extends { id: string }>(
 function startListeners(uid: string) {
   stopListeners();
   unsubs = [
-    watchCollection(uid, "entries", getDb().entries, resolveEntry as any),
-    watchCollection(uid, "notes", getDb().notes, resolveNote as any),
-    watchCollection(uid, "stickies", getDb().stickies, resolveSticky as any),
-    watchCollection(uid, "packages", getDb().packages, resolvePackage as any),
+    watchCollection(uid, "entries", getDb().entries, resolveEntry as any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ),
+    watchCollection(uid, "notes", getDb().notes, resolveNote as any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ),
+    watchCollection(uid, "stickies", getDb().stickies, resolveSticky as any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ),
+    watchCollection(uid, "packages", getDb().packages, resolvePackage as any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ),
   ];
 }
 
