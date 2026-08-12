@@ -11,7 +11,7 @@ function dotStyle(status: WeekTimelineDay['status']) {
   }
   if (status === 'missed') {
     return {
-      borderColor: 'rgba(198,29,29,0.4)',
+      borderColor: 'rgba(198,29,29,0.58)',
       background: 'rgba(198,29,29,0.08)',
       borderStyle: 'dashed' as const,
     }
@@ -56,7 +56,13 @@ export function WeekTimelineCard() {
                   style={dotStyle(d.status)}
                   title={`${d.dateKey} — ${d.status}`}
                 >
-                  {d.status === 'completed' ? '+' : d.status === 'missed' ? '·' : ''}
+                  {d.status === 'completed' ? (
+                    '+'
+                  ) : d.status === 'missed' ? (
+                    <span className="block h-2.5 w-2.5 rounded-full bg-[rgba(198,29,29,0.92)]" />
+                  ) : (
+                    ''
+                  )}
                 </div>
                 <div className="ink-muted text-[10px] font-medium uppercase">{d.label}</div>
               </div>

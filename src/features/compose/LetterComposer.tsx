@@ -94,6 +94,28 @@ function generateRandomId() {
     : Math.random().toString(36).slice(2);
 }
 
+function SkeletonInput({ className = '' }: { className?: string }) {
+  return (
+    <div
+      className={`skeleton-block skeleton-block--static w-full h-[60px] ${className}`.trim()}
+      aria-hidden
+    />
+  )
+}
+
+function SkeletonTextarea({
+  className = '',
+}: {
+  className?: string
+}) {
+  return (
+    <div
+      className={`skeleton-block skeleton-block--static w-full ${className}`.trim()}
+      aria-hidden
+    />
+  )
+}
+
 export function LetterComposer({
   onSubmit,
   disabled = false,
@@ -351,31 +373,39 @@ export function LetterComposer({
               ENTRY_SITUATION_MAX,
             )}
           >
-            <LimitedInput
-              disabled={disabled}
-              maxChars={ENTRY_SITUATION_MAX}
-              value={draftInputs[0].situation}
-              onChange={(e) =>
-                updateDraft(draftInputs[0].id, { situation: e.target.value })
-              }
-              placeholder="What happened?"
-            />
+            {disabled ? (
+              <SkeletonInput />
+            ) : (
+              <LimitedInput
+                disabled={disabled}
+                maxChars={ENTRY_SITUATION_MAX}
+                value={draftInputs[0].situation}
+                onChange={(e) =>
+                  updateDraft(draftInputs[0].id, { situation: e.target.value })
+                }
+                placeholder="What happened?"
+              />
+            )}
           </Field>
 
           <Field
             label="Details"
             overLimit={isOverLimit(draftInputs[0].details, ENTRY_DETAILS_MAX)}
           >
-            <LimitedTextarea
-              disabled={disabled}
-              maxChars={ENTRY_DETAILS_MAX}
-              className="min-h-[180px]"
-              value={draftInputs[0].details}
-              onChange={(e) =>
-                updateDraft(draftInputs[0].id, { details: e.target.value })
-              }
-              placeholder="Write it like a letter you’re drafting…"
-            />
+            {disabled ? (
+              <SkeletonTextarea className="min-h-[180px]" />
+            ) : (
+              <LimitedTextarea
+                disabled={disabled}
+                maxChars={ENTRY_DETAILS_MAX}
+                className="min-h-[180px]"
+                value={draftInputs[0].details}
+                onChange={(e) =>
+                  updateDraft(draftInputs[0].id, { details: e.target.value })
+                }
+                placeholder="Write it like a letter you’re drafting…"
+              />
+            )}
           </Field>
 
           <EntryExtrasFields
@@ -412,17 +442,21 @@ export function LetterComposer({
                         ENTRY_EMOTION_NOTE_MAX,
                       )}
                     />
-                    <LimitedInput
-                      disabled={disabled}
-                      maxChars={ENTRY_EMOTION_NOTE_MAX}
-                      value={draftInputs[0].emotionNote}
-                      onChange={(e) =>
-                        updateDraft(draftInputs[0].id, {
-                          emotionNote: e.target.value,
-                        })
-                      }
-                      placeholder="What emotion would you call this?"
-                    />
+                    {disabled ? (
+                      <SkeletonInput />
+                    ) : (
+                      <LimitedInput
+                        disabled={disabled}
+                        maxChars={ENTRY_EMOTION_NOTE_MAX}
+                        value={draftInputs[0].emotionNote}
+                        onChange={(e) =>
+                          updateDraft(draftInputs[0].id, {
+                            emotionNote: e.target.value,
+                          })
+                        }
+                        placeholder="What emotion would you call this?"
+                      />
+                    )}
                   </div>
                 ) : null}
               </div>
@@ -467,35 +501,43 @@ export function LetterComposer({
                 <div className="font-paper text-xl">
                   Additional entry {index + 1}
                 </div>
-                <Field
-                  label="Situation"
-                  overLimit={isOverLimit(draft.situation, ENTRY_SITUATION_MAX)}
-                >
-                  <LimitedInput
-                    disabled={disabled}
-                    maxChars={ENTRY_SITUATION_MAX}
-                    value={draft.situation}
-                    onChange={(e) =>
-                      updateDraft(draft.id, { situation: e.target.value })
-                    }
-                    placeholder="What happened?"
-                  />
-                </Field>
-                <Field
-                  label="Details"
-                  overLimit={isOverLimit(draft.details, ENTRY_DETAILS_MAX)}
-                >
-                  <LimitedTextarea
-                    disabled={disabled}
-                    maxChars={ENTRY_DETAILS_MAX}
-                    className="min-h-[120px]"
-                    value={draft.details}
-                    onChange={(e) =>
-                      updateDraft(draft.id, { details: e.target.value })
-                    }
-                    placeholder="Details for this entry…"
-                  />
-                </Field>
+                  <Field
+                    label="Situation"
+                    overLimit={isOverLimit(draft.situation, ENTRY_SITUATION_MAX)}
+                  >
+                    {disabled ? (
+                      <SkeletonInput />
+                    ) : (
+                      <LimitedInput
+                        disabled={disabled}
+                        maxChars={ENTRY_SITUATION_MAX}
+                        value={draft.situation}
+                        onChange={(e) =>
+                          updateDraft(draft.id, { situation: e.target.value })
+                        }
+                        placeholder="What happened?"
+                      />
+                    )}
+                  </Field>
+                  <Field
+                    label="Details"
+                    overLimit={isOverLimit(draft.details, ENTRY_DETAILS_MAX)}
+                  >
+                    {disabled ? (
+                      <SkeletonTextarea className="min-h-[120px]" />
+                    ) : (
+                      <LimitedTextarea
+                        disabled={disabled}
+                        maxChars={ENTRY_DETAILS_MAX}
+                        className="min-h-[120px]"
+                        value={draft.details}
+                        onChange={(e) =>
+                          updateDraft(draft.id, { details: e.target.value })
+                        }
+                        placeholder="Details for this entry…"
+                      />
+                    )}
+                  </Field>
                 <EntryExtrasFields
                   draft={draft}
                   disabled={disabled}
@@ -629,7 +671,15 @@ export function LetterComposer({
                 disabled={disabled || isSubmitting || anyDraftOverLimit}
                 onClick={handleSubmit}
               >
-                {isSubmitting ? <SubmitThrobber /> : "Submit"}
+                <span className="inline-flex items-center gap-2">
+                  <MaterialIcon
+                    name="send"
+                    size={20}
+                    accent={false}
+                    className="text-[rgba(0,0,0,0.92)]"
+                  />
+                  {isSubmitting ? <SubmitThrobber /> : 'Submit'}
+                </span>
               </button>
             )}
           </div>
@@ -828,24 +878,32 @@ function EntryExtrasFields({
       {expanded ? (
         <div className="grid gap-4 rounded-2xl border border-[var(--paper-border)] p-4">
           <Field label="Behaviours noted" overLimit={behavioursOver}>
-            <LimitedTextarea
-              disabled={disabled}
-              maxChars={ENTRY_BEHAVIOURS_NOTED_MAX}
-              className="min-h-[88px] text-base"
-              value={draft.behavioursNoted}
-              onChange={(e) => onChange({ behavioursNoted: e.target.value })}
-              placeholder="What behaviours stood out in this interaction?"
-            />
+            {disabled ? (
+              <SkeletonTextarea className="min-h-[88px] text-base" />
+            ) : (
+              <LimitedTextarea
+                disabled={disabled}
+                maxChars={ENTRY_BEHAVIOURS_NOTED_MAX}
+                className="min-h-[88px] text-base"
+                value={draft.behavioursNoted}
+                onChange={(e) => onChange({ behavioursNoted: e.target.value })}
+                placeholder="What behaviours stood out in this interaction?"
+              />
+            )}
           </Field>
           <Field label="Reoccurring theme" overLimit={themeOver}>
-            <LimitedInput
-              disabled={disabled}
-              maxChars={ENTRY_REOCCURRING_THEME_MAX}
-              className="text-base"
-              value={draft.reoccurringTheme}
-              onChange={(e) => onChange({ reoccurringTheme: e.target.value })}
-              placeholder="A reoccurring interaction type or theme…"
-            />
+            {disabled ? (
+              <SkeletonInput className="text-base" />
+            ) : (
+              <LimitedInput
+                disabled={disabled}
+                maxChars={ENTRY_REOCCURRING_THEME_MAX}
+                className="text-base"
+                value={draft.reoccurringTheme}
+                onChange={(e) => onChange({ reoccurringTheme: e.target.value })}
+                placeholder="A reoccurring interaction type or theme…"
+              />
+            )}
           </Field>
         </div>
       ) : null}

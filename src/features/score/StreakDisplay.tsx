@@ -4,6 +4,7 @@ import {
   getStreakFlameCount,
   streakFlickerDuration,
 } from './streakFireLevel'
+import { MaterialIcon } from '../../components/MaterialIcon'
 
 const FLAME_OFFSETS = [
   { top: -6, right: 6 },
@@ -99,18 +100,26 @@ export function StreakDisplay({
       }
     >
       {variant === 'card' ? (
-        <div className="ink-muted text-xs sm:text-sm">Current streak</div>
+        <>
+          <div className="ink-muted text-xs sm:text-sm">Current streak</div>
+          <div className="mt-2">
+            <span className={numberClass}>{visualStreak}</span>
+          </div>
+        </>
       ) : (
-        <div className="font-mono text-[11px] uppercase opacity-70">streak</div>
+        <div className="flex items-center justify-between gap-2">
+          <MaterialIcon name="whatshot" size={18} accent={false} className="opacity-70" />
+          <span className={numberClass}>{visualStreak}</span>
+        </div>
       )}
-      <div className={variant === 'card' ? 'mt-2' : ''}>
-        <span className={numberClass}>{visualStreak}</span>
-      </div>
+
       {flameCount > 0
         ? FLAME_OFFSETS.slice(0, flameCount).map((pos, i) => (
             <span
               key={i}
-              className={`streak-flame streak-flame--${i + 1} ${reducedMotion ? '' : 'streak-flame--animated'}`}
+              className={`streak-flame streak-flame--${i + 1} ${
+                reducedMotion ? '' : 'streak-flame--animated'
+              }`}
               style={pos}
               aria-hidden
             >
@@ -118,6 +127,7 @@ export function StreakDisplay({
             </span>
           ))
         : null}
+
       {visualLevel >= 3 && visualLevel < 4 ? (
         <span className="streak-spark" aria-hidden>
           ✨

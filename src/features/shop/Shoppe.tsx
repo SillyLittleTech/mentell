@@ -49,11 +49,30 @@ function ThemePreview({ item }: { item: ThemeItem }) {
   return (
     <div className="mt-3 rounded-xl border border-[var(--paper-border)] p-2">
       <div
-        className="h-20 w-full rounded-lg"
+        className="relative h-20 w-full overflow-hidden rounded-lg"
         style={{
-          background: `linear-gradient(135deg, ${item.theme.light.deskBg} 0%, ${item.theme.light.paperBg ?? item.theme.light.deskBg} 48%, ${item.theme.dark.deskBg} 52%, ${item.theme.dark.paperBg ?? item.theme.dark.deskBg} 100%)`,
+          background: item.theme.light.deskBg,
         }}
-      />
+      >
+        {/* Side-angled “dark” desk layer (solid color, no gradient fill). */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: item.theme.dark.deskBg,
+            clipPath: 'polygon(45% 0%, 100% 0%, 72% 100%, 18% 100%)',
+            opacity: 0.95,
+          }}
+        />
+
+        {/* Angled “paper” tile with a subtle shadow. */}
+        <div
+          className="absolute right-[-14px] top-3 h-14 w-14 rounded-md border border-[var(--paper-border)] shadow-[0_18px_34px_rgba(0,0,0,0.18)]"
+          style={{
+            transform: 'rotate(14deg)',
+            background: item.theme.light.paperBg ?? item.theme.light.deskBg,
+          }}
+        />
+      </div>
       <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] font-medium uppercase tracking-wide opacity-75">
         <span>Light desk</span>
         <span

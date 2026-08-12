@@ -3,7 +3,9 @@ const listeners: Set<(event: ActivityEvent) => void> = new Set()
 
 export function listenToBackgroundActivity(callback: (event: ActivityEvent) => void) {
   listeners.add(callback)
-  return () => listeners.delete(callback)
+  return () => {
+    listeners.delete(callback)
+  }
 }
 
 export function emitBackgroundActivity(event: ActivityEvent) {

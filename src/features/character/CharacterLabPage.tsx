@@ -121,6 +121,7 @@ export function CharacterLabPage() {
               <MentellCharacter
                 pose={pose}
                 appearance={appearance}
+                closeEyesOnInteract
                 className="h-72 w-56"
                 title="Character preview"
               />

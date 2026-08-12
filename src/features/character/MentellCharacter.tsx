@@ -72,6 +72,7 @@ export type MentellCharacterProps = {
   className?: string
   title?: string
   characterAccessories?: CharacterAccessoryItem[]
+  closeEyesOnInteract?: boolean
 }
 
 export function MentellCharacter({
@@ -81,10 +82,12 @@ export function MentellCharacter({
   className,
   title,
   characterAccessories,
+  closeEyesOnInteract = false,
 }: MentellCharacterProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const [svgGeneration, setSvgGeneration] = useState(0)
+  const [forceClosedEyes, setForceClosedEyes] = useState(false)
   const { appearance: storedAppearance } = useCharacterAppearance()
   const equippedAccessories = useEquippedCharacterAccessories(characterAccessories === undefined)
   const accessories = characterAccessories ?? equippedAccessories
@@ -122,7 +125,6 @@ export function MentellCharacter({
     }
     namespaceSvgPaintServers(svg)
     applyCharacterAppearance(svg, appearance, accessories)
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSvgGeneration((g) => g + 1)
   }, [appearance, appearanceKey, accessories, accessoryKey, asset])
 
@@ -132,7 +134,7 @@ export function MentellCharacter({
     svgGeneration,
     anchoredIds,
   )
-  useCharacterBlink(svgRef, isBody ? svgGeneration : -1)
+  useCharacterBlink(svgRef, isBody ? svgGeneration : -1, isBody && closeEyesOnInteract && forceClosedEyes)
   usePetAccessoryAnimation(svgRef, isBody ? svgGeneration : -1)
 
   const viewBox =
@@ -145,6 +147,11 @@ export function MentellCharacter({
       role={title ? 'img' : undefined}
       aria-label={title}
       aria-hidden={title ? undefined : true}
+      onPointerEnter={closeEyesOnInteract ? () => setForceClosedEyes(true) : undefined}
+      onPointerLeave={closeEyesOnInteract ? () => setForceClosedEyes(false) : undefined}
+      onPointerDown={closeEyesOnInteract ? () => setForceClosedEyes(true) : undefined}
+      onPointerUp={closeEyesOnInteract ? () => setForceClosedEyes(false) : undefined}
+      onPointerCancel={closeEyesOnInteract ? () => setForceClosedEyes(false) : undefined}
     >
       <div
         ref={hostRef}
