@@ -46,7 +46,7 @@ jobs:
 
       - name: Commit changes (PR)
         if: steps.git-check.outputs.changes == 'true' && github.event_name == 'pull_request'
-        uses: stefanzweifel/git-auto-commit-action@v5
+        uses: stefanzweifel/git-auto-commit-action@v7
         with:
           commit_message: "chore: sync versions to match VERSION file"
           commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
@@ -54,7 +54,7 @@ jobs:
 
       - name: Create Pull Request (main)
         if: steps.git-check.outputs.changes == 'true' && github.event_name == 'push'
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v8
         with:
           title: "chore: sync versions to match VERSION file"
           commit-message: "chore: sync versions to match VERSION file"

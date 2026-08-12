@@ -231,7 +231,7 @@ jobs:
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Build Tauri
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VITE_BASE: /
