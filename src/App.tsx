@@ -1,6 +1,6 @@
 import { Link, Navigate, Route, useLocation } from 'react-router-dom'
 import { AnimatedRoutes } from './shared/motion/AnimatedRoutes'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence } from 'framer-motion'
 import { useTheme } from './shared/theme/useTheme'
 import { LetterComposer } from './features/compose/LetterComposer'
 import { SubmitAnimation } from './features/compose/SubmitAnimation'
@@ -34,7 +34,6 @@ import { AppLegalFooter } from './components/AppLegalFooter'
 import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage'
 import { FeedbackPage, FeedbackThankYouPage } from './features/feedback/FeedbackPage'
 import { SpeechBubbleIcon } from './components/SpeechBubbleIcon'
-import { MaterialIcon } from './components/MaterialIcon'
 import { CharacterLabPage } from './features/character/CharacterLabPage'
 import { DeskCharacterLayout } from './features/character/DeskCharacterLayout'
 import { MobileHeaderMascot } from './features/character/MobileHeaderMascot'
@@ -53,7 +52,9 @@ import { scrollToTop } from './shared/motion/scroll'
 import { motionDuration } from './shared/motion/useMotionPrefs'
 import { SidebarNav } from './components/shell/SidebarNav'
 import { BottomNav } from './components/shell/BottomNav'
+import { RightRail } from './components/shell/RightRail'
 import { DeskSpotlight } from './components/shell/DeskSpotlight'
+import { ThemeToggleButton } from './components/ThemeToggleButton'
 
 type StreakOutcomeAnimation =
   | { kind: 'break'; key: number; from: number }
@@ -247,7 +248,7 @@ function App() {
           </AnimatedRoutes>
         </main>
       ) : (
-        <div className="mx-auto w-full max-w-6xl md:grid md:grid-cols-[16rem_1fr] md:gap-6">
+        <div className="mx-auto w-full max-w-6xl md:grid md:grid-cols-[16rem_1fr_auto] md:gap-6">
           <SidebarNav />
 
           <div className="min-w-0">
@@ -298,6 +299,8 @@ function App() {
               </AnimatedRoutes>
             </main>
           </div>
+
+          <RightRail />
         </div>
       )}
 
@@ -340,23 +343,6 @@ function TopBar({
 }) {
   const { mode, toggle } = useTheme()
   const { settings } = useAppSettings()
-  const auth = useAuthOptional()
-  const [syncBusy, setSyncBusy] = useState(false)
-
-  useEffect(() => {
-    return listenToBackgroundActivity((event) => {
-      if (event.id !== 'sync') return
-      setSyncBusy(event.type === 'start')
-    })
-  }, [])
-
-  const syncStatusTone = auth?.syncError
-    ? 'var(--danger)'
-    : syncBusy
-      ? '#3b82f6'
-      : auth?.user && auth.syncEnabled
-        ? 'var(--success)'
-        : 'rgba(148, 163, 184, 0.9)'
 
   return (
     <>
@@ -414,88 +400,21 @@ function TopBar({
               <ThemeToggleButton mode={mode} onToggle={toggle} className="rounded-full" />
             </div>
 
-            <div className="hidden items-start gap-2 md:flex">
+            <div className="hidden md:flex">
               {!settings.disablePoints ? (
-                <div className="paper flex items-center rounded-3xl px-3 py-2">
-                  <ScoreTicker
-                    total={score.total}
-                    streak={score.streak}
-                    streakFreezes={score.streakFreezes}
-                    hint={incomingHint}
-                    streakOutcome={streakOutcome}
-                  />
-                  <MobileHeaderMascot />
-                </div>
+                <ScoreTicker
+                  total={score.total}
+                  streak={score.streak}
+                  streakFreezes={score.streakFreezes}
+                  hint={incomingHint}
+                  streakOutcome={streakOutcome}
+                />
               ) : null}
-
-              <div className="flex flex-col gap-2">
-                <Link
-                  to="/settings#account-sync"
-                  className="paper focus-ring flex h-12 w-12 items-center justify-center rounded-full border border-[var(--paper-border)]"
-                  aria-label="Open account and sync settings"
-                  title="Account and sync"
-                  style={{
-                    color: syncStatusTone,
-                    boxShadow: `0 0 0 3px color-mix(in srgb, ${syncStatusTone} 25%, transparent), 0 0 22px color-mix(in srgb, ${syncStatusTone} 28%, transparent)`,
-                  }}
-                >
-                  <MaterialIcon name="person" size={22} accent={false} />
-                </Link>
-                <Link
-                  to="/feedback"
-                  className="paper focus-ring flex h-12 w-12 items-center justify-center rounded-full"
-                  aria-label="Open feedback form"
-                  title="Feedback form"
-                >
-                  <SpeechBubbleIcon className="h-5 w-5" />
-                </Link>
-                <ThemeToggleButton mode={mode} onToggle={toggle} className="rounded-full" />
-              </div>
             </div>
           </div>
         </div>
       </header>
     </>
-  )
-}
-
-function ThemeToggleButton({
-  mode,
-  onToggle,
-  className,
-  variant = 'icon',
-  showLabel = false,
-}: {
-  mode: 'light' | 'dark'
-  onToggle: () => void
-  className?: string
-  variant?: 'icon' | 'menu'
-  showLabel?: boolean
-}) {
-  const label = mode === 'dark' ? 'Light mode' : 'Dark mode'
-  return (
-    <motion.button
-      type="button"
-      className={`focus-ring inline-flex items-center gap-2 rounded-xl border border-[var(--paper-border)] ${
-        variant === 'menu' ? 'px-3 py-2' : 'p-2'
-      } ${className ?? ''}`}
-      onClick={onToggle}
-      aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-      whileTap={{ scale: 0.95 }}
-    >
-      <motion.img
-        key={mode}
-        alt=""
-        src={publicUrl(mode === 'dark' ? '/asset/light.png' : '/asset/dark.png')}
-        className="h-8 w-8 shrink-0 select-none object-contain"
-        draggable={false}
-        initial={{ rotate: -180, scale: 0.86 }}
-        animate={{ rotate: 0, scale: 1 }}
-        transition={{ duration: motionDuration(0.38) || 0 }}
-      />
-      {showLabel ? <span className="text-sm font-medium">{label}</span> : null}
-    </motion.button>
   )
 }
 
@@ -549,7 +468,7 @@ function HomePlaceholder({
         onPointerDownCapture={composerLocked ? onBlockedComposerInteraction : undefined}
       >
         {composerLocked ? (
-          <div className="absolute inset-x-0 top-0 z-20">
+          <div className="absolute inset-x-0 top-32 z-20 sm:top-36">
             <SyncOnboardingBanner shakeKey={shakeBanner} mode="overlay" />
           </div>
         ) : null}
