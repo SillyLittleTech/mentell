@@ -6,12 +6,13 @@
   --paper-ink-muted: rgba(25, 24, 31, 0.72);
   --paper-border: rgba(25, 24, 31, 0.14);
   --desk-bg: #f6f3ee;
-  --accent: #d12a2a;
+  --accent: #8a750f;
   --accent-soft: color-mix(in srgb, var(--primary-action) 16%, var(--paper-bg));
   --primary-action: #e0b22c;
   --success: #2a9b58;
   --warn: #e0b22c;
   --danger: #c61d1d;
+  --link-accent: #6d3fc4;
   --pill-surface: rgba(251, 244, 222, 0.92);
   --pill-pos-bg: rgba(42, 155, 88, 0.14);
   --pill-pos-border: rgba(42, 155, 88, 0.45);
@@ -60,6 +61,7 @@ html[data-theme='dark'] {
 
   --desk-dot: rgba(255, 255, 255, 0.12);
   --desk-spot-dot: rgba(95, 164, 255, 0.26);
+  --link-accent: #b794f6;
 
   color-scheme: dark;
 }
@@ -263,6 +265,10 @@ html[data-reduced-motion='true'] *::after {
 
 html[data-reduced-motion='true'] .skeleton-block::after {
   animation: none !important;
+}
+
+.skeleton-block--static::after {
+  animation: none;
 }
 
 .sentiment-pill:hover {

@@ -33,9 +33,10 @@ Use and extend the CSS custom properties in `src/index.css`:
 - `--paper-ink`: primary text
 - `--paper-ink-muted`: secondary text
 - `--paper-border`: low-contrast borders
-- `--accent`: decorative highlight / icon accent
+- `--accent`: decorative highlight / icon accent (swaps to a purchased theme's accent when one is equipped)
 - `--primary-action`: key action color
 - `--success`, `--warn`, `--danger`: semantic states
+- `--link-accent`: footer/inline link color, tuned per theme mode for AA contrast
 
 ### Added desk-effect tokens
 - `--desk-dot`: repeating dot color
