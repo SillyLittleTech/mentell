@@ -27,6 +27,9 @@
   --shop-cursor-pointer: pointer;
   --shop-cursor-text: text;
 
+  --desk-dot: rgba(0, 0, 0, 0.12);
+  --desk-spot-dot: rgba(224, 178, 44, 0.25);
+
   color-scheme: light;
   background: var(--desk-bg);
   color: var(--paper-ink);
@@ -53,6 +56,9 @@ html[data-theme='dark'] {
   --pill-neg-border: rgba(220, 80, 80, 0.55);
   --pill-neg-ink: #f0a0a0;
 
+  --desk-dot: rgba(255, 255, 255, 0.12);
+  --desk-spot-dot: rgba(95, 164, 255, 0.26);
+
   color-scheme: dark;
 }
 
@@ -69,9 +75,20 @@ body {
 
 .desk {
   min-height: 100svh;
-  background:
+  --spot-x: 50vw;
+  --spot-y: 12vh;
+
+  background-color: var(--desk-bg);
+  background-image:
     var(--shop-theme-overlay),
-    var(--desk-bg);
+    radial-gradient(
+      260px circle at var(--spot-x) var(--spot-y),
+      var(--desk-spot-dot) 0%,
+      transparent 62%
+    ),
+    radial-gradient(circle at 1px 1px, var(--desk-dot) 1px, transparent 0);
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-size: auto, auto, 22px 22px;
   background-attachment: fixed;
 }
 
@@ -97,10 +114,18 @@ textarea {
 }
 
 .paper {
-  background: var(--paper-bg);
+  background: color-mix(in srgb, var(--paper-bg) 92%, transparent);
   color: var(--paper-ink);
   border: 1px solid var(--paper-border);
-  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.18);
+  border-radius: 1.5rem;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.12);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .paper {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
 }
 
 .ink-muted {

@@ -34,9 +34,7 @@ import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage'
 import { FeedbackPage, FeedbackThankYouPage } from './features/feedback/FeedbackPage'
 import { SpeechBubbleIcon } from './components/SpeechBubbleIcon'
 import { CharacterLabPage } from './features/character/CharacterLabPage'
-import { CharacterNavIcon } from './features/character/CharacterNavIcon'
 import { DeskCharacterLayout } from './features/character/DeskCharacterLayout'
-import { LeftDeskMascot } from './features/character/LeftDeskMascot'
 import { MobileHeaderMascot } from './features/character/MobileHeaderMascot'
 import { CharacterTabIconSync } from './features/character/CharacterTabIconSync'
 import { AuthDeeplinkPage } from './features/auth/AuthDeeplinkPage'
@@ -50,6 +48,9 @@ import { emitBackgroundActivity } from './shared/backgroundActivity'
 import { BackgroundActivityToast } from './components/BackgroundActivityToast'
 import { scrollToTop } from './shared/motion/scroll'
 import { motionDuration } from './shared/motion/useMotionPrefs'
+import { SidebarNav } from './components/shell/SidebarNav'
+import { BottomNav } from './components/shell/BottomNav'
+import { DeskSpotlight } from './components/shell/DeskSpotlight'
 
 type StreakOutcomeAnimation =
   | { kind: 'break'; key: number; from: number }
@@ -171,58 +172,102 @@ function App() {
   }
 
   return (
-    <div className={shareRouteActive ? 'min-h-[100svh]' : 'desk px-4 py-6'}>
+    <div
+      className={
+        shareRouteActive ? 'min-h-[100svh]' : 'desk px-4 py-6 pb-24 md:pb-6'
+      }
+    >
       <EmailLinkDesktopHandoff />
       {!shareRouteActive ? <CharacterTabIconSync /> : null}
       {!shareRouteActive ? <ShopCosmeticEffects /> : null}
-      {!shareRouteActive ? (
-        <TopBar
-          score={score}
-          incomingHint={incomingHint}
-          streakOutcome={streakOutcome}
-          focusActive={streakFocusActive}
-        />
-      ) : null}
-      {!shareRouteActive ? <LeftDeskMascot /> : null}
       {!shareRouteActive ? <StickyLayer /> : null}
       <BackgroundActivityToast />
-      <main
-        className={
-          shareRouteActive
-            ? 'w-full'
-            : `mx-auto mt-6 w-full max-w-4xl ${streakFocusActive ? 'streak-focus-dim' : ''}`
-        }
-      >
-        <AnimatedRoutes>
-          <Route
-            path="/"
-            element={
-              <HomePlaceholder
-                onScoreChange={handleScoreChange}
-                onSubmitAnimationDone={showPendingScoreOverlay}
-              />
-            }
-          />
-          <Route path="/week" element={<WeekPlaceholder />} />
-          <Route path="/notes" element={<NotesPlaceholder />} />
-          <Route
-            path="/shop"
-            element={<ShopPlaceholder onScoreChange={handleScoreChange} />}
-          />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/auth/deeplink" element={<AuthDeeplinkPage />} />
-          <Route path="/auth/link" element={<AuthLinkPage />} />
-          <Route path="/character-lab" element={<CharacterLabPage />} />
-          <Route path="/privacy" element={<PrivacyPolicyPage />} />
-          <Route path="/feedback" element={<FeedbackPage />} />
-          <Route path="/feedback/thanks" element={<FeedbackThankYouPage />} />
-          {isShareLinksEnabled() ? (
-            <Route path="/share/:code" element={<ShareDashboardPage />} />
-          ) : null}
-          <Route path="/archive" element={<ArchivePlaceholder />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </AnimatedRoutes>
-      </main>
+      {!shareRouteActive ? <DeskSpotlight /> : null}
+
+      {shareRouteActive ? (
+        <main className="w-full">
+          <AnimatedRoutes>
+            <Route
+              path="/"
+              element={
+                <HomePlaceholder
+                  onScoreChange={handleScoreChange}
+                  onSubmitAnimationDone={showPendingScoreOverlay}
+                />
+              }
+            />
+            <Route path="/week" element={<WeekPlaceholder />} />
+            <Route path="/notes" element={<NotesPlaceholder />} />
+            <Route
+              path="/shop"
+              element={<ShopPlaceholder onScoreChange={handleScoreChange} />}
+            />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/auth/deeplink" element={<AuthDeeplinkPage />} />
+            <Route path="/auth/link" element={<AuthLinkPage />} />
+            <Route path="/character-lab" element={<CharacterLabPage />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/feedback" element={<FeedbackPage />} />
+            <Route path="/feedback/thanks" element={<FeedbackThankYouPage />} />
+            {isShareLinksEnabled() ? (
+              <Route path="/share/:code" element={<ShareDashboardPage />} />
+            ) : null}
+            <Route path="/archive" element={<ArchivePlaceholder />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </AnimatedRoutes>
+        </main>
+      ) : (
+        <div className="mx-auto w-full max-w-6xl md:grid md:grid-cols-[16rem_1fr] md:gap-6">
+          <SidebarNav />
+
+          <div className="min-w-0">
+            <TopBar
+              score={score}
+              incomingHint={incomingHint}
+              streakOutcome={streakOutcome}
+              focusActive={streakFocusActive}
+            />
+
+            <main
+              className={`mt-6 w-full max-w-4xl ${
+                streakFocusActive ? 'streak-focus-dim' : ''
+              }`}
+            >
+              <AnimatedRoutes>
+                <Route
+                  path="/"
+                  element={
+                    <HomePlaceholder
+                      onScoreChange={handleScoreChange}
+                      onSubmitAnimationDone={showPendingScoreOverlay}
+                    />
+                  }
+                />
+                <Route path="/week" element={<WeekPlaceholder />} />
+                <Route path="/notes" element={<NotesPlaceholder />} />
+                <Route
+                  path="/shop"
+                  element={<ShopPlaceholder onScoreChange={handleScoreChange} />}
+                />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/auth/deeplink" element={<AuthDeeplinkPage />} />
+                <Route path="/auth/link" element={<AuthLinkPage />} />
+                <Route path="/character-lab" element={<CharacterLabPage />} />
+                <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                <Route path="/feedback" element={<FeedbackPage />} />
+                <Route path="/feedback/thanks" element={<FeedbackThankYouPage />} />
+                {isShareLinksEnabled() ? (
+                  <Route path="/share/:code" element={<ShareDashboardPage />} />
+                ) : null}
+                <Route path="/archive" element={<ArchivePlaceholder />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </AnimatedRoutes>
+            </main>
+          </div>
+        </div>
+      )}
+
+      {!shareRouteActive ? <BottomNav /> : null}
       {!shareRouteActive ? (
         <>
           <div className={streakFocusActive ? 'streak-focus-dim' : ''}>
@@ -260,28 +305,13 @@ function TopBar({
 }) {
   const { mode, toggle } = useTheme()
   const { settings } = useAppSettings()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-
-  useEffect(() => {
-    if (!mobileMenuOpen) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMobileMenuOpen(false)
-    }
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      document.body.style.overflow = previousOverflow
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [mobileMenuOpen])
 
   return (
     <>
-      <header className={`mx-auto w-full max-w-4xl space-y-3 ${focusActive ? 'streak-focus-target' : ''}`}>
+      <header className={`w-full space-y-3 ${focusActive ? 'streak-focus-target' : ''}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap items-start gap-3">
-            <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3">
+            <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3 md:hidden">
               <img
                 alt=""
                 src={publicUrl('/asset/mentell-icon.png')}
@@ -321,117 +351,11 @@ function TopBar({
             </Link>
           </div>
 
-          <div className="flex items-center gap-2 md:hidden">
-            <button
-              type="button"
-              className="focus-ring rounded-xl border border-[var(--paper-border)] bg-[var(--paper-bg)] p-2 text-lg leading-none"
-              onClick={() => setMobileMenuOpen(true)}
-              aria-controls="mobile-nav-drawer"
-              aria-expanded={mobileMenuOpen}
-              aria-label="Open navigation menu"
-            >
-              ☰
-            </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggleButton mode={mode} onToggle={toggle} />
           </div>
         </div>
-
-        <nav className="paper hidden flex-wrap items-center gap-2 rounded-2xl px-3 py-2 md:flex">
-          <DeskLink to="/" label="Envelope" subtitle="Write" />
-          <DeskLink to="/week" label="Projector" subtitle="Week" />
-          <DeskLink to="/notes" label="Notepad" subtitle="Notes" />
-          <DeskLink to="/shop" label="Shoppe" subtitle="Shop" />
-          <DeskLink to="/settings" label="Settings" subtitle="Prefs" />
-          <DeskLink to="/character-lab" label="Character" subtitle="Lab" />
-          <ThemeToggleButton mode={mode} onToggle={toggle} className="ml-2" />
-        </nav>
       </header>
-
-      {mobileMenuOpen ? (
-        <div
-          className="fixed inset-0 z-50 md:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Navigation menu"
-        >
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/45"
-            aria-label="Close navigation menu"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-
-          <div
-            id="mobile-nav-drawer"
-            className="paper absolute right-3 top-3 bottom-3 flex w-[min(20rem,calc(100vw-1.5rem))] flex-col rounded-3xl p-4 shadow-[0_20px_60px_rgba(0,0,0,0.38)]"
-          >
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <div className="font-paper text-xl">Menu</div>
-              <button
-                type="button"
-                className="focus-ring rounded-xl border border-[var(--paper-border)] px-3 py-2 text-sm font-semibold"
-                aria-label="Close navigation menu"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="grid gap-2 overflow-y-auto pr-1">
-              <DeskLink
-                to="/"
-                label="Envelope"
-                subtitle="Write"
-                onNavigate={() => setMobileMenuOpen(false)}
-                className="w-full"
-              />
-              <DeskLink
-                to="/week"
-                label="Projector"
-                subtitle="Week"
-                onNavigate={() => setMobileMenuOpen(false)}
-                className="w-full"
-              />
-              <DeskLink
-                to="/notes"
-                label="Notepad"
-                subtitle="Notes"
-                onNavigate={() => setMobileMenuOpen(false)}
-                className="w-full"
-              />
-              <DeskLink
-                to="/shop"
-                label="Shoppe"
-                subtitle="Shop"
-                onNavigate={() => setMobileMenuOpen(false)}
-                className="w-full"
-              />
-              <DeskLink
-                to="/settings"
-                label="Settings"
-                subtitle="Prefs"
-                onNavigate={() => setMobileMenuOpen(false)}
-                className="w-full"
-              />
-              <DeskLink
-                to="/character-lab"
-                label="Character"
-                subtitle="Lab"
-                onNavigate={() => setMobileMenuOpen(false)}
-                className="w-full"
-              />
-              <div className="mt-2 flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-2">
-                <span className="text-sm font-medium">Appearance</span>
-                <ThemeToggleButton
-                  mode={mode}
-                  onToggle={toggle}
-                  variant="menu"
-                  showLabel
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </>
   )
 }
@@ -468,56 +392,6 @@ function ThemeToggleButton({
       />
       {showLabel ? <span className="text-sm font-medium">{label}</span> : null}
     </button>
-  )
-}
-
-const NAV_ICONS: Record<string, string> = {
-  Envelope: '/asset/envelope.png',
-  Projector: '/asset/projector.png',
-  Notepad: '/asset/notepad.png',
-  Shoppe: '/asset/shoppe.png',
-  Settings: '/asset/setting.png',
-
-}
-
-function navIconFor(label: string) {
-  const path = NAV_ICONS[label]
-  return path ? publicUrl(path) : null
-}
-
-function DeskLink({
-  to,
-  label,
-  subtitle,
-  onNavigate,
-  className,
-}: {
-  to: string
-  label: string
-  subtitle: string
-  onNavigate?: () => void
-  className?: string
-}) {
-  const icon = navIconFor(label)
-  const isCharacter = label === 'Character'
-  return (
-    <Link
-      className={`focus-ring group rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left hover:-translate-y-[1px] hover:shadow-[0_12px_22px_rgba(0,0,0,0.12)] ${className ?? 'w-full md:w-auto'}`}
-      to={to}
-      onClick={onNavigate}
-    >
-      <div className="flex items-center gap-2">
-        {isCharacter ? (
-          <CharacterNavIcon className="-my-0.5 h-9 w-9 shrink-0 select-none" />
-        ) : icon ? (
-          <img alt="" src={icon} draggable={false} className="h-8 w-8 shrink-0 select-none object-contain" />
-        ) : null}
-        <div>
-          <div className="font-mono text-xs opacity-70">{label}</div>
-          <div className="text-sm font-medium">{subtitle}</div>
-        </div>
-      </div>
-    </Link>
   )
 }
 
