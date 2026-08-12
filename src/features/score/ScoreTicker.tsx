@@ -41,7 +41,7 @@ export function ScoreTicker({
   const exitOffset = direction === 'increase' ? -14 : 14
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex flex-nowrap items-center justify-end gap-2">
       <motion.div
         className="rounded-2xl border border-[var(--paper-border)] px-3 py-2"
         whileHover={reduced ? undefined : { y: -1.5 }}

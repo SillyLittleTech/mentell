@@ -97,7 +97,7 @@ function generateRandomId() {
 function SkeletonInput({ className = '' }: { className?: string }) {
   return (
     <div
-      className={`skeleton-block w-full h-[60px] ${className}`.trim()}
+      className={`skeleton-block skeleton-block--static w-full h-[60px] ${className}`.trim()}
       aria-hidden
     />
   )
@@ -110,7 +110,7 @@ function SkeletonTextarea({
 }) {
   return (
     <div
-      className={`skeleton-block w-full ${className}`.trim()}
+      className={`skeleton-block skeleton-block--static w-full ${className}`.trim()}
       aria-hidden
     />
   )
