@@ -14,6 +14,12 @@ function pillImage(value: SentimentValue) {
   return publicUrl('/asset/pill_mixed.png')
 }
 
+function faceGlyph(value: SentimentValue) {
+  if (value === '+') return 'sentiment_satisfied'
+  if (value === '-') return 'sentiment_sad'
+  return 'sentiment_neutral'
+}
+
 export function SentimentPills({
   value,
   onChange,
@@ -38,6 +44,9 @@ export function SentimentPills({
             onClick={() => onChange(it.value)}
             title={it.label}
           >
+            <span className="sentiment-pill__watermark material-symbols-outlined" aria-hidden>
+              {faceGlyph(it.value)}
+            </span>
             <img
               alt=""
               src={pillImage(it.value)}

@@ -5,7 +5,7 @@
   --paper-ink: #19181f;
   --paper-ink-muted: rgba(25, 24, 31, 0.72);
   --paper-border: rgba(25, 24, 31, 0.14);
-  --desk-bg: #505153;
+  --desk-bg: #f6f3ee;
   --accent: #d12a2a;
   --accent-soft: color-mix(in srgb, var(--primary-action) 16%, var(--paper-bg));
   --primary-action: #e0b22c;
@@ -29,6 +29,8 @@
 
   --desk-dot: rgba(0, 0, 0, 0.12);
   --desk-spot-dot: rgba(224, 178, 44, 0.25);
+  --spot-x: 50vw;
+  --spot-y: 12vh;
 
   color-scheme: light;
   background: var(--desk-bg);
@@ -74,22 +76,28 @@ body {
 }
 
 .desk {
+  position: relative;
   min-height: 100svh;
-  --spot-x: 50vw;
-  --spot-y: 12vh;
-
   background-color: var(--desk-bg);
   background-image:
     var(--shop-theme-overlay),
-    radial-gradient(
-      260px circle at var(--spot-x) var(--spot-y),
-      var(--desk-spot-dot) 0%,
-      transparent 62%
-    ),
     radial-gradient(circle at 1px 1px, var(--desk-dot) 1px, transparent 0);
-  background-repeat: no-repeat, no-repeat, repeat;
-  background-size: auto, auto, 22px 22px;
+  background-repeat: no-repeat, repeat;
+  background-size: auto, 22px 22px;
   background-attachment: fixed;
+}
+
+.desk::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle at 1px 1px, var(--desk-spot-dot) 1.2px, transparent 0);
+  background-repeat: repeat;
+  background-size: 22px 22px;
+  opacity: 0.95;
+  mask-image: radial-gradient(260px circle at var(--spot-x, 50vw) var(--spot-y, 12vh), black 0%, transparent 65%);
+  -webkit-mask-image: radial-gradient(260px circle at var(--spot-x, 50vw) var(--spot-y, 12vh), black 0%, transparent 65%);
 }
 
 button,
@@ -101,6 +109,12 @@ input[type='radio'],
 input[type='range'],
 select {
   cursor: var(--shop-cursor-pointer);
+}
+
+button:active,
+[role='button']:active,
+a:active {
+  transform: scale(0.985);
 }
 
 input[type='text'],
@@ -178,6 +192,7 @@ html[data-reduced-motion='true'] *::after {
 }
 
 .sentiment-pill {
+  position: relative;
   display: inline-flex;
   user-select: none;
   align-items: center;
@@ -190,6 +205,15 @@ html[data-reduced-motion='true'] *::after {
     transform 150ms ease,
     box-shadow 150ms ease,
     filter 150ms ease;
+}
+
+.sentiment-pill__watermark {
+  position: absolute;
+  inset: auto 0.55rem 0.2rem auto;
+  transform: rotate(-18deg);
+  font-size: 2rem;
+  opacity: 0.1;
+  pointer-events: none;
 }
 
 .sentiment-pill:hover {

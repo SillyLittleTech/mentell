@@ -20,7 +20,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/character-lab', label: 'Character', subtitle: 'Lab', icon: { kind: 'character' } },
 ]
 
-function NavIcon({ item }: { item: NavItem }) {
+function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
   if (item.icon.kind === 'character') {
     return <CharacterNavIcon className="h-9 w-9 -my-0.5 shrink-0 select-none" />
   }
@@ -28,8 +28,8 @@ function NavIcon({ item }: { item: NavItem }) {
     <MaterialIcon
       name={item.icon.name}
       size={24}
-      className="shrink-0"
-      accent={item.to === '/shop' || item.to === '/character-lab'}
+      className={active ? 'shrink-0' : 'shrink-0 opacity-90'}
+      accent={active}
     />
   )
 }
@@ -38,7 +38,7 @@ export function SidebarNav() {
   const { pathname } = useLocation()
 
   return (
-    <aside className="hidden md:flex md:w-[16rem] md:flex-col md:gap-4">
+    <aside className="hidden md:sticky md:top-4 md:flex md:h-[calc(100svh-2rem)] md:w-[16rem] md:flex-col md:gap-4">
       <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3">
         <img
           alt=""
@@ -64,7 +64,7 @@ export function SidebarNav() {
               }`}
             >
               <div className="flex items-center gap-2">
-                <NavIcon item={item} />
+                <NavIcon item={item} active={active} />
                 <div>
                   <div className="font-mono text-xs opacity-70">{item.label}</div>
                   <div className="text-sm font-medium">{item.subtitle}</div>
@@ -76,8 +76,8 @@ export function SidebarNav() {
       </nav>
 
       {/* Empty-space companion placement: sits below the nav stack */}
-      <div className="flex flex-1 items-center justify-center pt-4">
-        <CharacterCorner className="h-64 w-auto" />
+      <div className="flex flex-1 items-end justify-center overflow-hidden pt-4">
+        <CharacterCorner className="h-64 w-auto translate-y-3" />
       </div>
     </aside>
   )

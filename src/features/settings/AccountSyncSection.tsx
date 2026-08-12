@@ -29,7 +29,7 @@ export function AccountSyncSection() {
     handoffUi && (isOfflineZipBuild() || isFileProtocol());
 
   return (
-    <section className="paper rounded-3xl p-6">
+    <section id="account-sync" className="paper rounded-3xl p-6">
       <div className="font-paper text-xl">Account &amp; sync</div>
       <div className="ink-muted mt-1 text-sm">
         Sign in to back up and sync your journal across devices.

@@ -1,9 +1,9 @@
 import type { TargetAndTransition, Transition } from 'framer-motion'
 import { motionDuration, shouldReduceMotion } from './useMotionPrefs'
 
-const enter: TargetAndTransition = { opacity: 0, y: 12, scale: 0.99 }
-const visible: TargetAndTransition = { opacity: 1, y: 0, scale: 1 }
-const leave: TargetAndTransition = { opacity: 0, y: -6, scale: 0.995 }
+const enter: TargetAndTransition = { opacity: 0, x: 36, y: 8, scale: 0.99, rotate: 1.1, skewY: -1.2 }
+const visible: TargetAndTransition = { opacity: 1, x: 0, y: 0, scale: 1, rotate: 0, skewY: 0 }
+const leave: TargetAndTransition = { opacity: 0, x: -44, y: -4, scale: 0.995, rotate: -1.2, skewY: 1.4 }
 
 export function pageTransitionProps() {
   const reduced = shouldReduceMotion()

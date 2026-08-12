@@ -1,6 +1,6 @@
 import { Link, Navigate, Route, useLocation } from 'react-router-dom'
 import { AnimatedRoutes } from './shared/motion/AnimatedRoutes'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useTheme } from './shared/theme/useTheme'
 import { LetterComposer } from './features/compose/LetterComposer'
 import { SubmitAnimation } from './features/compose/SubmitAnimation'
@@ -33,6 +33,7 @@ import { AppLegalFooter } from './components/AppLegalFooter'
 import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage'
 import { FeedbackPage, FeedbackThankYouPage } from './features/feedback/FeedbackPage'
 import { SpeechBubbleIcon } from './components/SpeechBubbleIcon'
+import { MaterialIcon } from './components/MaterialIcon'
 import { CharacterLabPage } from './features/character/CharacterLabPage'
 import { DeskCharacterLayout } from './features/character/DeskCharacterLayout'
 import { MobileHeaderMascot } from './features/character/MobileHeaderMascot'
@@ -44,7 +45,7 @@ import { isFirebaseSyncEnabled, isShareLinksEnabled } from './shared/features/fe
 import { useAuthOptional } from './shared/firebase/AuthProvider'
 import { ShopCosmeticEffects } from './features/shop/shopCosmetics'
 import { getOrCreateAnonSearchUserId, requestProjectorSearch } from './features/compilation/projectorSearch'
-import { emitBackgroundActivity } from './shared/backgroundActivity'
+import { emitBackgroundActivity, listenToBackgroundActivity } from './shared/backgroundActivity'
 import { BackgroundActivityToast } from './components/BackgroundActivityToast'
 import { scrollToTop } from './shared/motion/scroll'
 import { motionDuration } from './shared/motion/useMotionPrefs'
@@ -226,6 +227,7 @@ function App() {
               incomingHint={incomingHint}
               streakOutcome={streakOutcome}
               focusActive={streakFocusActive}
+              onPackageAward={handleScoreChange}
             />
 
             <main
@@ -273,7 +275,6 @@ function App() {
           <div className={streakFocusActive ? 'streak-focus-dim' : ''}>
             <AppLegalFooter />
           </div>
-          <PackageAlert onAward={handleScoreChange} />
           <AnimatePresence>
             {incomingDelta !== null ? (
               <ScoreBurst
@@ -297,19 +298,38 @@ function TopBar({
   incomingHint,
   streakOutcome,
   focusActive,
+  onPackageAward,
 }: {
   score: ReturnType<typeof getScoreSnapshot>
   incomingHint: string | null
   streakOutcome: StreakOutcomeAnimation | null
   focusActive: boolean
+  onPackageAward: (delta: number, hint: string | null) => void
 }) {
   const { mode, toggle } = useTheme()
   const { settings } = useAppSettings()
+  const auth = useAuthOptional()
+  const [syncBusy, setSyncBusy] = useState(false)
+
+  useEffect(() => {
+    return listenToBackgroundActivity((event) => {
+      if (event.id !== 'sync') return
+      setSyncBusy(event.type === 'start')
+    })
+  }, [])
+
+  const syncStatusTone = auth?.syncError
+    ? 'var(--danger)'
+    : syncBusy
+      ? '#3b82f6'
+      : auth?.user && auth.syncEnabled
+        ? 'var(--success)'
+        : 'rgba(148, 163, 184, 0.9)'
 
   return (
     <>
       <header className={`w-full space-y-3 ${focusActive ? 'streak-focus-target' : ''}`}>
-        <div className="flex items-start justify-between gap-3">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(13rem,18rem)_auto] md:items-start">
           <div className="flex flex-wrap items-start gap-3">
             <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3 md:hidden">
               <img
@@ -325,7 +345,7 @@ function TopBar({
             </div>
 
             {!settings.disablePoints ? (
-              <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
+              <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2 md:hidden">
                 <ScoreTicker
                   total={score.total}
                   streak={score.streak}
@@ -340,19 +360,63 @@ function TopBar({
                 <MobileHeaderMascot />
               </div>
             )}
-
-            <Link
-              to="/feedback"
-              className="paper focus-ring flex h-12 w-12 items-center justify-center rounded-2xl transition hover:-translate-y-[1px] hover:shadow-[0_16px_26px_rgba(0,0,0,0.14)]"
-              aria-label="Open feedback form"
-              title="Feedback form"
-            >
-              <SpeechBubbleIcon className="h-5 w-5" />
-            </Link>
           </div>
 
-          <div className="flex items-center gap-2">
-            <ThemeToggleButton mode={mode} onToggle={toggle} />
+          <div className="hidden min-h-[5rem] items-center justify-center md:flex">
+            <PackageAlert onAward={onPackageAward} placement="inline" />
+          </div>
+
+          <div className="flex items-start justify-between gap-3 md:justify-end">
+            <div className="flex flex-1 items-center justify-between gap-3 md:hidden">
+              <Link
+                to="/feedback"
+                className="paper focus-ring flex h-11 w-11 items-center justify-center rounded-full transition"
+                aria-label="Open feedback form"
+                title="Feedback form"
+              >
+                <SpeechBubbleIcon className="h-5 w-5" />
+              </Link>
+              <div className="flex min-h-[3rem] items-center justify-center">
+                <PackageAlert onAward={onPackageAward} placement="inline" />
+              </div>
+              <ThemeToggleButton mode={mode} onToggle={toggle} className="rounded-full" />
+            </div>
+
+            <div className="hidden items-start gap-2 md:flex">
+              {!settings.disablePoints ? (
+                <div className="paper flex items-center rounded-3xl px-3 py-2">
+                  <ScoreTicker
+                    total={score.total}
+                    streak={score.streak}
+                    streakFreezes={score.streakFreezes}
+                    hint={incomingHint}
+                    streakOutcome={streakOutcome}
+                  />
+                  <MobileHeaderMascot />
+                </div>
+              ) : null}
+
+              <div className="flex flex-col gap-2">
+                <Link
+                  to="/settings#account-sync"
+                  className="paper focus-ring flex h-12 w-12 items-center justify-center rounded-full border border-[var(--paper-border)]"
+                  aria-label="Open account and sync settings"
+                  title="Account and sync"
+                  style={{ color: syncStatusTone }}
+                >
+                  <MaterialIcon name="person" size={22} accent={false} />
+                </Link>
+                <Link
+                  to="/feedback"
+                  className="paper focus-ring flex h-12 w-12 items-center justify-center rounded-full"
+                  aria-label="Open feedback form"
+                  title="Feedback form"
+                >
+                  <SpeechBubbleIcon className="h-5 w-5" />
+                </Link>
+                <ThemeToggleButton mode={mode} onToggle={toggle} className="rounded-full" />
+              </div>
+            </div>
           </div>
         </div>
       </header>
@@ -375,7 +439,7 @@ function ThemeToggleButton({
 }) {
   const label = mode === 'dark' ? 'Light mode' : 'Dark mode'
   return (
-    <button
+    <motion.button
       type="button"
       className={`focus-ring inline-flex items-center gap-2 rounded-xl border border-[var(--paper-border)] ${
         variant === 'menu' ? 'px-3 py-2' : 'p-2'
@@ -383,15 +447,20 @@ function ThemeToggleButton({
       onClick={onToggle}
       aria-label={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      whileTap={{ scale: 0.95 }}
     >
-      <img
+      <motion.img
+        key={mode}
         alt=""
         src={publicUrl(mode === 'dark' ? '/asset/light.png' : '/asset/dark.png')}
         className="h-8 w-8 shrink-0 select-none object-contain"
         draggable={false}
+        initial={{ rotate: -180, scale: 0.86 }}
+        animate={{ rotate: 0, scale: 1 }}
+        transition={{ duration: motionDuration(0.38) || 0 }}
       />
       {showLabel ? <span className="text-sm font-medium">{label}</span> : null}
-    </button>
+    </motion.button>
   )
 }
 

@@ -10,8 +10,10 @@ import { publicUrl } from '../../shared/publicUrl'
 
 export function PackageAlert({
   onAward,
+  placement = 'floating',
 }: {
   onAward: (delta: number, hint: string | null) => void
+  placement?: 'floating' | 'inline'
 }) {
   const [pkgs, setPkgs] = useState<PackageRow[]>([])
   const [truck, setTruck] = useState(false)
@@ -55,13 +57,15 @@ export function PackageAlert({
         : publicUrl('/asset/gift_small.png')
 
   return (
-    <div className="fixed bottom-5 right-5 z-30">
+    <div className={placement === 'floating' ? 'fixed bottom-5 right-5 z-30' : 'relative z-10'}>
       <div className="relative">
         <AnimatePresence>{truck ? <TruckDrop /> : null}</AnimatePresence>
 
         <motion.button
           type="button"
-          className="focus-ring paper flex items-center gap-3 rounded-3xl px-4 py-3"
+          className={`focus-ring paper flex items-center gap-3 rounded-3xl ${
+            placement === 'inline' ? 'px-3 py-2' : 'px-4 py-3'
+          }`}
           initial={shouldReduceMotion() ? false : { scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           whileHover={shouldReduceMotion() ? undefined : { scale: 1.03 }}
@@ -76,12 +80,23 @@ export function PackageAlert({
             navigate('/week')
           }}
         >
-          <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--paper-border)]">
-            <img alt="" src={icon} className="h-10 w-10 select-none object-contain" draggable={false} />
+          <div
+            className={`relative flex items-center justify-center rounded-2xl border border-[var(--paper-border)] ${
+              placement === 'inline' ? 'h-10 w-10' : 'h-12 w-12'
+            }`}
+          >
+            <img
+              alt=""
+              src={icon}
+              className={`${placement === 'inline' ? 'h-8 w-8' : 'h-10 w-10'} select-none object-contain`}
+              draggable={false}
+            />
           </div>
           <div className="text-left">
             <div className="font-medium">New package</div>
-            <div className="ink-muted text-sm">{forced && count === 0 ? 'debug mode' : `${count} waiting`}</div>
+            <div className="ink-muted text-sm">
+              {forced && count === 0 ? 'debug mode' : `${count} waiting`}
+            </div>
           </div>
         </motion.button>
       </div>

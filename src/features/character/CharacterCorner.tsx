@@ -15,7 +15,8 @@ export function CharacterCorner({ className }: { className?: string }) {
     <MentellCharacter
       pose={pose}
       appearance={appearance}
-      className={`pointer-events-none h-32 w-28 shrink-0 sm:h-36 sm:w-32 ${className ?? ''}`}
+      closeEyesOnInteract
+      className={`h-32 w-28 shrink-0 sm:h-36 sm:w-32 ${className ?? ''}`}
     />
   )
 }

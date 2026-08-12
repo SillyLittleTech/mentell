@@ -39,14 +39,23 @@ export function applyBlinkClosedState(svg: SVGSVGElement) {
 export function useCharacterBlink(
   svgRef: React.RefObject<SVGSVGElement | null>,
   svgGeneration = 0,
+  forceClosed = false,
 ) {
   useEffect(() => {
     if (svgGeneration < 0) return
-    const blink = charManifest.blink
-    if (!blink || shouldReduceMotion()) return
 
     const svg = svgRef.current
     if (!svg) return
+
+    if (forceClosed) {
+      applyBlinkClosedState(svg)
+      return () => {
+        applyBlinkOpenState(svg)
+      }
+    }
+
+    const blink = charManifest.blink
+    if (!blink || shouldReduceMotion()) return
 
     let cancelled = false
     let intervalTimer: ReturnType<typeof setTimeout> | undefined
@@ -76,5 +85,5 @@ export function useCharacterBlink(
       if (closeTimer !== undefined) clearTimeout(closeTimer)
       applyBlinkOpenState(svg)
     }
-  }, [svgRef, svgGeneration])
+  }, [svgRef, svgGeneration, forceClosed])
 }
