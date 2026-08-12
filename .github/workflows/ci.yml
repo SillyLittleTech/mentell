@@ -206,5 +206,6 @@ jobs:
     needs: check-changes
     if: ${{ needs.check-changes.outputs.app != 'true' || (github.event_name == 'pull_request' && github.actor == 'github-actions[bot]') }}
     runs-on: ubuntu-latest
+    permissions: {}
     steps:
       - run: echo "Skipping checks because app files were not modified."
