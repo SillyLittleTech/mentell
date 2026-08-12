@@ -42,7 +42,8 @@ function AuthLinkGeneratePanel() {
 
   if (!auth?.user) return null
 
-  const expired = handoff ? Date.now() >= handoff.expiresAt : false
+  const now = new Date().getTime();
+  const expired = handoff ? now >= handoff.expiresAt : false
 
   return (
     <div className="space-y-4">

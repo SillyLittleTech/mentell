@@ -23,6 +23,7 @@ export function DebugAuthSection() {
   )
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSnap(getAuthDebugSnapshot())
   }, [])
 
