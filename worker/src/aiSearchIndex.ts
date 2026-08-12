@@ -231,6 +231,54 @@ function packMetadata(userId: string, pack: IndexPack) {
 }
 
 /**
+ * Delete every existing item under a user's folder (both packed `pack-N.md`
+ * files and any legacy per-entry files). AI Search's Items API rejects
+ * uploads to a key that already exists (409 `item_key_already_exist`) and has
+ * no "update" endpoint, so re-uploading a pack with the same key as a
+ * previous sync would silently fail and leave stale content indexed. Wiping
+ * the folder first makes every sync a clean, idempotent full re-index and
+ * also clears out orphaned/duplicate items left behind by earlier bugs.
+ */
+async function deleteAllUserItems(instance: AiSearchInstance, folderPrefix: string) {
+  try {
+    let page = 1
+    const perPage = 100
+    let keepPaging = true
+
+    while (keepPaging) {
+      const listResponse = await instance.items.list({
+        page,
+        per_page: perPage,
+        search: folderPrefix,
+      })
+
+      if (!listResponse?.result || listResponse.result.length === 0) {
+        break
+      }
+
+      const toDelete = listResponse.result.filter((item) => item.key?.startsWith(folderPrefix))
+      await Promise.allSettled(
+        toDelete.map(async (item) => {
+          try {
+            await instance.items.delete(item.id)
+          } catch (delErr) {
+            console.warn(`[projector-search] Failed to delete existing item ${item.key}`, delErr)
+          }
+        }),
+      )
+
+      if (listResponse.result.length < perPage) {
+        keepPaging = false
+      } else {
+        page++
+      }
+    }
+  } catch (err) {
+    console.warn('[projector-search] Failed to clean up existing search items', err)
+  }
+}
+
+/**
  * Upsert journal entries into AI Search when the client digest changed.
  * Packs multiple entries into files under the soft size limit with clear MD markers.
  * Uses non-blocking upload only — uploadAndPoll over the remote wrangler
@@ -241,6 +289,14 @@ export async function syncEntriesToAiSearch(
   userId: string,
   entries: EntrySnapshot[],
 ) {
+  const folderPrefix = userFolder(userId)
+
+  // Always clear this user's folder first — see deleteAllUserItems for why an
+  // in-place "update" is not possible with this API. When the user has no
+  // entries left (e.g. they deleted everything), this also removes stale
+  // packs that would otherwise linger forever.
+  await deleteAllUserItems(instance, folderPrefix)
+
   if (entries.length === 0) return
 
   const packs = packEntriesForAiSearch(entries)
@@ -258,51 +314,6 @@ export async function syncEntriesToAiSearch(
     const first = results.find((r) => r.status === 'rejected') as PromiseRejectedResult
     const msg = first.reason instanceof Error ? first.reason.message : String(first.reason)
     throw new Error(`AI Search index upload failed for all ${failed} packs: ${msg}`)
-  }
-
-  // Cleanup: delete any legacy single-entry files in the user's folder
-  // Now that all entries are packed into `pack-N.md`, we fetch existing files.
-  // We use the folder prefix to fetch only this user's files.
-  try {
-    const folderPrefix = userFolder(userId)
-
-    let page = 1
-    const perPage = 100
-    let keepPaging = true
-
-    while (keepPaging) {
-      const listResponse = await instance.items.list({
-        page,
-        per_page: perPage,
-        search: folderPrefix,
-      })
-
-      if (!listResponse?.result || listResponse.result.length === 0) {
-        break
-      }
-
-      for (const item of listResponse.result) {
-        if (!item.key?.startsWith(folderPrefix)) continue
-
-        // If it doesn't match our expected pack format, it's a legacy item.
-        // We delete it. (e.g. journals/userId/entryId123.md)
-        if (!item.key.includes('/pack-')) {
-          try {
-            await instance.items.delete(item.id)
-          } catch (delErr) {
-            console.warn(`[projector-search] Failed to delete legacy item ${item.key}`, delErr)
-          }
-        }
-      }
-
-      if (listResponse.result.length < perPage) {
-        keepPaging = false
-      } else {
-        page++
-      }
-    }
-  } catch (err) {
-    console.warn('[projector-search] Failed to clean up legacy search items', err)
   }
 }
 
