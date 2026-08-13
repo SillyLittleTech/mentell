@@ -14,6 +14,7 @@ export function DeskCharacterShell({
   return (
     <motion.div
       layoutId={DESK_CHARACTER_LAYOUT_ID}
+      initial={false}
       transition={
         reduced || duration === 0
           ? { duration: 0 }

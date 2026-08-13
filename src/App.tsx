@@ -262,7 +262,7 @@ function App() {
             />
 
             <main
-              className={`mt-6 w-full max-w-4xl ${
+              className={`relative mt-6 w-full max-w-4xl overflow-visible ${
                 streakFocusActive ? 'streak-focus-dim' : ''
               }`}
             >
