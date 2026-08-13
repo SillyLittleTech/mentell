@@ -193,18 +193,25 @@ function hidePartByKey(svg: SVGSVGElement, key: string) {
 }
 
 function parseHexColor(color: string): [number, number, number] | null {
-  const hex = color.trim().replace(/^#/, '')
-  if (hex.length === 3) {
+  const value = color.trim()
+  const hex = value.replace(/^#/, '')
+  if (/^[0-9a-f]{3}$/i.test(hex)) {
     return hex.split('').map((part) => parseInt(part + part, 16)) as [number, number, number]
   }
-  if (hex.length === 6 || hex.length === 8) {
+  if (/^[0-9a-f]{6}$/i.test(hex) || /^[0-9a-f]{8}$/i.test(hex)) {
     return [0, 2, 4].map((start) => parseInt(hex.slice(start, start + 2), 16)) as [
       number,
       number,
       number,
     ]
   }
-  return null
+  const rgb = value.match(
+    /^rgba?\(\s*([\d.]+)\s*[, ]\s*([\d.]+)\s*[, ]\s*([\d.]+)(?:\s*[,/]\s*[\d.]+)?\s*\)$/i,
+  )
+  if (!rgb) return null
+  return [1, 2, 3].map((index) =>
+    Math.max(0, Math.min(255, Math.round(Number(rgb[index])))),
+  ) as [number, number, number]
 }
 
 function darkenColor(color: string, amount = 0.42) {
@@ -215,7 +222,10 @@ function darkenColor(color: string, amount = 0.42) {
 }
 
 function colorsEqual(a: string, b: string) {
-  return a.trim().toLowerCase() === b.trim().toLowerCase()
+  if (a.trim().toLowerCase() === b.trim().toLowerCase()) return true
+  const left = parseHexColor(a)
+  const right = parseHexColor(b)
+  return Boolean(left && right && left.every((channel, i) => channel === right[i]))
 }
 
 function luminance(rgb: [number, number, number]) {
@@ -312,13 +322,22 @@ function retargetColor(authored: string, fromBase: string, toBase: string) {
   )
 }
 
+function cssDeclaredPaint(el: SVGElement, property: 'fill' | 'stroke') {
+  const fromStyle = el
+    .getAttribute('style')
+    ?.match(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`, 'i'))?.[1]
+  return (fromStyle || el.getAttribute(property) || '').trim()
+}
+
 function cssFillValue(el: SVGElement) {
-  const fromStyle = el.getAttribute('style')?.match(/(?:^|;)\s*fill\s*:\s*([^;]+)/i)?.[1]
-  return (el.style.fill || el.getAttribute('fill') || fromStyle || '').trim()
+  // Prefer the authored style/attribute. CSSOM `.style.fill` serializes hex as rgb()
+  // after a style round-trip, which used to skip retargeting on stroked hair fills.
+  return (cssDeclaredPaint(el, 'fill') || el.style.fill || '').trim()
 }
 
 function fillUrlId(el: SVGElement) {
   const raw = el.getAttribute('data-mentell-fill-url') || cssFillValue(el)
+  if (!raw.toLowerCase().startsWith('url(')) return null
   return raw.match(/url\(\s*['"]?#([^'")\s]+)['"]?\s*\)/)?.[1] ?? null
 }
 
@@ -343,12 +362,24 @@ function reapplyFillUrl(el: SVGElement, paintId: string) {
   }
 }
 
+function svgTagName(el: Element | null | undefined) {
+  return el?.tagName.toLowerCase() ?? ''
+}
+
+function isSvgGradient(
+  el: Element | null | undefined,
+): el is SVGLinearGradientElement | SVGRadialGradientElement {
+  const tag = svgTagName(el)
+  return tag === 'lineargradient' || tag === 'radialgradient'
+}
+
+function isSvgStop(el: Element | null | undefined): el is SVGStopElement {
+  return svgTagName(el) === 'stop'
+}
+
 function materializePaintGradient(svg: SVGSVGElement, paintId: string) {
   const paint = svg.getElementById(paintId)
-  if (
-    !(paint instanceof SVGLinearGradientElement) &&
-    !(paint instanceof SVGRadialGradientElement)
-  ) {
+  if (!isSvgGradient(paint)) {
     return null
   }
   if (!paint.querySelector('stop')) {
@@ -366,7 +397,7 @@ function materializePaintGradient(svg: SVGSVGElement, paintId: string) {
 
 function restoreGradientStops(gradient: SVGGradientElement) {
   gradient.querySelectorAll('stop').forEach((node) => {
-    if (!(node instanceof SVGStopElement)) return
+    if (!isSvgStop(node)) return
     const orig = node.getAttribute(ORIG_STOP_ATTR)
     if (!orig) return
     node.setAttribute('stop-color', orig)
@@ -395,7 +426,9 @@ function setSolidFill(el: SVGElement, color: string) {
 function rememberOrigFill(el: SVGElement) {
   if (el.getAttribute(ORIG_FILL_ATTR)) return
   const current = cssFillValue(el)
-  if (current) el.setAttribute(ORIG_FILL_ATTR, current)
+  if (!current) return
+  const rgb = parseHexColor(current)
+  el.setAttribute(ORIG_FILL_ATTR, rgb ? rgbToHex(rgb) : current)
 }
 
 function applyPaintFill(el: SVGElement, color: string, defaultBase: string) {
@@ -413,7 +446,7 @@ function applyPaintFill(el: SVGElement, color: string, defaultBase: string) {
   }
   rememberOrigFill(el)
   const authored = el.getAttribute(ORIG_FILL_ATTR) || color
-  if (colorsEqual(color, defaultBase) || !parseHexColor(authored)) {
+  if (colorsEqual(color, defaultBase)) {
     setSolidFill(el, authored)
     return
   }
@@ -434,7 +467,7 @@ function resolveGradientWithStops(
   if (seen.has(id)) return null
   seen.add(id)
   const el = svg.getElementById(id)
-  if (!(el instanceof SVGLinearGradientElement) && !(el instanceof SVGRadialGradientElement)) {
+  if (!isSvgGradient(el)) {
     return null
   }
   if (el.querySelector('stop')) return el
@@ -443,17 +476,19 @@ function resolveGradientWithStops(
 }
 
 function stopColor(stop: SVGStopElement) {
-  return (
+  const raw = (
+    stop.getAttribute('style')?.match(/(?:^|;)\s*stop-color\s*:\s*([^;]+)/i)?.[1]?.trim() ||
     stop.getAttribute('stop-color') ||
     stop.style.stopColor ||
-    stop.getAttribute('style')?.match(/(?:^|;)\s*stop-color\s*:\s*([^;]+)/i)?.[1]?.trim() ||
     '#000000'
   )
+  const rgb = parseHexColor(raw)
+  return rgb ? rgbToHex(rgb) : raw
 }
 
 function tintGradientStops(gradient: SVGGradientElement, color: string, defaultBase: string) {
   gradient.querySelectorAll('stop').forEach((node) => {
-    if (!(node instanceof SVGStopElement)) return
+    if (!isSvgStop(node)) return
     const authored = node.getAttribute(ORIG_STOP_ATTR) ?? stopColor(node)
     node.setAttribute(ORIG_STOP_ATTR, authored)
     const next = retargetColor(authored, defaultBase, color)
@@ -528,6 +563,51 @@ function applySkinFill(el: SVGElement, color: string, defaultBase: string) {
   }
   tintFilterLighting(el.ownerSVGElement, el, color, defaultBase)
   applySkinStroke(el, color, defaultBase)
+}
+
+function isSkinMaskLabel(label: string) {
+  return /skinmask/i.test(label)
+}
+
+function findSkinMaskElements(svg: SVGSVGElement) {
+  const found: SVGElement[] = []
+  forEachInkscapeLabel(svg, (el, label) => {
+    if (isSkinMaskLabel(label)) found.push(el)
+  })
+  return found
+}
+
+function tintGradientStopsToColor(gradient: SVGGradientElement, color: string) {
+  gradient.querySelectorAll('stop').forEach((node) => {
+    if (!isSvgStop(node)) return
+    const authored = node.getAttribute(ORIG_STOP_ATTR) ?? stopColor(node)
+    node.setAttribute(ORIG_STOP_ATTR, authored)
+    node.setAttribute('stop-color', color)
+    const style = node.getAttribute('style')
+    if (style) {
+      node.setAttribute(
+        'style',
+        style.replace(/(?:^|;)\s*stop-color\s*:[^;]*/i, `;stop-color:${color}`).replace(/^;/, ''),
+      )
+    }
+  })
+}
+
+/** Face ellipse that covers the authored red skin gradient; keep its fade, retint to skin. */
+function applySkinMaskFill(el: SVGElement, color: string, defaultBase: string) {
+  const svg = el.ownerSVGElement
+  const paintId = fillUrlId(el)
+  if (svg && paintId) {
+    rememberFillUrl(el, paintId)
+    const gradient = materializePaintGradient(svg, paintId)
+    if (gradient) {
+      if (colorsEqual(color, defaultBase)) restoreGradientStops(gradient)
+      else tintGradientStopsToColor(gradient, color)
+      reapplyFillUrl(el, paintId)
+      return
+    }
+  }
+  applySkinFill(el, color, defaultBase)
 }
 
 function applyHairFill(el: SVGElement, color: string, defaultBase: string) {
@@ -653,6 +733,11 @@ export function applyCharacterAppearance(
       }
       applyPaintFill(el, color, fillable.defaultFill)
       if (hasVisibleStroke(el)) el.style.stroke = color
+    }
+    if (fillable.key === 'path45') {
+      for (const el of findSkinMaskElements(svg)) {
+        applySkinMaskFill(el, color, fillable.defaultFill)
+      }
     }
   }
 
