@@ -103,10 +103,20 @@ export function PackageAlert({
           whileTap={shouldReduceMotion() ? undefined : { scale: 0.98 }}
           transition={{ duration: motionDuration(0.25) || 0 }}
           onClick={async () => {
-            const first = pkgs[0]
-            if (first) {
-              const res = await markPackageOpened(first.id)
-              if (res.awarded) onAward(res.delta, res.hint)
+            if (pkgs.length > 0) {
+              let totalDelta = 0
+              let lastHint: string | null = null
+              for (const pkg of pkgs) {
+                const res = await markPackageOpened(pkg.id)
+                if (res.awarded) {
+                  totalDelta += res.delta
+                  lastHint = res.hint
+                }
+              }
+              if (totalDelta > 0) {
+                const hint = pkgs.length > 1 ? 'Previous packages were added to history' : lastHint
+                onAward(totalDelta, hint)
+              }
             }
             navigate('/week')
           }}
