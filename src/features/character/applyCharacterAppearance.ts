@@ -193,18 +193,25 @@ function hidePartByKey(svg: SVGSVGElement, key: string) {
 }
 
 function parseHexColor(color: string): [number, number, number] | null {
-  const hex = color.trim().replace(/^#/, '')
-  if (hex.length === 3) {
+  const value = color.trim()
+  const hex = value.replace(/^#/, '')
+  if (/^[0-9a-f]{3}$/i.test(hex)) {
     return hex.split('').map((part) => parseInt(part + part, 16)) as [number, number, number]
   }
-  if (hex.length === 6 || hex.length === 8) {
+  if (/^[0-9a-f]{6}$/i.test(hex) || /^[0-9a-f]{8}$/i.test(hex)) {
     return [0, 2, 4].map((start) => parseInt(hex.slice(start, start + 2), 16)) as [
       number,
       number,
       number,
     ]
   }
-  return null
+  const rgb = value.match(
+    /^rgba?\(\s*([\d.]+)\s*[, ]\s*([\d.]+)\s*[, ]\s*([\d.]+)(?:\s*[,/]\s*[\d.]+)?\s*\)$/i,
+  )
+  if (!rgb) return null
+  return [1, 2, 3].map((index) =>
+    Math.max(0, Math.min(255, Math.round(Number(rgb[index])))),
+  ) as [number, number, number]
 }
 
 function darkenColor(color: string, amount = 0.42) {
@@ -215,7 +222,10 @@ function darkenColor(color: string, amount = 0.42) {
 }
 
 function colorsEqual(a: string, b: string) {
-  return a.trim().toLowerCase() === b.trim().toLowerCase()
+  if (a.trim().toLowerCase() === b.trim().toLowerCase()) return true
+  const left = parseHexColor(a)
+  const right = parseHexColor(b)
+  return Boolean(left && right && left.every((channel, i) => channel === right[i]))
 }
 
 function luminance(rgb: [number, number, number]) {
@@ -312,13 +322,22 @@ function retargetColor(authored: string, fromBase: string, toBase: string) {
   )
 }
 
+function cssDeclaredPaint(el: SVGElement, property: 'fill' | 'stroke') {
+  const fromStyle = el
+    .getAttribute('style')
+    ?.match(new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`, 'i'))?.[1]
+  return (fromStyle || el.getAttribute(property) || '').trim()
+}
+
 function cssFillValue(el: SVGElement) {
-  const fromStyle = el.getAttribute('style')?.match(/(?:^|;)\s*fill\s*:\s*([^;]+)/i)?.[1]
-  return (el.style.fill || el.getAttribute('fill') || fromStyle || '').trim()
+  // Prefer the authored style/attribute. CSSOM `.style.fill` serializes hex as rgb()
+  // after a style round-trip, which used to skip retargeting on stroked hair fills.
+  return (cssDeclaredPaint(el, 'fill') || el.style.fill || '').trim()
 }
 
 function fillUrlId(el: SVGElement) {
   const raw = el.getAttribute('data-mentell-fill-url') || cssFillValue(el)
+  if (!raw.toLowerCase().startsWith('url(')) return null
   return raw.match(/url\(\s*['"]?#([^'")\s]+)['"]?\s*\)/)?.[1] ?? null
 }
 
@@ -395,7 +414,9 @@ function setSolidFill(el: SVGElement, color: string) {
 function rememberOrigFill(el: SVGElement) {
   if (el.getAttribute(ORIG_FILL_ATTR)) return
   const current = cssFillValue(el)
-  if (current) el.setAttribute(ORIG_FILL_ATTR, current)
+  if (!current) return
+  const rgb = parseHexColor(current)
+  el.setAttribute(ORIG_FILL_ATTR, rgb ? rgbToHex(rgb) : current)
 }
 
 function applyPaintFill(el: SVGElement, color: string, defaultBase: string) {
@@ -413,7 +434,7 @@ function applyPaintFill(el: SVGElement, color: string, defaultBase: string) {
   }
   rememberOrigFill(el)
   const authored = el.getAttribute(ORIG_FILL_ATTR) || color
-  if (colorsEqual(color, defaultBase) || !parseHexColor(authored)) {
+  if (colorsEqual(color, defaultBase)) {
     setSolidFill(el, authored)
     return
   }
