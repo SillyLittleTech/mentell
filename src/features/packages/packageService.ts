@@ -1,7 +1,6 @@
 import { stripDateKey } from '../../shared/dates'
 import { getDb, type PackageKind, type PackageRow } from '../../db/schema'
 import { format, parseISO } from 'date-fns'
-import { makeId } from '../../shared/id'
 import { awardForPackageOpen } from '../score/scoreService'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 
@@ -18,7 +17,7 @@ export async function ensurePackageWithStatus(kind: PackageKind, periodKey: stri
   if (existing) return { row: existing, created: false as const }
   const now = Date.now()
   const row: PackageRow = {
-    id: makeId('pkg'),
+    id: `pkg_${kind}_${periodKey}`,
     kind,
     periodKey,
     createdAt: now,
