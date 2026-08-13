@@ -77,7 +77,9 @@ export function SidebarNav() {
 
       {/* Empty-space companion placement: sits below the nav stack */}
       <div className="flex flex-1 items-start justify-center pt-1">
-        <CharacterCorner className="h-64 w-auto translate-y-0" />
+        {pathname === '/character-lab' ? null : (
+          <CharacterCorner className="h-64 w-auto translate-y-0" />
+        )}
       </div>
     </aside>
   )

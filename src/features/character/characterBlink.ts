@@ -2,24 +2,32 @@ import { useEffect } from 'react'
 import { charManifest } from './charManifest'
 import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 
+type BlinkLayers = {
+  openLayerIds: string[]
+  closedLayerIds: string[]
+}
+
+const blinkLayerCache = new WeakMap<SVGSVGElement, BlinkLayers>()
+
 function setLayerVisible(svg: SVGSVGElement, id: string, show: boolean) {
   const el = svg.getElementById(id)
   if (!(el instanceof SVGElement)) return
   el.style.display = show ? 'inline' : 'none'
 }
 
-function blinkLayerIds(svg: SVGSVGElement) {
-  const openLayerIds = new Set<string>(charManifest.blink?.openLayerIds ?? [])
-  const closedLayerIds = new Set<string>(
-    charManifest.blink ? [charManifest.blink.closedLayerId] : [],
+function blinkLayerIds(svg: SVGSVGElement): BlinkLayers {
+  const cached = blinkLayerCache.get(svg)
+  if (cached) return cached
+
+  const openLayerIds = [...(charManifest.blink?.openLayerIds ?? [])].filter((id) =>
+    Boolean(svg.getElementById(id)),
   )
-  svg.querySelectorAll<SVGElement>('*').forEach((el) => {
-    const label = el.getAttribute('inkscape:label') ?? ''
-    if (!el.id) return
-    if (label === 'BLK') closedLayerIds.add(el.id)
-    else if (label.endsWith('_BLK')) openLayerIds.add(el.id)
-  })
-  return { openLayerIds: [...openLayerIds], closedLayerIds: [...closedLayerIds] }
+  const closedFromManifest = [...(charManifest.blink?.closedLayerIds ?? [])]
+  const closedLayerIds = closedFromManifest.filter((id) => Boolean(svg.getElementById(id)))
+
+  const ids = { openLayerIds, closedLayerIds }
+  blinkLayerCache.set(svg, ids)
+  return ids
 }
 
 /** Default: open-eye *_BLK layers on, closed-eye BLK layer off. */
@@ -38,11 +46,11 @@ export function applyBlinkClosedState(svg: SVGSVGElement) {
 
 export function useCharacterBlink(
   svgRef: React.RefObject<SVGSVGElement | null>,
-  svgGeneration = 0,
+  svgGeneration: number | string = 0,
   forceClosed = false,
 ) {
   useEffect(() => {
-    if (svgGeneration < 0) return
+    if (svgGeneration === -1) return
 
     const svg = svgRef.current
     if (!svg) return

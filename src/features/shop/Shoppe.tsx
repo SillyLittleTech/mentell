@@ -149,6 +149,7 @@ function CharacterAccessoryPreview({ item }: { item: CharacterAccessoryItem }) {
         pose="idle"
         appearance={defaultCharacterAppearance()}
         characterAccessories={[previewItem]}
+        staticPreview
         className="h-full w-full"
       />
     </div>

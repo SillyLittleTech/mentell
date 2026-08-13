@@ -58,6 +58,11 @@ type RotatingNode = {
   pivot: { cx: number; cy: number }
 }
 
+type PoseNodeCache = {
+  generation: number | string
+  apply: (degL: number, degR: number) => void
+}
+
 const BASE_TRANSFORM_ATTR = 'data-mentell-base-transform'
 
 function getBaseTransform(el: SVGGraphicsElement) {
@@ -77,7 +82,9 @@ function setRotateWithBase(node: RotatingNode, deg: number) {
 }
 
 function isRendered(el: SVGGraphicsElement) {
-  return getComputedStyle(el).display !== 'none'
+  if (el.style.display === 'none') return false
+  const attr = el.getAttribute('style')
+  return !attr || !/\bdisplay\s*:\s*none\b/.test(attr)
 }
 
 function normalizeLookup(value: string) {
@@ -91,101 +98,144 @@ function resolveGraphics(svg: SVGSVGElement, key: string) {
   const byId = svg.getElementById(key)
   if (byId instanceof SVGGraphicsElement) return [byId]
   const normalized = normalizeLookup(key)
-  return Array.from(svg.querySelectorAll('*')).filter((el): el is SVGGraphicsElement => {
-    if (!(el instanceof SVGGraphicsElement)) return false
+  return elementsWithInkscapeLabel(svg, key).filter((el) => {
     const label = el.getAttribute('inkscape:label') ?? ''
     return normalizeLookup(label) === normalized
   })
 }
 
+function elementsWithInkscapeLabel(root: ParentNode, label: string): SVGGraphicsElement[] {
+  const hits: SVGGraphicsElement[] = []
+  root.querySelectorAll('g, path').forEach((node) => {
+    if (!(node instanceof SVGGraphicsElement)) return
+    if (node.getAttribute('inkscape:label') === label) hits.push(node)
+  })
+  return hits
+}
+
+function extraArmJoints(
+  svg: SVGSVGElement,
+  label: 'armL_joint' | 'armR_joint',
+  mainJoint: SVGGraphicsElement,
+  svgPivot: { cx: number; cy: number },
+): RotatingNode[] {
+  const nodes: RotatingNode[] = []
+  for (const el of elementsWithInkscapeLabel(svg, label)) {
+    if (el === mainJoint) continue
+    const baseTransform = getBaseTransform(el)
+    el.setAttribute('transform', baseTransform)
+    nodes.push({
+      el,
+      baseTransform,
+      pivot: svgPointToElement(el, svgPivot),
+    })
+  }
+  return nodes
+}
+
+function buildPoseNodes(
+  svg: SVGSVGElement,
+  anchoredIds?: { armL?: readonly string[]; armR?: readonly string[] },
+): PoseNodeCache['apply'] | null {
+  const armL = svg.getElementById(charManifest.arms.armL.jointId) as SVGGElement | null
+  const armR = svg.getElementById(charManifest.arms.armR.jointId) as SVGGElement | null
+  if (!armL || !armR) return null
+
+  const armLBase = getBaseTransform(armL)
+  const armRBase = getBaseTransform(armR)
+  armL.setAttribute('transform', armLBase)
+  armR.setAttribute('transform', armRBase)
+
+  const pivotLLocal = shoulderPivot(armL)
+  const pivotRLocal = shoulderPivot(armR)
+  const pivotL = elementPointToSvg(armL, pivotLLocal)
+  const pivotR = elementPointToSvg(armR, pivotRLocal)
+
+  const armLNode: RotatingNode = {
+    el: armL,
+    baseTransform: armLBase,
+    pivot: pivotLLocal,
+  }
+  const armRNode: RotatingNode = {
+    el: armR,
+    baseTransform: armRBase,
+    pivot: pivotRLocal,
+  }
+  const shadowLNodes = extraArmJoints(svg, 'armL_joint', armL, pivotL)
+  const shadowRNodes = extraArmJoints(svg, 'armR_joint', armR, pivotR)
+
+  const leftSleeveIds = [
+    ...charManifest.arms.armL.sleeveIds,
+    ...(anchoredIds?.armL ?? []),
+  ]
+  const rightSleeveIds = [
+    ...charManifest.arms.armR.sleeveIds,
+    ...(anchoredIds?.armR ?? []),
+  ]
+
+  const leftSleeves = leftSleeveIds
+    .flatMap((id) => resolveGraphics(svg, id))
+    .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement && isRendered(el))
+  const rightSleeves = rightSleeveIds
+    .flatMap((id) => resolveGraphics(svg, id))
+    .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement && isRendered(el))
+
+  const leftSleeveNodes: RotatingNode[] = leftSleeves.map((el) => {
+    const baseTransform = getBaseTransform(el)
+    el.setAttribute('transform', baseTransform)
+    return {
+      el,
+      baseTransform,
+      pivot: svgPointToElement(el, pivotL),
+    }
+  })
+  const rightSleeveNodes: RotatingNode[] = rightSleeves.map((el) => {
+    const baseTransform = getBaseTransform(el)
+    el.setAttribute('transform', baseTransform)
+    return {
+      el,
+      baseTransform,
+      pivot: svgPointToElement(el, pivotR),
+    }
+  })
+
+  return (degL: number, degR: number) => {
+    setRotateWithBase(armLNode, degL)
+    setRotateWithBase(armRNode, degR)
+    for (const node of shadowLNodes) setRotateWithBase(node, degL)
+    for (const node of shadowRNodes) setRotateWithBase(node, degR)
+    for (const node of leftSleeveNodes) setRotateWithBase(node, degL)
+    for (const node of rightSleeveNodes) setRotateWithBase(node, degR)
+  }
+}
+
 export function useArmPoseAnimation(
   svgRef: React.RefObject<SVGSVGElement | null>,
   pose: ArmPose,
-  svgGeneration = 0,
+  svgGeneration: number | string = 0,
   anchoredIds?: { armL?: readonly string[]; armR?: readonly string[] },
 ) {
   const prevPose = useRef(pose)
+  const cache = useRef<PoseNodeCache | null>(null)
 
   useEffect(() => {
     prevPose.current = { armL: 0, armR: 0 }
+    cache.current = null
   }, [svgGeneration])
 
   useEffect(() => {
+    if (svgGeneration === -1) return
     const svg = svgRef.current
     if (!svg) return
     const nextPose: ArmPose = { armL: pose.armL, armR: pose.armR }
 
-    const armL = svg.getElementById(charManifest.arms.armL.jointId) as SVGGElement | null
-    const armR = svg.getElementById(charManifest.arms.armR.jointId) as SVGGElement | null
-    if (!armL || !armR) return
-
-    const armLBase = getBaseTransform(armL)
-    const armRBase = getBaseTransform(armR)
-    armL.setAttribute('transform', armLBase)
-    armR.setAttribute('transform', armRBase)
-
-    const pivotLLocal = shoulderPivot(armL)
-    const pivotRLocal = shoulderPivot(armR)
-    const pivotL = elementPointToSvg(armL, pivotLLocal)
-    const pivotR = elementPointToSvg(armR, pivotRLocal)
-
-    const armLNode: RotatingNode = {
-      el: armL,
-      baseTransform: armLBase,
-      pivot: pivotLLocal,
-    }
-    const armRNode: RotatingNode = {
-      el: armR,
-      baseTransform: armRBase,
-      pivot: pivotRLocal,
+    if (!cache.current || cache.current.generation !== svgGeneration) {
+      const apply = buildPoseNodes(svg, anchoredIds)
+      if (!apply) return
+      cache.current = { generation: svgGeneration, apply }
     }
 
-    const leftSleeveIds = [
-      ...charManifest.arms.armL.sleeveIds,
-      ...(anchoredIds?.armL ?? []),
-    ]
-    const rightSleeveIds = [
-      ...charManifest.arms.armR.sleeveIds,
-      ...(anchoredIds?.armR ?? []),
-    ]
-
-    const leftSleeves = leftSleeveIds
-      .flatMap((id) => resolveGraphics(svg, id))
-      .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement && isRendered(el))
-    const rightSleeves = rightSleeveIds
-      .flatMap((id) => resolveGraphics(svg, id))
-      .filter((el): el is SVGGraphicsElement => el instanceof SVGGraphicsElement && isRendered(el))
-
-    const leftSleeveNodes: RotatingNode[] = leftSleeves.map((el) => {
-      const baseTransform = getBaseTransform(el)
-      el.setAttribute('transform', baseTransform)
-      return {
-        el,
-        baseTransform,
-        pivot: svgPointToElement(el, pivotL),
-      }
-    })
-    const rightSleeveNodes: RotatingNode[] = rightSleeves.map((el) => {
-      const baseTransform = getBaseTransform(el)
-      el.setAttribute('transform', baseTransform)
-      return {
-        el,
-        baseTransform,
-        pivot: svgPointToElement(el, pivotR),
-      }
-    })
-
-    const apply = (degL: number, degR: number) => {
-      setRotateWithBase(armLNode, degL)
-      setRotateWithBase(armRNode, degR)
-      for (const node of leftSleeveNodes) {
-        setRotateWithBase(node, degL)
-      }
-      for (const node of rightSleeveNodes) {
-        setRotateWithBase(node, degR)
-      }
-    }
-
+    const apply = cache.current.apply
     const duration = motionDuration(0.55)
 
     if (duration === 0) {

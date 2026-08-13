@@ -23,21 +23,42 @@ export const charManifest = {
   },
   "fillables": [
     {
+      "id": "path45-8-4",
+      "key": "path45-8-4",
+      "label": "Skin",
+      "defaultFill": "#040302"
+    },
+    {
+      "id": "path45-8",
+      "key": "path45-8",
+      "label": "Skin",
+      "defaultFill": "#ddae67"
+    },
+    {
       "id": "path45",
       "key": "path45",
       "label": "Skin",
       "defaultFill": "#ddae67",
       "targetIds": [
         "path45",
+        "path45-8",
         "path1",
-        "path1-3"
+        "path1-0",
+        "path1-3",
+        "path1-0-2"
       ]
+    },
+    {
+      "id": "path45-4",
+      "key": "path45-4",
+      "label": "Skin",
+      "defaultFill": "#ddae67"
     },
     {
       "id": "path65",
       "key": "path65",
       "label": "Pants",
-      "defaultFill": "#5042ae"
+      "defaultFill": "#6d7b9a"
     },
     {
       "id": "hair_fill",
@@ -45,16 +66,43 @@ export const charManifest = {
       "label": "Hair",
       "defaultFill": "#311e00",
       "targetIds": [
+        "path85-7",
         "path85",
         "path87-4",
         "path87-4-4",
+        "path1127-8",
+        "path1127-2-6",
+        "path1127-8-7",
+        "path1127-2-6-0",
+        "path1127-3-00",
+        "path1127-2-0-8",
+        "path1128-7",
+        "path1129-6",
+        "path1129-6-4",
+        "path90",
         "path91",
+        "path1127-3-0",
+        "path1127-2-0-9",
+        "path1127-6",
+        "path1127-2-49",
+        "path93",
         "path94",
         "path95",
         "path96",
         "path99",
         "path97",
-        "path100"
+        "path100",
+        "path1127",
+        "path1127-2",
+        "path1127-9",
+        "path1127-2-4",
+        "path1127-9-9",
+        "path1127-2-4-9",
+        "path1127-3",
+        "path1127-2-0",
+        "path1128",
+        "path1132",
+        "path1129"
       ]
     },
     {
@@ -63,6 +111,13 @@ export const charManifest = {
       "label": "Catbase",
       "defaultFill": "#ffce67",
       "targetIds": [
+        "path77-0",
+        "path78-9",
+        "path79-7",
+        "path81-1",
+        "path82-7",
+        "path86-45",
+        "path86-4-1",
         "path77",
         "path78",
         "path79",
@@ -73,7 +128,7 @@ export const charManifest = {
       ]
     },
     {
-      "id": "g91",
+      "id": "g91-8",
       "key": "dogbase",
       "label": "Dogbase",
       "defaultFill": "#725d34",
@@ -84,7 +139,14 @@ export const charManifest = {
         "ellipse89",
         "ellipse90",
         "path92",
-        "path92-9"
+        "path92-9",
+        "ellipse86-4",
+        "ellipse87-5",
+        "ellipse88-7",
+        "ellipse89-9",
+        "ellipse90-8",
+        "path92-4",
+        "path92-9-5"
       ]
     },
     {
@@ -106,12 +168,13 @@ export const charManifest = {
       ]
     },
     {
-      "id": "path13",
+      "id": "path13-4",
       "key": "watchr",
       "label": "WatchR",
       "defaultFill": "#35090e",
       "targetIds": [
-        "path13"
+        "path13",
+        "path13-4"
       ]
     },
     {
@@ -190,9 +253,10 @@ export const charManifest = {
       "id": "g55",
       "key": "lemmon",
       "label": "Lemmon",
-      "defaultFill": "#ffe166",
+      "defaultFill": "#ffcc00",
       "targetIds": [
         "path54",
+        "path54-63",
         "path55"
       ]
     }
@@ -202,7 +266,7 @@ export const charManifest = {
       "key": "shirt",
       "label": "Toggleshirt",
       "parentId": "layer15",
-      "defaultFill": "#261b4f",
+      "defaultFill": "#866a91",
       "targetIds": [
         "path67",
         "path118",
@@ -214,7 +278,7 @@ export const charManifest = {
       "key": "sleeves",
       "label": "Togglesleeve",
       "parentId": "layer19",
-      "defaultFill": "#261b4f",
+      "defaultFill": "#7d6180",
       "targetIds": [
         "path124",
         "path125",
@@ -229,6 +293,7 @@ export const charManifest = {
       "label": "Toggleshirt",
       "parentId": "layer15",
       "defaultOption": "path67",
+      "isAccessory": false,
       "options": [
         {
           "id": "path67",
@@ -249,6 +314,7 @@ export const charManifest = {
       "label": "Togglehair",
       "parentId": "layer16",
       "defaultOption": "g96",
+      "isAccessory": false,
       "options": [
         {
           "id": "g89",
@@ -269,6 +335,7 @@ export const charManifest = {
       "label": "Togglemouth",
       "parentId": "layer17",
       "defaultOption": "g103",
+      "isAccessory": false,
       "options": [
         {
           "id": "path51-8",
@@ -288,18 +355,19 @@ export const charManifest = {
       "key": "layer18",
       "label": "Toggleeyecolour BLK",
       "parentId": "layer18",
-      "defaultOption": "g105",
+      "defaultOption": "g105-0",
+      "isAccessory": false,
       "options": [
         {
-          "id": "g104",
+          "id": "g105",
           "label": "Default"
         },
         {
-          "id": "g105",
+          "id": "g105-0",
           "label": "Brown"
         },
         {
-          "id": "g107",
+          "id": "g105-9",
           "label": "Blue"
         }
       ]
@@ -309,6 +377,7 @@ export const charManifest = {
       "label": "Togglesleeve",
       "parentId": "layer19",
       "defaultOption": "g127",
+      "isAccessory": false,
       "options": [
         {
           "id": "g125",
@@ -324,16 +393,27 @@ export const charManifest = {
       "key": "layer2",
       "label": "Togglepet",
       "parentId": "layer2",
-      "defaultOption": "g91",
+      "defaultOption": "g86",
+      "isAccessory": true,
       "options": [
         {
           "id": "g86",
-          "label": "Catbase"
+          "label": "Catbase",
+          "companionIds": [
+            "g86-0"
+          ]
         },
         {
-          "id": "g91",
-          "label": "Dogbase"
+          "id": "g91-8",
+          "label": "Dogbase",
+          "companionIds": [
+            "g91"
+          ]
         }
+      ],
+      "followVisibilityIds": [
+        "path1236",
+        "path1236-0"
       ]
     },
     {
@@ -341,6 +421,7 @@ export const charManifest = {
       "label": "Toggleeyecolour BLK",
       "parentId": "layer18-6",
       "defaultOption": "g105-1",
+      "isAccessory": false,
       "options": [
         {
           "id": "g104-5",
@@ -361,6 +442,7 @@ export const charManifest = {
       "label": "Togglewrist",
       "parentId": "layer3",
       "defaultOption": "path3",
+      "isAccessory": true,
       "options": [
         {
           "id": "path3",
@@ -393,6 +475,7 @@ export const charManifest = {
       "label": "Togglepants",
       "parentId": "layer4",
       "defaultOption": "path10-7",
+      "isAccessory": true,
       "options": [
         {
           "id": "path10",
@@ -409,6 +492,7 @@ export const charManifest = {
       "label": "Toggleshoes",
       "parentId": "layer5",
       "defaultOption": "g16",
+      "isAccessory": true,
       "options": [
         {
           "id": "g16",
@@ -429,6 +513,7 @@ export const charManifest = {
       "label": "Toggleshirt",
       "parentId": "layer6",
       "defaultOption": "path22",
+      "isAccessory": true,
       "options": [
         {
           "id": "path21",
@@ -449,6 +534,7 @@ export const charManifest = {
       "label": "Toggleface",
       "parentId": "layer7",
       "defaultOption": "g27",
+      "isAccessory": true,
       "options": [
         {
           "id": "g27",
@@ -473,6 +559,7 @@ export const charManifest = {
       "label": "Togglehat",
       "parentId": "layer8",
       "defaultOption": "g51",
+      "isAccessory": true,
       "options": [
         {
           "id": "g51",
@@ -508,8 +595,11 @@ export const charManifest = {
   ],
   "appearanceDefaults": {
     "fills": {
+      "path45-8-4": "#040302",
+      "path45-8": "#ddae67",
       "path45": "#ddae67",
-      "path65": "#5042ae",
+      "path45-4": "#ddae67",
+      "path65": "#6d7b9a",
       "hair_fill": "#311e00",
       "catbase": "#ffce67",
       "dogbase": "#725d34",
@@ -524,17 +614,17 @@ export const charManifest = {
       "square": "#d38d5f",
       "star": "#d38d5f",
       "bandana": "#800000",
-      "lemmon": "#ffe166",
-      "shirt": "#261b4f",
-      "sleeves": "#261b4f"
+      "lemmon": "#ffcc00",
+      "shirt": "#866a91",
+      "sleeves": "#7d6180"
     },
     "toggles": {
       "layer15": "path67",
       "layer16": "g96",
       "layer17": "g103",
-      "layer18": "g105",
+      "layer18": "g105-0",
       "layer19": "g127",
-      "layer2": "g91",
+      "layer2": "g86",
       "layer18-6": "g105-1",
       "layer3": "path3",
       "layer4": "path10-7",
@@ -554,7 +644,11 @@ export const charManifest = {
       "layer18-6",
       "g100-4"
     ],
-    "closedLayerId": "g11-7",
+    "closedLayerIds": [
+      "g11",
+      "g11-7"
+    ],
+    "closedLayerId": "g11",
     "closedDurationMs": 120,
     "minIntervalMs": 2000,
     "maxIntervalMs": 4500

@@ -14,6 +14,12 @@ const EYE_TOGGLE_GRADIENT_FILL: Record<string, string> = {
   g107: '#4599ba',
 }
 
+const EYE_COLOR_BY_LABEL: Record<string, string> = {
+  default: '#c8c9cd',
+  brown: '#986334',
+  blue: '#4599ba',
+}
+
 function setToggleOptionVisible(el: SVGElement, show: boolean) {
   el.style.display = show ? 'inline' : 'none'
 }
@@ -34,7 +40,8 @@ function bringToFront(el: SVGElement) {
 function normalizeLookup(value: string) {
   return value
     .toLowerCase()
-    .replace(/_(toggle|iii|dni).*$/i, '')
+    .replace(/[\s_]+(toggle|iii|dni|blk)\b.*$/i, '')
+    .replace(/_(toggle|iii|dni|blk).*$/i, '')
     .replace(/^toggle/, '')
     .replace(/[^a-z0-9]+/g, '')
 }
@@ -57,6 +64,70 @@ function optionMatches(option: { id: string; label: string }, optionId: string) 
   return option.id === optionId || normalizeLookup(option.label) === normalized
 }
 
+function resolveToggleOption(
+  group: (typeof charManifest.toggleGroups)[number],
+  stored: string | null | undefined,
+) {
+  if (stored) {
+    const exact = group.options.find((option) => option.id === stored)
+    if (exact) return exact
+    const byLabel = group.options.find((option) => optionMatches(option, stored))
+    if (byLabel) return byLabel
+    const prefixHits = group.options.filter((option) => stored.startsWith(`${option.id}-`))
+    if (prefixHits.length) {
+      return prefixHits.reduce((best, option) =>
+        option.id.length >= best.id.length ? option : best,
+      )
+    }
+  }
+  return group.options.find((option) => option.id === group.defaultOption) ?? group.options[0]
+}
+
+function forEachInkscapeLabel(
+  root: ParentNode,
+  fn: (el: SVGElement, label: string) => void,
+) {
+  root.querySelectorAll('g, path, ellipse, circle, rect, use').forEach((node) => {
+    if (!(node instanceof SVGElement)) return
+    const label = node.getAttribute('inkscape:label')
+    if (label) fn(node, label)
+  })
+}
+
+function findGroupRoot(
+  svg: SVGSVGElement,
+  group: (typeof charManifest.toggleGroups)[number],
+): SVGElement | null {
+  const byId = svg.getElementById(group.parentId)
+  if (byId instanceof SVGElement) return byId
+  // Headshot remaps the iris group id (layer18 → layer18-7) but keeps the label.
+  if (group.key !== 'layer18') return null
+  const normalized = normalizeLookup(group.label)
+  let match: SVGElement | null = null
+  forEachInkscapeLabel(svg, (el, label) => {
+    if (!match && el.tagName.toLowerCase() === 'g' && normalizeLookup(label) === normalized) {
+      match = el
+    }
+  })
+  return match
+}
+
+function findOptionEl(
+  svg: SVGSVGElement,
+  option: { id: string; label: string },
+  groupRoot: SVGElement | null,
+): SVGElement | null {
+  const byId = svg.getElementById(option.id)
+  if (byId instanceof SVGElement) return byId
+  if (!groupRoot) return null
+  const normalized = normalizeLookup(option.label)
+  let match: SVGElement | null = null
+  forEachInkscapeLabel(groupRoot, (el, label) => {
+    if (!match && normalizeLookup(label) === normalized) match = el
+  })
+  return match
+}
+
 function resolveAccessoryToggle(toggle: { groupKey: string; optionId: string }) {
   const group = charManifest.toggleGroups.find((entry) =>
     toggleGroupMatches(entry, toggle.groupKey),
@@ -67,9 +138,17 @@ function resolveAccessoryToggle(toggle: { groupKey: string; optionId: string }) 
 }
 
 function isAccessoryToggleGroup(group: (typeof charManifest.toggleGroups)[number]) {
-  return ['layer2', 'layer3', 'layer4', 'layer5', 'layer6', 'layer7', 'layer8'].includes(
-    group.parentId,
-  )
+  return 'isAccessory' in group && group.isAccessory === true
+}
+
+function optionCompanionIds(option: (typeof charManifest.toggleGroups)[number]['options'][number]) {
+  return 'companionIds' in option && option.companionIds ? [...option.companionIds] : []
+}
+
+function groupFollowVisibilityIds(group: (typeof charManifest.toggleGroups)[number]) {
+  return 'followVisibilityIds' in group && group.followVisibilityIds
+    ? [...group.followVisibilityIds]
+    : []
 }
 
 function isBaseFillKey(key: string) {
@@ -96,22 +175,17 @@ function setPartVisibleByKey(svg: SVGSVGElement, key: string, show: boolean) {
     return
   }
   const normalized = normalizeLookup(key)
-  svg.querySelectorAll<SVGElement>('*').forEach((el) => {
-    const label = el.getAttribute('inkscape:label') ?? ''
+  forEachInkscapeLabel(svg, (el, label) => {
     if (normalizeLookup(label) === normalized) setElementVisible(el, show)
   })
 }
 
 function setPetFaceVisible(svg: SVGSVGElement, show: boolean) {
-  for (const key of ['facebase_DNI', 'FACETOGGLE']) {
-    const normalized = normalizeLookup(key)
-    svg.querySelectorAll<SVGElement>('*').forEach((el) => {
-      const label = el.getAttribute('inkscape:label') ?? ''
-      if (normalizeLookup(label) !== normalized) return
-      setElementVisible(el, show)
-      if (show) bringToFront(el)
-    })
-  }
+  forEachInkscapeLabel(svg, (el, label) => {
+    if (label !== 'facebase_DNI' && label !== 'FACETOGGLE') return
+    setElementVisible(el, show)
+    if (show) bringToFront(el)
+  })
 }
 
 function hidePartByKey(svg: SVGSVGElement, key: string) {
@@ -140,50 +214,375 @@ function darkenColor(color: string, amount = 0.42) {
   return `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`
 }
 
+function colorsEqual(a: string, b: string) {
+  return a.trim().toLowerCase() === b.trim().toLowerCase()
+}
+
+function luminance(rgb: [number, number, number]) {
+  return (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255
+}
+
+/** Keep highlights lighter and shadows darker than the chosen base colour. */
+function retargetRelativeColor(authored: string, fromBase: string, toBase: string) {
+  if (colorsEqual(toBase, fromBase)) return authored
+  const orig = parseHexColor(authored)
+  const from = parseHexColor(fromBase)
+  const to = parseHexColor(toBase)
+  if (!orig || !from || !to) return toBase
+  const origL = luminance(orig)
+  const fromL = luminance(from)
+  if (origL > fromL + 0.03) {
+    const t = Math.min(0.62, (origL - fromL) / Math.max(0.08, 1 - fromL))
+    return mixHex(toBase, '#ffffff', t)
+  }
+  if (origL < fromL - 0.03) {
+    const t = Math.min(0.88, (fromL - origL) / Math.max(0.08, fromL))
+    return mixHex(toBase, '#000000', t)
+  }
+  return toBase
+}
+
+function fillTargetElements(svg: SVGSVGElement, ids: string[]): SVGElement[] {
+  const found: SVGElement[] = []
+  const foundIds = new Set<string>()
+  const missing: string[] = []
+  for (const id of ids) {
+    const el = svg.getElementById(id)
+    if (el instanceof SVGElement) {
+      found.push(el)
+      foundIds.add(el.id)
+    } else {
+      missing.push(id)
+    }
+  }
+  if (!missing.length) return found
+
+  // Headshot clones append suffixes (path85-7 → path85-7-8).
+  const sorted = [...missing].sort((a, b) => b.length - a.length)
+  svg.querySelectorAll('[id]').forEach((node) => {
+    if (!(node instanceof SVGElement) || foundIds.has(node.id)) return
+    if (!sorted.some((id) => node.id.startsWith(`${id}-`))) return
+    found.push(node)
+    foundIds.add(node.id)
+  })
+  return found
+}
+
 function hasVisibleStroke(el: SVGElement) {
   const stroke = el.style.stroke || el.getAttribute('stroke') || ''
   if (!stroke || stroke === 'none') return false
   return true
 }
 
-function applyHairFill(el: SVGElement, color: string) {
-  el.style.fill = color
-  if (hasVisibleStroke(el)) {
-    el.style.stroke = darkenColor(color)
-    el.style.strokeOpacity = '1'
+const XLINK_NS = 'http://www.w3.org/1999/xlink'
+const ORIG_STOP_ATTR = 'data-mentell-stop-color'
+const ORIG_FILL_ATTR = 'data-mentell-orig-fill'
+const ORIG_STROKE_ATTR = 'data-mentell-orig-stroke'
+const ORIG_LIGHTING_ATTR = 'data-mentell-lighting-color'
+
+function rgbToHex(rgb: [number, number, number]) {
+  return `#${rgb.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`
+}
+
+function mixHex(a: string, b: string, t: number) {
+  const left = parseHexColor(a)
+  const right = parseHexColor(b)
+  if (!left || !right) return a
+  return rgbToHex(
+    left.map((channel, i) => Math.round(channel + (right[i] - channel) * t)) as [
+      number,
+      number,
+      number,
+    ],
+  )
+}
+
+function retargetColor(authored: string, fromBase: string, toBase: string) {
+  const orig = parseHexColor(authored)
+  const from = parseHexColor(fromBase)
+  const to = parseHexColor(toBase)
+  if (!orig || !from || !to) return authored
+  const isBlush = orig[0] > orig[1] + 40 && orig[0] > orig[2] + 40
+  if (isBlush) return mixHex(toBase, authored, 0.42)
+  return rgbToHex(
+    orig.map((channel, i) => {
+      const ratio = from[i] === 0 ? 1 : channel / from[i]
+      return Math.max(0, Math.min(255, Math.round(to[i] * ratio)))
+    }) as [number, number, number],
+  )
+}
+
+function cssFillValue(el: SVGElement) {
+  const fromStyle = el.getAttribute('style')?.match(/(?:^|;)\s*fill\s*:\s*([^;]+)/i)?.[1]
+  return (el.style.fill || el.getAttribute('fill') || fromStyle || '').trim()
+}
+
+function fillUrlId(el: SVGElement) {
+  const raw = el.getAttribute('data-mentell-fill-url') || cssFillValue(el)
+  return raw.match(/url\(\s*['"]?#([^'")\s]+)['"]?\s*\)/)?.[1] ?? null
+}
+
+function rememberFillUrl(el: SVGElement, paintId: string) {
+  if (!el.getAttribute('data-mentell-fill-url')) {
+    el.setAttribute('data-mentell-fill-url', `url(#${paintId})`)
   }
+}
+
+function reapplyFillUrl(el: SVGElement, paintId: string) {
+  const value = `url(#${paintId})`
+  el.style.fill = 'none'
+  el.setAttribute('fill', 'none')
+  el.style.fill = value
+  el.setAttribute('fill', value)
+  const style = el.getAttribute('style')
+  if (style) {
+    el.setAttribute(
+      'style',
+      style.replace(/(?:^|;)\s*fill\s*:[^;]*/gi, `;fill:${value}`).replace(/^;+|;+$/g, ''),
+    )
+  }
+}
+
+function materializePaintGradient(svg: SVGSVGElement, paintId: string) {
+  const paint = svg.getElementById(paintId)
+  if (
+    !(paint instanceof SVGLinearGradientElement) &&
+    !(paint instanceof SVGRadialGradientElement)
+  ) {
+    return null
+  }
+  if (!paint.querySelector('stop')) {
+    const source = resolveGradientWithStops(svg, paintId)
+    if (source && source !== paint) {
+      source.querySelectorAll('stop').forEach((stop) => {
+        paint.appendChild(stop.cloneNode(true))
+      })
+    }
+    paint.removeAttribute('href')
+    paint.removeAttributeNS(XLINK_NS, 'href')
+  }
+  return paint.querySelector('stop') ? paint : null
+}
+
+function restoreGradientStops(gradient: SVGGradientElement) {
+  gradient.querySelectorAll('stop').forEach((node) => {
+    if (!(node instanceof SVGStopElement)) return
+    const orig = node.getAttribute(ORIG_STOP_ATTR)
+    if (!orig) return
+    node.setAttribute('stop-color', orig)
+    const style = node.getAttribute('style')
+    if (style) {
+      node.setAttribute(
+        'style',
+        style.replace(/(?:^|;)\s*stop-color\s*:[^;]*/i, `;stop-color:${orig}`).replace(/^;/, ''),
+      )
+    }
+  })
+}
+
+function setSolidFill(el: SVGElement, color: string) {
+  el.setAttribute('fill', color)
+  el.style.fill = color
+  const style = el.getAttribute('style')
+  if (style) {
+    el.setAttribute(
+      'style',
+      style.replace(/(?:^|;)\s*fill\s*:[^;]*/gi, `;fill:${color}`).replace(/^;+|;+$/g, ''),
+    )
+  }
+}
+
+function rememberOrigFill(el: SVGElement) {
+  if (el.getAttribute(ORIG_FILL_ATTR)) return
+  const current = cssFillValue(el)
+  if (current) el.setAttribute(ORIG_FILL_ATTR, current)
+}
+
+function applyPaintFill(el: SVGElement, color: string, defaultBase: string) {
+  const svg = el.ownerSVGElement
+  const paintId = fillUrlId(el)
+  if (svg && paintId) {
+    rememberFillUrl(el, paintId)
+    const gradient = materializePaintGradient(svg, paintId)
+    if (gradient) {
+      if (colorsEqual(color, defaultBase)) restoreGradientStops(gradient)
+      else tintGradientStops(gradient, color, defaultBase)
+      reapplyFillUrl(el, paintId)
+      return
+    }
+  }
+  rememberOrigFill(el)
+  const authored = el.getAttribute(ORIG_FILL_ATTR) || color
+  if (colorsEqual(color, defaultBase) || !parseHexColor(authored)) {
+    setSolidFill(el, authored)
+    return
+  }
+  setSolidFill(el, retargetRelativeColor(authored, defaultBase, color))
+}
+
+function gradientHrefId(gradient: SVGGradientElement) {
+  const href =
+    gradient.getAttribute('href') ?? gradient.getAttributeNS(XLINK_NS, 'href') ?? ''
+  return href.startsWith('#') ? href.slice(1) : null
+}
+
+function resolveGradientWithStops(
+  svg: SVGSVGElement,
+  id: string,
+  seen = new Set<string>(),
+): SVGLinearGradientElement | SVGRadialGradientElement | null {
+  if (seen.has(id)) return null
+  seen.add(id)
+  const el = svg.getElementById(id)
+  if (!(el instanceof SVGLinearGradientElement) && !(el instanceof SVGRadialGradientElement)) {
+    return null
+  }
+  if (el.querySelector('stop')) return el
+  const hrefId = gradientHrefId(el)
+  return hrefId ? resolveGradientWithStops(svg, hrefId, seen) : el
+}
+
+function stopColor(stop: SVGStopElement) {
+  return (
+    stop.getAttribute('stop-color') ||
+    stop.style.stopColor ||
+    stop.getAttribute('style')?.match(/(?:^|;)\s*stop-color\s*:\s*([^;]+)/i)?.[1]?.trim() ||
+    '#000000'
+  )
+}
+
+function tintGradientStops(gradient: SVGGradientElement, color: string, defaultBase: string) {
+  gradient.querySelectorAll('stop').forEach((node) => {
+    if (!(node instanceof SVGStopElement)) return
+    const authored = node.getAttribute(ORIG_STOP_ATTR) ?? stopColor(node)
+    node.setAttribute(ORIG_STOP_ATTR, authored)
+    const next = retargetColor(authored, defaultBase, color)
+    node.setAttribute('stop-color', next)
+    const style = node.getAttribute('style')
+    if (style) {
+      node.setAttribute(
+        'style',
+        style.replace(/(?:^|;)\s*stop-color\s*:[^;]*/i, `;stop-color:${next}`).replace(/^;/, ''),
+      )
+    }
+  })
+}
+
+function cssFilterValue(el: SVGElement) {
+  const fromStyle = el.getAttribute('style')?.match(/(?:^|;)\s*filter\s*:\s*([^;]+)/i)?.[1]
+  return (el.style.filter || el.getAttribute('filter') || fromStyle || '').trim()
+}
+
+function filterUrlId(el: SVGElement) {
+  return cssFilterValue(el).match(/url\(\s*['"]?#([^'")\s]+)['"]?\s*\)/)?.[1] ?? null
+}
+
+function tintFilterLighting(
+  svg: SVGSVGElement | null,
+  el: SVGElement,
+  color: string,
+  defaultBase: string,
+) {
+  if (!svg) return
+  const id = filterUrlId(el)
+  if (!id) return
+  const filter = svg.getElementById(id)
+  if (!(filter instanceof SVGFilterElement)) return
+  filter.querySelectorAll('feDiffuseLighting').forEach((node) => {
+    const orig = node.getAttribute(ORIG_LIGHTING_ATTR) ?? node.getAttribute('lighting-color') ?? ''
+    if (!node.getAttribute(ORIG_LIGHTING_ATTR) && orig) {
+      node.setAttribute(ORIG_LIGHTING_ATTR, orig)
+    }
+    if (colorsEqual(color, defaultBase)) {
+      if (orig) node.setAttribute('lighting-color', orig)
+      return
+    }
+    node.setAttribute('lighting-color', mixHex(color, '#ffffff', 0.32))
+  })
+}
+
+function applySkinStroke(el: SVGElement, color: string, defaultBase: string) {
+  const current = el.style.stroke || el.getAttribute('stroke') || ''
+  if (!el.getAttribute(ORIG_STROKE_ATTR) && current && current !== 'none') {
+    el.setAttribute(ORIG_STROKE_ATTR, current)
+  }
+  const orig = el.getAttribute(ORIG_STROKE_ATTR)
+  if (!orig) return
+  if (colorsEqual(color, defaultBase)) {
+    el.style.stroke = orig
+    el.setAttribute('stroke', orig)
+    return
+  }
+  const stroke = darkenColor(color, 0.2)
+  el.style.stroke = stroke
+  el.setAttribute('stroke', stroke)
+}
+
+function applySkinFill(el: SVGElement, color: string, defaultBase: string) {
+  rememberOrigFill(el)
+  const authored = el.getAttribute(ORIG_FILL_ATTR) || cssFillValue(el)
+  if (colorsEqual(color, defaultBase)) {
+    if (authored) setSolidFill(el, authored)
+  } else {
+    setSolidFill(el, color)
+  }
+  tintFilterLighting(el.ownerSVGElement, el, color, defaultBase)
+  applySkinStroke(el, color, defaultBase)
+}
+
+function applyHairFill(el: SVGElement, color: string, defaultBase: string) {
+  applyPaintFill(el, color, defaultBase)
+  const currentStroke = el.style.stroke || el.getAttribute('stroke') || ''
+  if (!el.getAttribute(ORIG_STROKE_ATTR) && currentStroke && currentStroke !== 'none') {
+    el.setAttribute(ORIG_STROKE_ATTR, currentStroke)
+  }
+  const origStroke = el.getAttribute(ORIG_STROKE_ATTR)
+  if (!origStroke) return
+  if (colorsEqual(color, defaultBase)) {
+    el.style.stroke = origStroke
+    el.setAttribute('stroke', origStroke)
+    return
+  }
+  const stroke = darkenColor(color)
+  el.style.stroke = stroke
+  el.setAttribute('stroke', stroke)
+  el.style.strokeOpacity = '1'
+}
+
+function svgCreate(svg: SVGSVGElement, tag: string) {
+  return svg.ownerDocument.createElementNS(SVG_NS, tag)
 }
 
 function ensureDefs(svg: SVGSVGElement) {
   const existing = svg.querySelector('defs')
   if (existing instanceof SVGDefsElement) return existing
-  const defs = document.createElementNS(SVG_NS, 'defs')
+  const defs = svgCreate(svg, 'defs')
   svg.insertBefore(defs, svg.firstChild)
   return defs
 }
 
 function setStop(stop: SVGStopElement, color: string, opacity: string, offset: string) {
   stop.setAttribute('offset', offset)
-  stop.style.stopColor = color
-  stop.style.stopOpacity = opacity
+  stop.setAttribute('stop-color', color)
+  stop.setAttribute('stop-opacity', opacity)
 }
 
 function ensureEyeGradient(svg: SVGSVGElement, id: string, color: string) {
   const existing = svg.getElementById(id)
   if (existing instanceof SVGLinearGradientElement) return existing
 
-  const gradient = document.createElementNS(SVG_NS, 'linearGradient')
+  const gradient = svgCreate(svg, 'linearGradient') as SVGLinearGradientElement
   gradient.id = id
   gradient.setAttribute('x1', '0')
   gradient.setAttribute('y1', '0')
   gradient.setAttribute('x2', '0')
   gradient.setAttribute('y2', '1')
 
-  const shadow = document.createElementNS(SVG_NS, 'stop')
+  const shadow = svgCreate(svg, 'stop') as SVGStopElement
   setStop(shadow, '#000000', '1', '0')
   gradient.appendChild(shadow)
 
-  const iris = document.createElementNS(SVG_NS, 'stop')
+  const iris = svgCreate(svg, 'stop') as SVGStopElement
   setStop(iris, color, '1', '0.72')
   gradient.appendChild(iris)
 
@@ -200,14 +599,25 @@ function svgInstanceId(svg: SVGSVGElement) {
   return id
 }
 
-function applyEyeGradient(svg: SVGSVGElement, activeToggle: SVGGElement, active: string) {
-  const color = EYE_TOGGLE_GRADIENT_FILL[active]
+function eyeGradientColor(activeId: string, label?: string) {
+  const fromLabel = label ? EYE_COLOR_BY_LABEL[normalizeLookup(label)] : undefined
+  return fromLabel ?? EYE_TOGGLE_GRADIENT_FILL[activeId]
+}
+
+function applyEyeGradient(
+  svg: SVGSVGElement,
+  activeToggle: SVGGElement,
+  active: string,
+  label?: string,
+) {
+  const color = eyeGradientColor(active, label)
   if (!color) return
 
   const instanceId = svgInstanceId(svg)
   activeToggle.querySelectorAll<SVGElement>('path').forEach((path, index) => {
     const gradientId = `mentell-eye-${instanceId}-${active}-${index}`
     ensureEyeGradient(svg, gradientId, color)
+    path.setAttribute('fill', `url(#${gradientId})`)
     path.style.fill = `url(#${gradientId})`
     path.style.opacity = '1'
   })
@@ -226,28 +636,30 @@ export function applyCharacterAppearance(
     if (!isBaseFillKey(fillable.key) && !activeAccessoryFillKeys.has(fillable.key)) {
       continue
     }
-    const color = appearance.fills[fillable.key] ?? fillable.defaultFill
+    const rawColor = appearance.fills[fillable.key] ?? fillable.defaultFill
+    const color = /^#([0-9a-f]{3,8})$/i.test(rawColor.trim()) ? rawColor : fillable.defaultFill
     const targetIds =
       'targetIds' in fillable && fillable.targetIds
         ? [...fillable.targetIds]
         : [fillable.id]
-    for (const id of targetIds) {
-      const el = svg.getElementById(id)
-      if (!(el instanceof SVGElement)) continue
+    for (const el of fillTargetElements(svg, targetIds)) {
       if (fillable.key === 'hair_fill') {
-        applyHairFill(el, color)
+        applyHairFill(el, color, fillable.defaultFill)
         continue
       }
-      el.style.fill = color
+      if (fillable.key === 'path45') {
+        applySkinFill(el, color, fillable.defaultFill)
+        continue
+      }
+      applyPaintFill(el, color, fillable.defaultFill)
+      if (hasVisibleStroke(el)) el.style.stroke = color
     }
   }
 
   for (const group of charManifest.globalFillGroups) {
     const color = appearance.fills[group.key] ?? group.defaultFill
-    for (const id of group.targetIds) {
-      const el = svg.getElementById(id)
-      if (!(el instanceof SVGElement)) continue
-      el.style.fill = color
+    for (const el of fillTargetElements(svg, [...group.targetIds])) {
+      applyPaintFill(el, color, group.defaultFill)
     }
   }
 
@@ -271,11 +683,13 @@ export function applyCharacterAppearance(
 
   for (const group of charManifest.toggleGroups) {
     const activeAccessoryOptions = accessoryToggles.get(group.key)
-    const active = activeAccessoryOptions
-      ? [...activeAccessoryOptions][0]
+    const resolved = activeAccessoryOptions
+      ? group.options.find((option) => activeAccessoryOptions.has(option.id))
       : isAccessoryToggleGroup(group)
         ? null
-        : appearance.toggles[group.key] ?? group.defaultOption
+        : resolveToggleOption(group, appearance.toggles[group.key] ?? group.defaultOption)
+    const active = resolved?.id ?? null
+    const groupRoot = findGroupRoot(svg, group)
 
     if (group.key === 'blush' && 'elementId' in group) {
       const blush = svg.getElementById(group.elementId)
@@ -288,22 +702,48 @@ export function applyCharacterAppearance(
     }
 
     for (const opt of group.options) {
-      const el = svg.getElementById(opt.id)
+      const el = findOptionEl(svg, opt, groupRoot)
       if (!(el instanceof SVGElement)) continue
       const show = activeAccessoryOptions ? activeAccessoryOptions.has(opt.id) : opt.id === active
-      setToggleOptionVisible(
-        el,
-        show,
-      )
+      setToggleOptionVisible(el, show)
+      for (const companionId of optionCompanionIds(opt)) {
+        const companion = svg.getElementById(companionId)
+        if (companion instanceof SVGElement) setToggleOptionVisible(companion, show)
+      }
       if (show && activeAccessoryOptions && group.key !== 'layer2') bringToFront(el)
     }
 
-    if (group.key === 'layer18') {
-      if (!active) continue
-      const activeToggle = svg.getElementById(active)
+    const followIds = groupFollowVisibilityIds(group)
+    if (followIds.length) {
+      const groupActive = activeAccessoryOptions
+        ? activeAccessoryOptions.size > 0
+        : Boolean(active)
+      for (const id of followIds) {
+        const el = svg.getElementById(id)
+        if (el instanceof SVGElement) setElementVisible(el, groupActive)
+      }
+    }
+
+    if (isAccessoryToggleGroup(group) && !activeAccessoryOptions) {
+      for (const opt of group.options) {
+        const el = findOptionEl(svg, opt, groupRoot)
+        if (el instanceof SVGElement) setToggleOptionVisible(el, false)
+        for (const companionId of optionCompanionIds(opt)) {
+          const companion = svg.getElementById(companionId)
+          if (companion instanceof SVGElement) setToggleOptionVisible(companion, false)
+        }
+      }
+    }
+
+    if ((group.key === 'layer18' || group.key === 'layer18-6') && resolved) {
+      const activeToggle = findOptionEl(svg, resolved, groupRoot)
       if (activeToggle instanceof SVGGElement) {
         activeToggle.style.opacity = '1'
-        applyEyeGradient(svg, activeToggle, active)
+        // Headshot already has authored iris fills; rewriting them into
+        // programmatic gradients breaks the serialized nav/favicon SVGs.
+        if (svg.getElementById('layer18')) {
+          applyEyeGradient(svg, activeToggle, resolved.id, resolved.label)
+        }
       }
     }
   }
@@ -343,9 +783,8 @@ export function applyCharacterAppearance(
     const skin = charManifest.fillables.find((fillable) => fillable.key === 'path45')
     const targetIds =
       skin && 'targetIds' in skin && skin.targetIds ? [...skin.targetIds] : skin ? [skin.id] : []
-    for (const id of targetIds) {
-      const el = svg.getElementById(id)
-      if (el instanceof SVGElement) setElementVisible(el, false)
+    for (const el of fillTargetElements(svg, targetIds)) {
+      setElementVisible(el, false)
     }
   }
 

@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom'
-import { MentellCharacter } from './MentellCharacter'
+import { DeskCharacterShell } from './DeskCharacterShell'
 import { poseForPathname } from './characterPoses'
 import { useCharacterAppearance } from './useCharacterAppearance'
 
@@ -12,10 +12,11 @@ export function CharacterCorner({ className }: { className?: string }) {
   if (!ready) return null
 
   return (
-    <MentellCharacter
+    <DeskCharacterShell
       pose={pose}
       appearance={appearance}
       closeEyesOnInteract
+      pettable
       className={`h-32 w-28 shrink-0 sm:h-36 sm:w-32 ${className ?? ''}`}
     />
   )
