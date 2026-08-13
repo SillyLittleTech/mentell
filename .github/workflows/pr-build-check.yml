@@ -48,7 +48,9 @@ jobs:
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+        shell: bash
         if: needs.check-changes.outputs.app == 'true'
 
       # This job only verifies the build compiles; the resulting dist/ is never run,

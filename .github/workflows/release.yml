@@ -63,7 +63,9 @@ jobs:
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+        shell: bash
         if: needs.check-changes.outputs.app == 'true'
 
       # Firebase Cloud Sync and Projector AI Search both write into shared
@@ -187,7 +189,9 @@ jobs:
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm ci || (sleep 5 && npm ci) || (sleep 10 && npm ci)
+        shell: bash
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Install Linux dependencies
@@ -229,6 +233,19 @@ jobs:
           VITE_FIREBASE_APP_ID: ${{ github.event_name != 'pull_request' && vars.VITE_FIREBASE_APP_ID || '' }}
         run: npm run build
         if: needs.check-changes.outputs.app == 'true'
+
+
+      - name: Cache WixTools
+        if: needs.check-changes.outputs.app == 'true' && matrix.platform == 'windows-latest'
+        uses: actions/cache@v4
+        id: wix-cache
+        with:
+          path: ~\AppData\Local\tauri\WixTools
+          key: ${{ runner.os }}-wix-314
+
+      - name: Download Wix binaries
+        if: needs.check-changes.outputs.app == 'true' && matrix.platform == 'windows-latest' && steps.wix-cache.outputs.cache-hit != 'true'
+        run: node scripts/download_wix.cjs
 
       - name: Build Tauri
         uses: tauri-apps/tauri-action@v1
