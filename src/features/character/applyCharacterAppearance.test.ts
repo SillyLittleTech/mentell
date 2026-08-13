@@ -11,7 +11,7 @@ const PANTS_DEFAULT = '#6d7b9a'
 
 function svgFrom(markup: string) {
   const doc = new DOMParser().parseFromString(
-    `<svg xmlns="http://www.w3.org/2000/svg">${markup}</svg>`,
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape">${markup}</svg>`,
     'image/svg+xml',
   )
   return doc.documentElement as unknown as SVGSVGElement
@@ -124,6 +124,58 @@ describe('applyCharacterAppearance hair fills', () => {
     expect(fillOf(svg, 'path94')).toBe(HAIR_PINK)
     expect(fillOf(svg, 'path45')).toBe('#8d5524')
     expect(fillOf(svg, 'path65')).toBe('#2244aa')
+  })
+
+  it('tints the face skin-mask ellipse with the chosen skin colour', () => {
+    const svg = svgFrom(`
+      <defs>
+        <radialGradient id="radialGradient91">
+          <stop offset="0" style="stop-color:#bc975e;stop-opacity:1" />
+          <stop offset="1" style="stop-color:#bc975e;stop-opacity:0" />
+        </radialGradient>
+      </defs>
+      <path id="path45" style="fill:${SKIN_DEFAULT};stroke:none" />
+      <ellipse id="path87" inkscape:label="shadowSkinMask_III" style="fill:url(#radialGradient91)" />
+      <path id="path87-4" style="fill:${MAIN_BROWN};stroke:none" />
+    `)
+    const appearance = defaultCharacterAppearance()
+    appearance.fills.path45 = '#8d5524'
+    applyCharacterAppearance(svg, appearance)
+
+    const gradient =
+      svg.getElementById('radialGradient91') ?? svg.getElementById('linearGradient90')
+    expect(gradient).toBeTruthy()
+    const stops = [...(gradient?.querySelectorAll('stop') ?? [])].map((stop) =>
+      (stop.getAttribute('stop-color') || '').toLowerCase(),
+    )
+    expect(stops.length).toBeGreaterThan(0)
+    expect(stops.every((color) => color === '#8d5524')).toBe(true)
+    expect(fillOf(svg, 'path87-4')).toBe(MAIN_BROWN)
+  })
+
+  it('restores the face skin-mask ellipse when skin returns to default', () => {
+    const svg = svgFrom(`
+      <defs>
+        <radialGradient id="radialGradient91">
+          <stop offset="0" style="stop-color:#bc975e;stop-opacity:1" />
+          <stop offset="1" style="stop-color:#bc975e;stop-opacity:0" />
+        </radialGradient>
+      </defs>
+      <path id="path45" style="fill:${SKIN_DEFAULT};stroke:none" />
+      <ellipse id="path87" inkscape:label="shadowSkinMask_III" style="fill:url(#radialGradient91)" />
+    `)
+    const appearance = defaultCharacterAppearance()
+    appearance.fills.path45 = '#8d5524'
+    applyCharacterAppearance(svg, appearance)
+    appearance.fills.path45 = SKIN_DEFAULT
+    applyCharacterAppearance(svg, appearance)
+
+    const gradient =
+      svg.getElementById('radialGradient91') ?? svg.getElementById('linearGradient90')
+    const stops = [...(gradient?.querySelectorAll('stop') ?? [])].map((stop) =>
+      (stop.getAttribute('stop-color') || '').toLowerCase(),
+    )
+    expect(stops.every((color) => color === '#bc975e')).toBe(true)
   })
 
   it('matches headshot clone ids onto the main hair layer', () => {
