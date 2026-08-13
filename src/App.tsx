@@ -1,6 +1,6 @@
 import { Link, Navigate, Route, useLocation } from 'react-router-dom'
 import { AnimatedRoutes } from './shared/motion/AnimatedRoutes'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, LayoutGroup } from 'framer-motion'
 import { useTheme } from './shared/theme/useTheme'
 import { LetterComposer } from './features/compose/LetterComposer'
 import { SubmitAnimation } from './features/compose/SubmitAnimation'
@@ -193,6 +193,7 @@ function App() {
   }
 
   return (
+    <LayoutGroup>
     <div
       className={
         shareRouteActive
@@ -261,7 +262,7 @@ function App() {
             />
 
             <main
-              className={`mt-6 w-full max-w-4xl ${
+              className={`relative mt-6 w-full max-w-4xl overflow-visible ${
                 streakFocusActive ? 'streak-focus-dim' : ''
               }`}
             >
@@ -325,6 +326,7 @@ function App() {
         </>
       ) : null}
     </div>
+    </LayoutGroup>
   )
 }
 

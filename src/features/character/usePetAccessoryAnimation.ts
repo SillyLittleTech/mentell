@@ -52,9 +52,10 @@ function collectTailNodes(svg: SVGSVGElement) {
 
 export function usePetAccessoryAnimation(
   svgRef: React.RefObject<SVGSVGElement | null>,
-  svgGeneration = 0,
+  svgGeneration: number | string = 0,
 ) {
   useEffect(() => {
+    if (svgGeneration === -1) return undefined
     const svg = svgRef.current
     if (!svg || shouldReduceMotion()) return undefined
 

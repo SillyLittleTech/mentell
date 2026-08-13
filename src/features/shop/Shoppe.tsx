@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { format } from 'date-fns'
 import {
   buyStreakFreeze,
@@ -39,6 +39,7 @@ import {
 import { renderCursorCssValue } from './shopCursorAsset'
 import { renderStampPreviewForItem } from './shopStampAsset'
 import { StreakFreezeBadge } from '../score/StreakFreezeBadge'
+import { Throbber } from '../../components/Throbber'
 
 const CAT_COST = 250
 
@@ -137,20 +138,57 @@ function previewAccessoryItem(item: CharacterAccessoryItem): CharacterAccessoryI
   }
 }
 
+function useOnceVisible() {
+  const ref = useRef<HTMLDivElement>(null)
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el || visible) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        setVisible(true)
+        observer.disconnect()
+      },
+      { rootMargin: '180px 0px', threshold: 0.01 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [visible])
+
+  return { ref, visible }
+}
+
 function CharacterAccessoryPreview({ item }: { item: CharacterAccessoryItem }) {
   const previewItem = previewAccessoryItem(item)
+  const { ref, visible } = useOnceVisible()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    if (!visible) return
+    const frame = window.requestAnimationFrame(() => setMounted(true))
+    return () => window.cancelAnimationFrame(frame)
+  }, [visible])
+
   return (
     <div
+      ref={ref}
       className="mt-3 flex h-28 w-full items-center justify-center overflow-hidden rounded-xl border border-[var(--paper-border)] bg-[var(--paper-bg)] p-2"
       role="img"
       aria-label={`${item.name} preview`}
     >
-      <MentellCharacter
-        pose="idle"
-        appearance={defaultCharacterAppearance()}
-        characterAccessories={[previewItem]}
-        className="h-full w-full"
-      />
+      {mounted ? (
+        <MentellCharacter
+          pose="idle"
+          appearance={defaultCharacterAppearance()}
+          characterAccessories={[previewItem]}
+          staticPreview
+          className="h-full w-full"
+        />
+      ) : (
+        <div className="skeleton-block h-full w-full rounded-lg" aria-hidden />
+      )}
     </div>
   )
 }
@@ -192,9 +230,15 @@ export function Shoppe({
   const [restoreCandidate, setRestoreCandidate] = useState<StreakRestoreCandidate | null>(
     () => getScoreSnapshot().streakRestore,
   )
+  const [shelvesWarm, setShelvesWarm] = useState(false)
 
   useEffect(() => {
     return subscribeShopInventory((next) => setInventory(next))
+  }, [])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShelvesWarm(true), 420)
+    return () => window.clearTimeout(timer)
   }, [])
 
   useEffect(() => {
@@ -438,7 +482,10 @@ export function Shoppe({
       <WeekTimelineCard />
 
       <section className="paper rounded-3xl p-6">
-        <div className="font-paper text-xl">Customization shelves</div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="font-paper text-xl">Customization shelves</div>
+          {!shelvesWarm ? <Throbber className="ink-muted text-xs" label="Loading looks" /> : null}
+        </div>
         <div className="ink-muted mt-1 text-sm">
           Unlock themes, stamp variants, and cursor sets from a JSON catalog.
         </div>

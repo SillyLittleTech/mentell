@@ -6,13 +6,14 @@ import { pageTransitionProps } from './pageTransition'
 export function AnimatedRoutes({ children }: { children: ReactNode }) {
   const location = useLocation()
   const transition = pageTransitionProps()
+  const enteringLab = location.pathname === '/character-lab'
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence mode="popLayout">
       <motion.div
         key={location.pathname}
-        className="w-full"
-        initial={transition.initial}
+        className="relative w-full overflow-visible"
+        initial={enteringLab ? false : transition.initial}
         animate={transition.animate}
         exit={transition.exit}
         transition={transition.transition}

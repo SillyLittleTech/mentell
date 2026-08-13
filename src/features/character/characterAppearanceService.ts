@@ -12,10 +12,16 @@ let cache: CharacterAppearance | null = null
 let loadPromise: Promise<CharacterAppearance> | null = null
 let saveTimer: ReturnType<typeof setTimeout> | undefined
 
+const LEGACY_HAIR_DEFAULT = '#dcbb62'
+
 function mergeWithDefaults(stored: CharacterAppearance): CharacterAppearance {
   const defaults = defaultCharacterAppearance()
+  const fills = { ...defaults.fills, ...stored.fills }
+  if (fills.hair_fill?.toLowerCase() === LEGACY_HAIR_DEFAULT) {
+    fills.hair_fill = defaults.fills.hair_fill
+  }
   return {
-    fills: { ...defaults.fills, ...stored.fills },
+    fills,
     toggles: { ...defaults.toggles, ...stored.toggles },
   }
 }

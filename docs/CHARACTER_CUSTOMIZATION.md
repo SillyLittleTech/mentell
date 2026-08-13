@@ -17,6 +17,8 @@ Character options are discovered from Inkscape labels in `charprod.svg`.
 - Toggle groups: label with `_TOGGLE`
 - Global fill groups: toggle-layer labels that also include `_III`
 - Excluded shapes: label with `_DNI`
+- Outline companions: a sibling labeled `*OL_TOGGLE*` is paired with the matching fill layer and shown together (pets use this)
+- Pet ground shadows: `shadow1` / `shadow2` under `togglepet` follow pet visibility
 
 After SVG edits, regenerate metadata:
 
@@ -25,6 +27,8 @@ After SVG edits, regenerate metadata:
 3. Verify Character Lab controls in `/character-lab`
 
 The control order/labels for Character Lab live in `src/features/character/charLabControls.ts`.
+
+Desk mascot: click/tap to pet (head wiggle + hearts). On `/character-lab` the sidebar character slides into the preview so only one SVG is mounted.
 
 ## Arm animation tuning
 

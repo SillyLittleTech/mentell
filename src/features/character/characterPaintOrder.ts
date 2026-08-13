@@ -27,28 +27,44 @@ function raiseAfterAnchor(
 }
 
 export function normalizeHeadshotEyeToggles(svg: SVGSVGElement) {
-  for (const id of HEADSHOT_EYE_TOGGLE_IDS) {
-    const group = svg.getElementById(id)
-    if (group) group.setAttribute('transform', HEADSHOT_CHAR_MATRIX)
+  const ids = new Set<string>(HEADSHOT_EYE_TOGGLE_IDS)
+  const group = charManifest.toggleGroups.find((entry) => entry.key === 'layer18')
+  for (const option of group?.options ?? []) ids.add(option.id)
+
+  for (const id of ids) {
+    const el = svg.getElementById(id)
+    if (!(el instanceof SVGElement)) continue
+    const existing = el.getAttribute('transform') ?? ''
+    if (existing.includes('matrix(')) continue
+    el.setAttribute('transform', HEADSHOT_CHAR_MATRIX)
   }
 }
 
 /**
- * Headshot: hair (layer16) must stay under eye whites; iris + pupils stay on top.
+ * Headshot: hair under whites; iris + pupils on top of whites.
+ * Headshot iris group is `layer18-7` (charprod uses `layer18`).
  */
 export function fixHeadshotPaintOrder(svg: SVGSVGElement) {
   normalizeHeadshotEyeToggles(svg)
 
   const layer16 = svg.getElementById('layer16')
-  const layer14 = svg.getElementById('layer14')
   const parent = layer16?.parentElement
-  if (layer14 && parent && layer16) {
-    parent.insertBefore(layer14, layer16.nextSibling)
+  if (!layer16 || !parent) return
+
+  const whites = svg.getElementById('layer14')
+  const iris = svg.getElementById('layer18-7') ?? svg.getElementById('layer18')
+  const pupils = svg.getElementById('g100')
+  let insertRef: ChildNode | null = layer16.nextSibling
+  for (const el of [whites, iris, pupils]) {
+    if (!el) continue
+    parent.insertBefore(el, insertRef)
+    insertRef = el.nextSibling
   }
 }
 
 /**
- * Full body: stack whites → iris → pupils above hair/shirt, then arms/sleeves on top.
+ * Full body: stack whites → iris → pupils above hair/shirt, then arms,
+ * arm shadows (must composite on top of posed arms), then sleeves.
  */
 export function fixCharacterPaintOrder(svg: SVGSVGElement) {
   const parent = raiseAfterAnchor(svg, 'layer13', EYE_STACK_IDS)
@@ -56,14 +72,16 @@ export function fixCharacterPaintOrder(svg: SVGSVGElement) {
 
   const sleeveParentId =
     charManifest.globalFillGroups.find((group) => group.key === 'sleeves')?.parentId ?? 'layer19'
-  const frontIds = [
-    charManifest.arms.armL.jointId,
-    charManifest.arms.armR.jointId,
-    sleeveParentId,
-  ]
 
-  for (const id of frontIds) {
+  for (const id of [charManifest.arms.armL.jointId, charManifest.arms.armR.jointId]) {
     const el = svg.getElementById(id)
     if (el) parent.appendChild(el)
   }
+
+  svg.querySelectorAll('g').forEach((el) => {
+    if (el.getAttribute('inkscape:label') === 'armShadowModel') parent.appendChild(el)
+  })
+
+  const sleeves = svg.getElementById(sleeveParentId)
+  if (sleeves) parent.appendChild(sleeves)
 }

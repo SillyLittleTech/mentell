@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { MentellCharacter } from './MentellCharacter'
+import { DeskCharacterShell } from './DeskCharacterShell'
 import { charManifest } from './charManifest'
 import { POSE_LABELS } from './characterPoses'
 import type { CharacterPoseId } from './charManifest'
@@ -32,8 +32,8 @@ function isCharacterAccessory(item: ShopCatalogItem): item is CharacterAccessory
 }
 
 export function CharacterLabPage() {
-  const { appearance, setAppearance, resetAppearance, ready } = useCharacterAppearance()
-  const [pose, setPose] = useState<CharacterPoseId>('wave')
+  const { appearance, setAppearance, resetAppearance } = useCharacterAppearance()
+  const [pose, setPose] = useState<CharacterPoseId>('idle')
   const catalog = useMemo(() => loadShopCatalog(), [])
   const [inventory, setInventory] = useState<ShopInventory>(() => loadShopInventory())
   const dirtyRef = useRef(false)
@@ -117,17 +117,14 @@ export function CharacterLabPage() {
       <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(12rem,16rem)_1fr]">
         <div className="lg:sticky lg:top-4 lg:self-start">
           <div className="flex min-h-[280px] items-center justify-center overflow-visible rounded-2xl border border-[var(--paper-border)] bg-[var(--paper-bg)] p-4">
-            {ready ? (
-              <MentellCharacter
-                pose={pose}
-                appearance={appearance}
-                closeEyesOnInteract
-                className="h-72 w-56"
-                title="Character preview"
-              />
-            ) : (
-              <div className="ink-muted text-sm">Loading saved look…</div>
-            )}
+            <DeskCharacterShell
+              pose={pose}
+              appearance={appearance}
+              closeEyesOnInteract
+              pettable
+              className="h-72 w-56"
+              title="Character preview"
+            />
           </div>
         </div>
 

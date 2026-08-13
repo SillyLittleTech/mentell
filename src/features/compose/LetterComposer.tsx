@@ -6,6 +6,7 @@ import {
   LimitedTextarea,
 } from "../../components/LimitedField";
 import { MaterialIcon } from "../../components/MaterialIcon";
+import { Throbber } from "../../components/Throbber";
 import {
   ProgressLight,
   type ProgressState,
@@ -678,7 +679,7 @@ export function LetterComposer({
                     accent={false}
                     className="text-[rgba(0,0,0,0.92)]"
                   />
-                  {isSubmitting ? <SubmitThrobber /> : 'Submit'}
+                  {isSubmitting ? <Throbber label="Checking" /> : 'Submit'}
                 </span>
               </button>
             )}
@@ -908,18 +909,6 @@ function EntryExtrasFields({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function SubmitThrobber() {
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span
-        className="inline-block size-4 animate-spin rounded-full border-2 border-black/25 border-t-black/80"
-        aria-hidden
-      />
-      <span>Checking</span>
-    </span>
   );
 }
 
