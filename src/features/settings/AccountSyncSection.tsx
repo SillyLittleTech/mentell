@@ -136,7 +136,7 @@ export function AccountSyncSection() {
           {syncUi && !offlineHandoffOnly ? <AccountSignInPanel /> : null}
           {!syncUi ? (
             <div className="ink-muted text-xs">
-              Sync flag is off in this build.
+              Cloud synchronization is currently unavailable (EC101).
             </div>
           ) : null}
           {auth.syncError ? (
