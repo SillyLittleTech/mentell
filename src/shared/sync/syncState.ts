@@ -33,5 +33,6 @@ export function loadSyncState(): SyncState {
 export function saveSyncState(patch: Partial<SyncState>) {
   const next = { ...loadSyncState(), ...patch }
   localStorage.setItem(SYNC_STATE_KEY, JSON.stringify(next))
+  window.dispatchEvent(new CustomEvent('syncStateChanged'))
   return next
 }

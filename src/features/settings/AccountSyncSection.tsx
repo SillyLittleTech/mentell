@@ -1,5 +1,4 @@
 import { format } from "date-fns";
-import { useState } from "react";
 import { isDebugMode } from "../../shared/debug/debugFlags";
 import {
   isFirebaseEnabled,
@@ -13,10 +12,12 @@ import { isFileProtocol, isOfflineZipBuild } from "../../shared/platform/runtime
 import { AccountSignInPanel } from "./AccountSignInPanel";
 import { ScoreRecoverySection } from "./ScoreRecoverySection";
 import { MaterialIcon } from "../../components/MaterialIcon";
+import { useBackgroundActivities } from "../../shared/useBackgroundActivities";
 
 export function AccountSyncSection() {
   const auth = useAuthOptional();
-  const [syncBusy, setSyncBusy] = useState(false);
+  const activities = useBackgroundActivities();
+  const syncBusy = 'sync' in activities;
 
   if (isDebugMode()) return null;
   if (!isFirebaseEnabled()) return null;
@@ -62,8 +63,7 @@ export function AccountSyncSection() {
                   className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold disabled:opacity-60"
                   disabled={syncBusy}
                   onClick={() => {
-                    setSyncBusy(true);
-                    void auth.syncNow().finally(() => setSyncBusy(false));
+                    void auth.syncNow();
                   }}
                 >
                   <span className="inline-flex items-center gap-2">

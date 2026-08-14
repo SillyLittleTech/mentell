@@ -23,6 +23,7 @@ import { isFirebaseSyncEnabled } from "../features/featureFlags";
 import { getOnlineStatus } from "../offline/onlineStatus";
 import { loadSyncState, saveSyncState } from "./syncState";
 import { loadAppSettings, type AppSettings } from "../settings/appSettings";
+import { emitBackgroundActivity } from "../backgroundActivity";
 import {
   getScoreSnapshot,
   applyScoreSnapshotFromSync,
@@ -453,6 +454,7 @@ export async function pushLocalToCloud(uid: string) {
 }
 
 export async function pullAndMerge(uid: string) {
+  emitBackgroundActivity({ type: 'start', id: 'sync', message: 'Syncing to cloud...' });
   const pull = async () => {
     await Promise.all([
       pullCollection(uid, "entries", getDb().entries, resolveEntry as any // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -472,6 +474,7 @@ export async function pullAndMerge(uid: string) {
     await pullInFlight;
   } finally {
     pullInFlight = null;
+    emitBackgroundActivity({ type: 'stop', id: 'sync', message: '' });
   }
 }
 
@@ -595,6 +598,7 @@ async function pushCurrentLocalToCloud() {
   if (pushInFlight) return pushInFlight;
 
   const uid = currentUid;
+  emitBackgroundActivity({ type: 'start', id: 'sync', message: 'Syncing to cloud...' });
   pushInFlight = pushLocalToCloud(uid)
     .then(() => {
       saveSyncState({ lastSyncedAt: Date.now(), lastError: null });
@@ -607,6 +611,7 @@ async function pushCurrentLocalToCloud() {
     })
     .finally(() => {
       pushInFlight = null;
+      emitBackgroundActivity({ type: 'stop', id: 'sync', message: '' });
     });
   return pushInFlight;
 }
