@@ -883,7 +883,36 @@ button.home-greeting:active,
 .home-greeting-glyph {
   display: inline-block;
   transform-origin: 50% 100%;
-  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.home-greeting.is-hopping .home-greeting-glyph {
+  animation: home-greeting-hop 850ms cubic-bezier(0.22, 0.84, 0.28, 1) both;
+  animation-delay: calc(var(--letter-index, 0) * 48ms);
+}
+
+@keyframes home-greeting-hop {
+  0% {
+    transform: translateY(0) scale(1, 1);
+  }
+  12% {
+    transform: translateY(8px) scale(1.46, 0.46);
+  }
+  40% {
+    transform: translateY(-40px) scale(0.66, 1.46);
+  }
+  52% {
+    transform: translateY(-42px) scale(0.8, 1.18);
+  }
+  76% {
+    transform: translateY(6px) scale(1.4, 0.5);
+  }
+  88% {
+    transform: translateY(-4px) scale(0.94, 1.12);
+  }
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
 }
 
 .home-greeting-letter.is-glowing .home-greeting-glyph {
@@ -904,10 +933,32 @@ html[data-theme='dark'] .home-greeting-letter.is-glowing .home-greeting-glyph {
 
 .home-greeting-dust {
   position: absolute;
+  left: calc(50% + var(--dust-x, 0px));
+  bottom: 2px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--paper-ink) 28%, transparent);
+  background: color-mix(in srgb, var(--paper-ink) 30%, transparent);
   pointer-events: none;
-  transform: translateX(-50%);
+  opacity: 0;
+}
+
+.home-greeting.is-hopping .home-greeting-dust {
+  animation: home-greeting-dust 420ms ease-out both;
+  animation-delay: calc(var(--letter-index, 0) * 48ms + 620ms);
+}
+
+@keyframes home-greeting-dust {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.35);
+  }
+  30% {
+    opacity: 0.55;
+    transform: translate(calc(-50% + var(--dust-drift, 0px) * 0.45), 3px) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dust-drift, 0px)), 8px) scale(0.7);
+  }
 }
 
 html[data-theme='dark'] .home-greeting-dust {
@@ -918,10 +969,40 @@ html[data-theme='dark'] .home-greeting-dust {
   position: absolute;
   z-index: 2;
   pointer-events: none;
+  opacity: 0;
   background: #ffe27a;
   transform: rotate(45deg);
   box-shadow:
     0 0 6px #ffe9a3,
     0 0 12px #e0b22c;
   clip-path: polygon(50% 0%, 65% 35%, 100% 50%, 65% 65%, 50% 100%, 35% 65%, 0% 50%, 35% 35%);
+}
+
+.home-greeting.is-playing .home-greeting-sparkle {
+  animation: home-greeting-sparkle 1050ms ease-out both;
+  animation-delay: var(--spark-delay, 0ms);
+}
+
+@keyframes home-greeting-sparkle {
+  0% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.15);
+  }
+  30% {
+    opacity: 1;
+    transform: rotate(45deg) scale(1.2);
+  }
+  60% {
+    opacity: 0.45;
+    transform: rotate(45deg) scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.2);
+  }
+}
+
+html[data-reduced-motion='true'] .home-greeting.is-hopping .home-greeting-glyph,
+html[data-reduced-motion='true'] .home-greeting.is-hopping .home-greeting-dust {
+  animation: none;
 }
