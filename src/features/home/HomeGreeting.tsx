@@ -16,9 +16,9 @@ type TokenRun = {
   tokens: LetterToken[]
 }
 
-const HOP_MS = 850
-const STAGGER_MS = 48
-const SPARKLE_MS = 1050
+const HOP_MS = 720
+const STAGGER_MS = 36
+const SPARKLE_MS = 900
 
 function wordsFromTokens(tokens: LetterToken[]): LetterToken[][] {
   const words: LetterToken[][] = []
@@ -71,10 +71,8 @@ function runsFromTokens(tokens: LetterToken[]): TokenRun[] {
 }
 
 const DUST_GRAINS = [
-  { x: -11, size: 5, drift: -9 },
-  { x: -3, size: 3.5, drift: -3 },
-  { x: 5, size: 4.5, drift: 7 },
-  { x: 12, size: 3.5, drift: 12 },
+  { x: -8, size: 4.5, drift: -8 },
+  { x: 9, size: 4, drift: 10 },
 ]
 
 function GreetingLetter({
@@ -109,12 +107,10 @@ function GreetingLetter({
 }
 
 const SPARKLES = [
-  { left: '8%', top: '-30%', delay: '0ms', size: 8 },
-  { left: '34%', top: '-14%', delay: '70ms', size: 5 },
-  { left: '58%', top: '-34%', delay: '130ms', size: 7 },
-  { left: '86%', top: '-12%', delay: '40ms', size: 5 },
-  { left: '18%', top: '78%', delay: '160ms', size: 4 },
-  { left: '74%', top: '82%', delay: '100ms', size: 5 },
+  { left: '12%', top: '-28%', delay: '0ms', size: 7 },
+  { left: '48%', top: '-16%', delay: '80ms', size: 5 },
+  { left: '82%', top: '-30%', delay: '40ms', size: 6 },
+  { left: '70%', top: '78%', delay: '110ms', size: 4 },
 ]
 
 export function HomeGreeting({

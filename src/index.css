@@ -887,40 +887,40 @@ button.home-greeting:active,
 }
 
 .home-greeting.is-hopping .home-greeting-glyph {
-  animation: home-greeting-hop 850ms cubic-bezier(0.22, 0.84, 0.28, 1) both;
-  animation-delay: calc(var(--letter-index, 0) * 48ms);
+  will-change: transform;
+  animation: home-greeting-hop 720ms cubic-bezier(0.22, 0.84, 0.28, 1) both;
+  animation-delay: calc(var(--letter-index, 0) * 36ms);
 }
 
 @keyframes home-greeting-hop {
   0% {
-    transform: translateY(0) scale(1, 1);
+    transform: translate3d(0, 0, 0) scale(1, 1);
   }
   12% {
-    transform: translateY(8px) scale(1.46, 0.46);
+    transform: translate3d(0, 8px, 0) scale(1.46, 0.46);
   }
   40% {
-    transform: translateY(-40px) scale(0.66, 1.46);
+    transform: translate3d(0, -40px, 0) scale(0.66, 1.46);
   }
   52% {
-    transform: translateY(-42px) scale(0.8, 1.18);
+    transform: translate3d(0, -42px, 0) scale(0.8, 1.18);
   }
   76% {
-    transform: translateY(6px) scale(1.4, 0.5);
+    transform: translate3d(0, 6px, 0) scale(1.4, 0.5);
   }
   88% {
-    transform: translateY(-4px) scale(0.94, 1.12);
+    transform: translate3d(0, -4px, 0) scale(0.94, 1.12);
   }
   100% {
-    transform: translateY(0) scale(1, 1);
+    transform: translate3d(0, 0, 0) scale(1, 1);
   }
 }
 
 .home-greeting-letter.is-glowing .home-greeting-glyph {
   color: #f5d76e;
   text-shadow:
-    0 0 6px #ffe9a3,
-    0 0 14px #f0c14a,
-    0 0 26px color-mix(in srgb, var(--primary-action) 70%, transparent);
+    0 0 8px #ffe9a3,
+    0 0 18px color-mix(in srgb, var(--primary-action) 65%, transparent);
 }
 
 html[data-theme='dark'] .home-greeting-letter.is-glowing .home-greeting-glyph {
@@ -942,8 +942,8 @@ html[data-theme='dark'] .home-greeting-letter.is-glowing .home-greeting-glyph {
 }
 
 .home-greeting.is-hopping .home-greeting-dust {
-  animation: home-greeting-dust 420ms ease-out both;
-  animation-delay: calc(var(--letter-index, 0) * 48ms + 620ms);
+  animation: home-greeting-dust 360ms ease-out both;
+  animation-delay: calc(var(--letter-index, 0) * 36ms + 520ms);
 }
 
 @keyframes home-greeting-dust {
@@ -979,7 +979,7 @@ html[data-theme='dark'] .home-greeting-dust {
 }
 
 .home-greeting.is-playing .home-greeting-sparkle {
-  animation: home-greeting-sparkle 1050ms ease-out both;
+  animation: home-greeting-sparkle 900ms ease-out both;
   animation-delay: var(--spark-delay, 0ms);
 }
 
