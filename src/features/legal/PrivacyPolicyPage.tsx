@@ -90,7 +90,7 @@ export function PrivacyPolicyPage() {
         <section className="paper rounded-3xl p-6">
           <h2 className="font-paper text-xl">Firebase Authentication &amp; cloud backup (optional)</h2>
           <p className="ink-muted mt-3 text-sm leading-relaxed">
-            If cloud sync is enabled in your build, you may sign in with Google, email and password,
+            If cloud sync is enabled, you may sign in with Google, email and password,
             or a passwordless email link. Authentication is provided by{' '}
             <strong>Firebase Authentication</strong> (Google). We receive an account identifier and,
             depending on how you sign in, your email address and display information from your
@@ -106,7 +106,7 @@ export function PrivacyPolicyPage() {
             </p>
           ) : (
             <p className="ink-muted mt-3 text-sm leading-relaxed">
-              Sign-in may be available without sync in some builds; check Settings for what is
+              Sign-in may be available without sync depending on the application configuration; check Settings for what is
               enabled.
             </p>
           )}
@@ -131,9 +131,9 @@ export function PrivacyPolicyPage() {
         </section>
       ) : (
         <section className="paper rounded-3xl p-6">
-          <h2 className="font-paper text-xl">Cloud sign-in (not enabled in this build)</h2>
+          <h2 className="font-paper text-xl">Cloud sign-in (currently unavailable)</h2>
           <p className="ink-muted mt-3 text-sm leading-relaxed">
-            This deployment does not load Firebase. Journal data stays on your device only.
+            This application does not load cloud synchronization. Journal data stays on your device only.
           </p>
         </section>
       )}
@@ -155,9 +155,9 @@ export function PrivacyPolicyPage() {
         </section>
       ) : (
         <section className="paper rounded-3xl p-6">
-          <h2 className="font-paper text-xl">Weekly AI summaries (not enabled)</h2>
+          <h2 className="font-paper text-xl">Weekly AI summaries (currently unavailable)</h2>
           <p className="ink-muted mt-3 text-sm leading-relaxed">
-            This build does not call Cloudflare Workers AI for weekly summaries.
+            This application does not call Cloudflare Workers AI for weekly summaries.
           </p>
         </section>
       )}

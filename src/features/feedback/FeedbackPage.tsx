@@ -332,9 +332,7 @@ export function FeedbackPage() {
         </div>
         {!endpointReady ? (
           <div className="mt-5 rounded-2xl border border-[var(--paper-border)] bg-[rgba(198,29,29,0.08)] p-4 text-sm">
-            Feedback submission is not enabled in this build yet. Set
-            <code className="mx-1 font-mono text-[0.95em]">VITE_FEEDBACK_FORM_ENDPOINT</code>
-            in your local environment and GitHub Actions variables to activate the workflow.
+            Feedback submission is currently unavailable (EC102).
           </div>
         ) : null}
       </section>

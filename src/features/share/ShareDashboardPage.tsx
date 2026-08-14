@@ -127,7 +127,7 @@ function ShareDashboardPageInner({ code, enabled }: { code: string; enabled: boo
       <div className="desk flex min-h-[100svh] items-center justify-center p-6">
         <div className="paper max-w-md rounded-3xl p-6 text-center">
           <div className="font-paper text-xl">Sharing is disabled</div>
-          <div className="ink-muted mt-2 text-sm">This build does not include share links.</div>
+          <div className="ink-muted mt-2 text-sm">Share links are currently unavailable (EC104).</div>
         </div>
       </div>
     )

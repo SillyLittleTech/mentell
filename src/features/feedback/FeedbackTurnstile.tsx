@@ -78,8 +78,8 @@ export const FeedbackTurnstile = forwardRef<
   const [status, setStatus] = useState<TurnstileStatus>(() => (siteKey ? 'loading' : 'error'))
   const [message, setMessage] = useState(() =>
     siteKey
-      ? 'Loading Cloudflare verification...'
-      : 'Cloudflare verification is not configured for this build.',
+      ? 'Loading security verification...'
+      : 'Security verification is currently unavailable (EC103).',
   )
 
   useEffect(() => {
