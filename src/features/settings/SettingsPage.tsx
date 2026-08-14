@@ -96,7 +96,7 @@ export function SettingsPage() {
           <label className="flex items-center justify-between gap-3 text-sm">
             <span>
               Disable AI summaries
-              <div className="ink-muted text-xs">Hides weekly AI on the Week tab (build flags still required).</div>
+              <div className="ink-muted text-xs">Hides weekly AI on the Week tab (cloud synchronization still required).</div>
             </span>
             <input
               type="checkbox"
