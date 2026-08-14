@@ -825,3 +825,103 @@ html[data-theme='dark'] .rope-knot {
   filter: contrast(1.1) saturate(1.2) brightness(1.08)
     drop-shadow(0 8px 18px rgba(0, 0, 0, 0.4));
 }
+
+.home-greeting {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0.15rem 0.1rem 0.55rem;
+  margin: 0;
+  max-width: 100%;
+  color: inherit;
+  font: inherit;
+  line-height: 1.15;
+  text-align: left;
+  cursor: var(--shop-cursor-pointer);
+  overflow: visible;
+  border-radius: 0.85rem;
+}
+
+button.home-greeting:active,
+.home-greeting:active {
+  transform: none;
+}
+
+.home-greeting--desktop {
+  font-family: ui-serif, Georgia, serif;
+  font-size: clamp(1.65rem, 2.4vw, 2.35rem);
+  letter-spacing: -0.03em;
+  color: var(--paper-ink);
+}
+
+.home-greeting--mobile {
+  font: inherit;
+  color: inherit;
+}
+
+.home-greeting-line {
+  position: relative;
+  display: inline;
+}
+
+.home-greeting-name-group {
+  position: relative;
+  display: inline;
+}
+
+.home-greeting-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.home-greeting-letter {
+  position: relative;
+  display: inline-block;
+  overflow: visible;
+}
+
+.home-greeting-glyph {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  will-change: transform;
+}
+
+.home-greeting-letter.is-glowing .home-greeting-glyph {
+  color: #f5d76e;
+  text-shadow:
+    0 0 6px #ffe9a3,
+    0 0 14px #f0c14a,
+    0 0 26px color-mix(in srgb, var(--primary-action) 70%, transparent);
+}
+
+html[data-theme='dark'] .home-greeting-letter.is-glowing .home-greeting-glyph {
+  color: #ffe08a;
+  text-shadow:
+    0 0 8px #ffe9a3,
+    0 0 18px #e0b22c,
+    0 0 28px rgba(224, 178, 44, 0.55);
+}
+
+.home-greeting-dust {
+  position: absolute;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper-ink) 28%, transparent);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+html[data-theme='dark'] .home-greeting-dust {
+  background: color-mix(in srgb, var(--paper-ink) 42%, transparent);
+}
+
+.home-greeting-sparkle {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  background: #ffe27a;
+  transform: rotate(45deg);
+  box-shadow:
+    0 0 6px #ffe9a3,
+    0 0 12px #e0b22c;
+  clip-path: polygon(50% 0%, 65% 35%, 100% 50%, 65% 65%, 50% 100%, 35% 65%, 0% 50%, 35% 35%);
+}
