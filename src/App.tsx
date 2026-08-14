@@ -55,6 +55,7 @@ import { BottomNav } from './components/shell/BottomNav'
 import { RightRail } from './components/shell/RightRail'
 import { DeskSpotlight } from './components/shell/DeskSpotlight'
 import { ThemeToggleButton } from './components/ThemeToggleButton'
+import { HomeGreeting } from './features/home/HomeGreeting'
 
 type StreakOutcomeAnimation =
   | { kind: 'break'; key: number; from: number }
@@ -345,12 +346,17 @@ function TopBar({
 }) {
   const { mode, toggle } = useTheme()
   const { settings } = useAppSettings()
+  const location = useLocation()
+  const onHome = location.pathname === '/'
 
   return (
     <>
-      <header className={`w-full space-y-3 ${focusActive ? 'streak-focus-target' : ''}`}>
+      <header className={`w-full space-y-3 overflow-visible ${focusActive ? 'streak-focus-target' : ''}`}>
         <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-start">
-          <div className="flex flex-wrap items-start gap-3">
+          <div className="flex min-w-0 flex-wrap items-start gap-3">
+            <div className="relative z-0 hidden min-h-[5rem] min-w-0 flex-1 items-center overflow-visible md:flex">
+              {onHome ? <HomeGreeting variant="desktop" /> : null}
+            </div>
             <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3 md:hidden">
               <img
                 alt=""
@@ -382,7 +388,7 @@ function TopBar({
             )}
           </div>
 
-          <div className="hidden min-h-[5rem] items-center justify-center md:flex md:justify-self-center">
+          <div className="relative z-10 hidden min-h-[5rem] items-center justify-center md:flex md:justify-self-center">
             <PackageAlert onAward={onPackageAward} placement="inline" size="lg" />
           </div>
 
@@ -425,7 +431,7 @@ function PaperSection({
   subtitle,
   children,
 }: {
-  title: string
+  title: React.ReactNode
   subtitle: string
   children: React.ReactNode
 }) {
@@ -461,7 +467,14 @@ function HomePlaceholder({
 
   return (
     <PaperSection
-      title="Draft today’s letter"
+      title={
+        <>
+          <span className="hidden md:inline">Draft today’s letter</span>
+          <span className="md:hidden">
+            <HomeGreeting variant="mobile" fallback="Draft today’s letter" />
+          </span>
+        </>
+      }
       subtitle="Draft it like stationery — then review and submit."
     >
       <DeskCharacterLayout>

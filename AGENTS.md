@@ -93,11 +93,15 @@ See [`docs/FIREBASE.md`](docs/FIREBASE.md). Off by default via `VITE_ENABLE_FIRE
 
 Canonical app version lives in [`VERSION`](VERSION) (semver `MAJOR.MINOR.PATCH`). Keep [`package.json`](package.json) `version` in sync when bumping.
 
+**Default to a PATCH / sub-minor bump** (`1.18.14` → `1.18.15`). That includes most new features, UI additions, copy, styling, bug fixes, docs, and dependency patches.
+
 | Bump | When | Example |
 |------|------|---------|
-| **MAJOR** | Breaking UX, data migrations users must notice, or incompatible API/env changes | `1.4.2` → `2.0.0` |
-| **MINOR** | New features, notable UI flows, non-breaking behavior additions | `1.4.2` → `1.5.0` |
-| **PATCH** | Bug fixes, copy, styling, docs, dependency patches with no user-facing feature | `1.4.2` → `1.4.3` |
+| **PATCH** (sub-minor, default) | Almost every change: features, fixes, copy, styling, docs, small UX additions | `1.4.2` → `1.4.3` |
+| **MINOR** | Only unusually large product changes (a whole new area of the app, a major UX overhaul) | `1.4.2` → `1.5.0` |
+| **MAJOR** | Almost never. Only when the owner **explicitly asks** for a major bump (or an incompatible migration they call out as major) | `1.4.2` → `2.0.0` |
+
+Do not choose MAJOR on your own. Prefer PATCH unless the change is clearly a large product expansion.
 
 After changing `VERSION`, run `npm run build:check` so Vite reinjects `VITE_APP_VERSION` into the footer (`src/shared/version.ts` → `AppLegalFooter`).
 

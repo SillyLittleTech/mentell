@@ -825,3 +825,184 @@ html[data-theme='dark'] .rope-knot {
   filter: contrast(1.1) saturate(1.2) brightness(1.08)
     drop-shadow(0 8px 18px rgba(0, 0, 0, 0.4));
 }
+
+.home-greeting {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  padding: 0.15rem 0.1rem 0.55rem;
+  margin: 0;
+  max-width: 100%;
+  color: inherit;
+  font: inherit;
+  line-height: 1.15;
+  text-align: left;
+  cursor: var(--shop-cursor-pointer);
+  overflow: visible;
+  border-radius: 0.85rem;
+}
+
+button.home-greeting:active,
+.home-greeting:active {
+  transform: none;
+}
+
+.home-greeting--desktop {
+  font-family: ui-serif, Georgia, serif;
+  font-size: clamp(1.65rem, 2.4vw, 2.35rem);
+  letter-spacing: -0.03em;
+  color: var(--paper-ink);
+}
+
+.home-greeting--mobile {
+  font: inherit;
+  color: inherit;
+}
+
+.home-greeting-line {
+  position: relative;
+  display: inline;
+}
+
+.home-greeting-name-group {
+  position: relative;
+  display: inline;
+}
+
+.home-greeting-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.home-greeting-letter {
+  position: relative;
+  display: inline-block;
+  overflow: visible;
+}
+
+.home-greeting-glyph {
+  display: inline-block;
+  transform-origin: 50% 100%;
+  backface-visibility: hidden;
+}
+
+.home-greeting.is-hopping .home-greeting-glyph {
+  will-change: transform;
+  animation: home-greeting-hop 720ms cubic-bezier(0.22, 0.84, 0.28, 1) both;
+  animation-delay: calc(var(--letter-index, 0) * 36ms);
+}
+
+@keyframes home-greeting-hop {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1, 1);
+  }
+  12% {
+    transform: translate3d(0, 8px, 0) scale(1.46, 0.46);
+  }
+  40% {
+    transform: translate3d(0, -40px, 0) scale(0.66, 1.46);
+  }
+  52% {
+    transform: translate3d(0, -42px, 0) scale(0.8, 1.18);
+  }
+  76% {
+    transform: translate3d(0, 6px, 0) scale(1.4, 0.5);
+  }
+  88% {
+    transform: translate3d(0, -4px, 0) scale(0.94, 1.12);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1, 1);
+  }
+}
+
+.home-greeting-letter.is-glowing .home-greeting-glyph {
+  color: #f5d76e;
+  text-shadow:
+    0 0 8px #ffe9a3,
+    0 0 18px color-mix(in srgb, var(--primary-action) 65%, transparent);
+}
+
+html[data-theme='dark'] .home-greeting-letter.is-glowing .home-greeting-glyph {
+  color: #ffe08a;
+  text-shadow:
+    0 0 8px #ffe9a3,
+    0 0 18px #e0b22c,
+    0 0 28px rgba(224, 178, 44, 0.55);
+}
+
+.home-greeting-dust {
+  position: absolute;
+  left: calc(50% + var(--dust-x, 0px));
+  bottom: 2px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper-ink) 30%, transparent);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.home-greeting.is-hopping .home-greeting-dust {
+  animation: home-greeting-dust 360ms ease-out both;
+  animation-delay: calc(var(--letter-index, 0) * 36ms + 520ms);
+}
+
+@keyframes home-greeting-dust {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.35);
+  }
+  30% {
+    opacity: 0.55;
+    transform: translate(calc(-50% + var(--dust-drift, 0px) * 0.45), 3px) scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dust-drift, 0px)), 8px) scale(0.7);
+  }
+}
+
+html[data-theme='dark'] .home-greeting-dust {
+  background: color-mix(in srgb, var(--paper-ink) 42%, transparent);
+}
+
+.home-greeting-sparkle {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  background: #ffe27a;
+  transform: rotate(45deg);
+  box-shadow:
+    0 0 6px #ffe9a3,
+    0 0 12px #e0b22c;
+  clip-path: polygon(50% 0%, 65% 35%, 100% 50%, 65% 65%, 50% 100%, 35% 65%, 0% 50%, 35% 35%);
+}
+
+.home-greeting.is-playing .home-greeting-sparkle {
+  animation: home-greeting-sparkle 900ms ease-out both;
+  animation-delay: var(--spark-delay, 0ms);
+}
+
+@keyframes home-greeting-sparkle {
+  0% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.15);
+  }
+  30% {
+    opacity: 1;
+    transform: rotate(45deg) scale(1.2);
+  }
+  60% {
+    opacity: 0.45;
+    transform: rotate(45deg) scale(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(45deg) scale(0.2);
+  }
+}
+
+html[data-reduced-motion='true'] .home-greeting.is-hopping .home-greeting-glyph,
+html[data-reduced-motion='true'] .home-greeting.is-hopping .home-greeting-dust {
+  animation: none;
+}

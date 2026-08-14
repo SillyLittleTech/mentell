@@ -1,0 +1,48 @@
+{
+  "greetings": [
+    { "id": "good-morning", "text": "Good morning {name}", "timeOfDay": "morning" },
+    { "id": "good-afternoon", "text": "Good afternoon {name}", "timeOfDay": "afternoon" },
+    { "id": "good-evening", "text": "Good evening {name}", "timeOfDay": "evening" },
+    { "id": "greetings", "text": "Greetings {name}" },
+    { "id": "hello", "text": "Hello {name}" },
+    { "id": "hey-there", "text": "Hey there {name}" },
+    { "id": "hi", "text": "Hi {name}" },
+    { "id": "welcome-back", "text": "Welcome back {name}" },
+    { "id": "good-to-see-you", "text": "Good to see you {name}" },
+    { "id": "hello-again", "text": "Hello again {name}" },
+    { "id": "howdy", "text": "Howdy {name}" },
+    { "id": "salutations", "text": "Salutations {name}" },
+    { "id": "ahoy", "text": "Ahoy {name}" },
+    { "id": "whats-new", "text": "What's new, {name}" },
+    { "id": "warm-hello", "text": "A warm hello, {name}" },
+    { "id": "lovely-day", "text": "Lovely day, {name}" }
+  ],
+  "nicknames": [
+    "cutie pie",
+    "applejack",
+    "cupcake",
+    "sunshine",
+    "marshmallow",
+    "buttercup",
+    "honeybee",
+    "sugarplum",
+    "dumpling",
+    "peach",
+    "cookie",
+    "starlight",
+    "cinnamon",
+    "jellybean"
+  ],
+  "anonNicknames": [
+    "Stranger",
+    "Mystery",
+    "Wind",
+    "Wanderer",
+    "Newcomer",
+    "Traveler",
+    "Guest",
+    "Passing cloud",
+    "Quiet one",
+    "Unknown"
+  ]
+}
