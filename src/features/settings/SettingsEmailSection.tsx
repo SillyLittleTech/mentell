@@ -3,6 +3,7 @@ import { useAppSettings } from '../../shared/settings/useAppSettings'
 import { getFirebaseAuth } from '../../shared/firebase/firebaseApp'
 import { isFirebaseEnabled } from '../../shared/features/featureFlags'
 import { getPushClientId } from '../../pwa/pushSubscribe'
+import { getFirestore, doc, setDoc } from 'firebase/firestore'
 
 export function SettingsEmailSection() {
   const { settings, updateSettings } = useAppSettings()
@@ -64,6 +65,14 @@ export function SettingsEmailSection() {
         notificationEmail: emailDraft,
         emailVerified: data.verified
       })
+
+      if (isFirebaseEnabled()) {
+        const auth = getFirebaseAuth()
+        if (auth?.currentUser) {
+           const db = getFirestore()
+           await setDoc(doc(db, 'users', auth.currentUser.uid, 'meta', 'settings'), { emailNotification: { email: emailDraft, verified: data.verified } }, { merge: true }).catch(() => {})
+        }
+      }
 
       setSuccess(true)
     } catch (e) {

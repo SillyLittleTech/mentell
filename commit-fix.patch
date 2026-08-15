@@ -1,0 +1,10 @@
+--- a/worker/src/emailHandlers.ts
++++ b/worker/src/emailHandlers.ts
+@@ -19,7 +19,7 @@
+     return corsJson({ error: 'Invalid JSON' }, 400, env, origin)
+   }
+
+-  if (!body.email || body.email.length > 254 || body.email.indexOf('@') < 1 || body.email.indexOf('@') !== body.email.lastIndexOf('@')) {
++  if (!body.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email) || body.email.length > 254) {
+     return corsJson({ error: 'Valid email required' }, 400, env, origin)
+   }

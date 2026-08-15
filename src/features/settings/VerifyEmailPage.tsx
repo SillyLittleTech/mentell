@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { DeskCharacterLayout } from '../character/DeskCharacterLayout'
+import { getFirebaseAuth } from '../../shared/firebase/firebaseApp'
+import { isFirebaseEnabled } from '../../shared/features/featureFlags'
+import { getFirestore, doc, setDoc } from 'firebase/firestore'
+import { useAppSettings } from '../../shared/settings/useAppSettings'
 
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying')
   const [errorMsg, setErrorMsg] = useState('')
+  const { updateSettings } = useAppSettings()
 
   useEffect(() => {
     const token = searchParams.get('token')
@@ -24,6 +29,14 @@ export function VerifyEmailPage() {
         const data = await res.json()
         if (res.ok) {
           setStatus('success')
+          updateSettings({ emailVerified: true })
+          if (isFirebaseEnabled()) {
+            const auth = getFirebaseAuth()
+            if (auth?.currentUser) {
+               const db = getFirestore()
+               await setDoc(doc(db, 'users', auth.currentUser.uid, 'meta', 'settings'), { emailNotification: { verified: true } }, { merge: true }).catch(() => {})
+            }
+          }
         } else {
           setStatus('error')
           setErrorMsg(data.error || 'Failed to verify token.')

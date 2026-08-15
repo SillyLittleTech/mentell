@@ -2,7 +2,6 @@ import { corsJson, corsResponse } from './cors'
 import type { Env } from './env'
 import type { EmailSubscriberRecord, SubscribeEmailBody } from './emailTypes'
 import { sendResendEmail } from './emailSend'
-import { firestoreUpdateEmailSettings } from './firestoreAdmin'
 
 export async function handleEmailSubscribe(request: Request, env: Env) {
   const origin = request.headers.get('Origin')
@@ -19,7 +18,7 @@ export async function handleEmailSubscribe(request: Request, env: Env) {
     return corsJson({ error: 'Invalid JSON' }, 400, env, origin)
   }
 
-  if (!body.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+  if (!body.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email) || body.email.length > 254) {
     return corsJson({ error: 'Valid email required' }, 400, env, origin)
   }
 
@@ -90,10 +89,6 @@ export async function handleEmailSubscribe(request: Request, env: Env) {
     await env.PUSH_KV.put(key, JSON.stringify(record))
   }
 
-  if (uid && env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    await firestoreUpdateEmailSettings(env.FIREBASE_SERVICE_ACCOUNT_JSON, uid, record.email, record.verified).catch(() => {})
-  }
-
   return corsJson({ ok: true, userId, verified: record.verified }, 200, env, origin)
 }
 
@@ -134,10 +129,6 @@ export async function handleEmailVerify(request: Request, env: Env) {
         sub.verified = true
         delete sub.verifyToken
         await env.PUSH_KV.put(key, JSON.stringify(sub))
-
-        if (!tokenData.userId.startsWith('anon_') && env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-          await firestoreUpdateEmailSettings(env.FIREBASE_SERVICE_ACCOUNT_JSON, tokenData.userId, sub.email, true).catch(() => {})
-        }
       }
     } catch {
       /* ignore */
