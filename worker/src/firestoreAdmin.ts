@@ -263,6 +263,48 @@ export async function firestoreFetchEntriesByIds(
   return out
 }
 
+export async function firestoreUpdateEmailSettings(
+  serviceAccountJson: string,
+  uid: string,
+  email: string,
+  verified: boolean
+) {
+  const sa = parseServiceAccount(serviceAccountJson)
+  const token = await getAccessToken(sa)
+  const name = `projects/${sa.project_id}/databases/(default)/documents/users/${uid}/meta/settings`
+
+  const payload = {
+    name,
+    fields: {
+      emailNotification: {
+        mapValue: {
+          fields: {
+            email: { stringValue: email },
+            verified: { booleanValue: verified }
+          }
+        }
+      }
+    }
+  }
+
+  const url = `https://firestore.googleapis.com/v1/${name}?updateMask.fieldPaths=emailNotification`
+  const res = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Firestore update failed: ${res.status} ${text}`)
+  }
+
+  return true
+}
+
 export function firebaseProjectId(serviceAccountJson: string) {
   return parseServiceAccount(serviceAccountJson).project_id
 }

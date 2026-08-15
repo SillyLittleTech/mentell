@@ -6,6 +6,7 @@ import { isWebPushConfigured, syncPushSubscription, unsubscribePush } from '../.
 import { browserTimezone } from '../../shared/settings/appSettings'
 import { AccountSyncSection } from './AccountSyncSection'
 import { SettingsAccountFeatures } from './SettingsAccountFeatures'
+import { SettingsEmailSection } from './SettingsEmailSection'
 import { SettingsDebugCloudSection } from './SettingsDebugCloudSection'
 import { DeskCharacterLayout } from '../character/DeskCharacterLayout'
 import { pushLocalChangesNow } from '../../shared/sync/syncService'
@@ -180,6 +181,7 @@ export function SettingsPage() {
               </span>
             </label>
           </div>
+          <SettingsEmailSection />
           <SettingsAccountFeatures />
         </div>
       </section>

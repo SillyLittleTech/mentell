@@ -12,6 +12,7 @@ import { runPushCron } from './pushCron'
 import { handleProjectorSearch } from './projectorSearch'
 import { handleRiskAssessment } from './riskAssessment'
 import { handleWeeklySummary } from './weeklySummary'
+import { handleEmailSubscribe, handleEmailVerify } from './emailHandlers'
 
 export type { Env } from './env'
 
@@ -21,6 +22,10 @@ export default {
     const origin = request.headers.get('Origin')
 
     switch (url.pathname) {
+      case '/email/subscribe':
+        return handleEmailSubscribe(request, env)
+      case '/email/verify':
+        return handleEmailVerify(request, env)
       case '/weekly-summary':
         return handleWeeklySummary(request, env)
       case '/projector-search':

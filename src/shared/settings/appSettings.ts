@@ -32,6 +32,11 @@ export type AppSettings = {
   deliveryTimeLocal: string;
   /** IANA timezone for push delivery when sync is on */
   timezone: string;
+  notificationEmail: string;
+  emailVerified: boolean;
+  dailyEmailReminderEnabled: boolean;
+  dailyEmailReminderHours: number;
+  weeklyEmailEnabled: boolean;
 };
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -45,6 +50,11 @@ const DEFAULT_SETTINGS: AppSettings = {
   deliveryWeekday: DEFAULT_DELIVERY_WEEKDAY,
   deliveryTimeLocal: DEFAULT_DELIVERY_TIME_LOCAL,
   timezone: browserTimezone(),
+  notificationEmail: "",
+  emailVerified: false,
+  dailyEmailReminderEnabled: false,
+  dailyEmailReminderHours: 1,
+  weeklyEmailEnabled: false,
 };
 
 function sanitizeGlobalName(raw: string) {
@@ -101,6 +111,11 @@ export function sanitizeAppSettings(input: Partial<AppSettings>): AppSettings {
     deliveryWeekday: sanitizeDeliveryWeekday(input.deliveryWeekday),
     deliveryTimeLocal: sanitizeDeliveryTimeLocal(input.deliveryTimeLocal),
     timezone: sanitizeTimezone(input.timezone),
+    notificationEmail: (input.notificationEmail ?? "").trim(),
+    emailVerified: Boolean(input.emailVerified),
+    dailyEmailReminderEnabled: Boolean(input.dailyEmailReminderEnabled),
+    dailyEmailReminderHours: Math.min(4, Math.max(1, Number(input.dailyEmailReminderHours) || 1)),
+    weeklyEmailEnabled: Boolean(input.weeklyEmailEnabled),
   };
 }
 

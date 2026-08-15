@@ -6,33 +6,53 @@ import type { PushEnv } from './env'
 import { GENERIC_PUSH_TIMEZONE, inDeliveryWindow, lastCompletedWeekRange } from './pushDelivery'
 import { configureWebPush, sendWebPush } from './pushSend'
 import type { PushSubscriber } from './pushTypes'
+import { processEmailSubscriber } from './emailDispatch'
+import type { EmailSubscriberRecord } from './emailTypes'
 
 const SENT_TTL_SECONDS = 8 * 24 * 60 * 60
 
 export async function runPushCron(env: PushEnv) {
-  if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return
-  configureWebPush(env.VAPID_PUBLIC_KEY, env.VAPID_PRIVATE_KEY)
-
   const now = new Date()
-  let cursor: string | undefined
 
-  do {
-    const list = await env.PUSH_KV.list({ prefix: 'sub:', cursor, limit: 100 })
-    for (const key of list.keys) {
-      if (key.name.startsWith('sub:cid:') || key.name.startsWith('sub:')) {
-        const raw = await env.PUSH_KV.get(key.name)
-        if (!raw) continue
-        let sub: PushSubscriber
-        try {
-          sub = JSON.parse(raw) as PushSubscriber
-        } catch {
-          continue
+  // 1. Process Web Push
+  if (env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY) {
+    configureWebPush(env.VAPID_PUBLIC_KEY, env.VAPID_PRIVATE_KEY)
+    let pushCursor: string | undefined
+    do {
+      const list = await env.PUSH_KV.list({ prefix: 'sub:', cursor: pushCursor, limit: 100 })
+      for (const key of list.keys) {
+        if (key.name.startsWith('sub:cid:') || key.name.startsWith('sub:')) {
+          const raw = await env.PUSH_KV.get(key.name)
+          if (!raw) continue
+          let sub: PushSubscriber
+          try {
+            sub = JSON.parse(raw) as PushSubscriber
+          } catch {
+            continue
+          }
+          await maybeNotifySubscriber(env, sub, now, key.name)
         }
-        await maybeNotifySubscriber(env, sub, now, key.name)
+      }
+      pushCursor = list.list_complete ? undefined : list.cursor
+    } while (pushCursor)
+  }
+
+  // 2. Process Emails
+  let emailCursor: string | undefined
+  do {
+    const list = await env.PUSH_KV.list({ prefix: 'email_sub:', cursor: emailCursor, limit: 100 })
+    for (const key of list.keys) {
+      const raw = await env.PUSH_KV.get(key.name)
+      if (!raw) continue
+      try {
+        const sub = JSON.parse(raw) as EmailSubscriberRecord
+        await processEmailSubscriber(env, key.name, sub, now)
+      } catch (err) {
+        console.error('Failed to process email sub', key.name, err)
       }
     }
-    cursor = list.list_complete ? undefined : list.cursor
-  } while (cursor)
+    emailCursor = list.list_complete ? undefined : list.cursor
+  } while (emailCursor)
 }
 
 async function maybeNotifySubscriber(

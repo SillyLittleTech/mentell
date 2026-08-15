@@ -13,6 +13,10 @@ export interface PushEnv {
   ALLOWED_HOST_SUFFIXES?: string
   /** Optional AI Search instance binding (mentell-journals). */
   AI_SEARCH?: unknown
+  RESEND_API_KEY?: string
+  RESEND_TEMPLATE_VERIFY?: string
+  RESEND_TEMPLATE_DAILY?: string
+  RESEND_TEMPLATE_PACKAGE?: string
 }
 
 export type Env = PushEnv
