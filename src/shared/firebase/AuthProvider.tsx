@@ -33,6 +33,7 @@ import { finishSignIn } from "./postSignIn";
 import { disableSync, enableSync } from "../sync/syncService";
 import { loadSyncState, saveSyncState } from "../sync/syncState";
 import { buildHrefForEmailLinkCheck } from "./emailLinkHandoff";
+import { emitBackgroundActivity } from "../backgroundActivity";
 import { AuthContext, type AuthContextValue } from "./authContext";
 import { signInWithGoogleViaTauri } from "./tauriGoogleAuth";
 import { redeemAuthHandoffCode as redeemHandoffToken } from "./authHandoffClient";
@@ -341,12 +342,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const syncNow = useCallback(async () => {
     if (!user) throw new Error("Sign in first");
-    await enableSync(user.uid, { forcePush: true });
-    const s = loadSyncState();
-    setSyncEnabledState(true);
-    setSyncError(s.lastError);
-    setLastSyncedAt(s.lastSyncedAt);
+    emitBackgroundActivity({ type: 'start', id: 'sync', message: 'Syncing to cloud...' });
+    try {
+      await enableSync(user.uid, { forcePush: true });
+      const s = loadSyncState();
+      setSyncEnabledState(true);
+      setSyncError(s.lastError);
+      setLastSyncedAt(s.lastSyncedAt);
+    } finally {
+      emitBackgroundActivity({ type: 'stop', id: 'sync', message: '' });
+    }
   }, [user]);
+
+  useEffect(() => {
+    const handleSyncStateChanged = () => {
+      const s = loadSyncState();
+      setSyncError(s.lastError);
+      setLastSyncedAt(s.lastSyncedAt);
+    };
+    window.addEventListener("syncStateChanged", handleSyncStateChanged);
+    return () => window.removeEventListener("syncStateChanged", handleSyncStateChanged);
+  }, []);
 
   const value = useMemo<AuthContextValue>(
     () => ({

@@ -37,6 +37,7 @@ import { SpeechBubbleIcon } from './components/SpeechBubbleIcon'
 import { CharacterLabPage } from './features/character/CharacterLabPage'
 import { DeskCharacterLayout } from './features/character/DeskCharacterLayout'
 import { MobileHeaderMascot } from './features/character/MobileHeaderMascot'
+import { AccountButton } from './components/shell/AccountButton'
 import { CharacterTabIconSync } from './features/character/CharacterTabIconSync'
 import { AuthDeeplinkPage } from './features/auth/AuthDeeplinkPage'
 import { AuthLinkPage } from './features/auth/AuthLinkPage'
@@ -46,8 +47,7 @@ import { isDebugMode } from './shared/debug/debugFlags'
 import { useAuthOptional } from './shared/firebase/AuthProvider'
 import { ShopCosmeticEffects } from './features/shop/shopCosmetics'
 import { getOrCreateAnonSearchUserId, requestProjectorSearch } from './features/compilation/projectorSearch'
-import { emitBackgroundActivity, listenToBackgroundActivity } from './shared/backgroundActivity'
-import { BackgroundActivityToast } from './components/BackgroundActivityToast'
+import { emitBackgroundActivity } from './shared/backgroundActivity'
 import { scrollToTop } from './shared/motion/scroll'
 import { motionDuration } from './shared/motion/useMotionPrefs'
 import { SidebarNav } from './components/shell/SidebarNav'
@@ -76,7 +76,6 @@ function App() {
   const [streakOutcome, setStreakOutcome] = useState<StreakOutcomeAnimation | null>(null)
   const [streakFocusActive, setStreakFocusActive] = useState(false)
   const streakOutcomeTimer = useRef<number | null>(null)
-  const [syncBusy, setSyncBusy] = useState(false)
 
   useEffect(() => {
     void runPackageDeliveryAndNotify()
@@ -89,25 +88,11 @@ function App() {
   const authUid = auth?.user?.uid
 
   useEffect(() => {
-    return listenToBackgroundActivity((event) => {
-      if (event.id !== 'sync') return
-      setSyncBusy(event.type === 'start')
-    })
-  }, [])
-
-  useEffect(() => {
     if (authUid && !loadAppSettings().disableNotifications && isWebPushConfigured()) {
       void syncPushSubscription()
     }
   }, [authUid])
 
-  const mobileSyncTone = auth?.syncError
-    ? 'var(--danger)'
-    : syncBusy
-      ? '#3b82f6'
-      : auth?.user && auth.syncEnabled
-        ? 'var(--success)'
-        : 'rgba(148, 163, 184, 0.9)'
 
   useEffect(() => {
     const tick = () => {
@@ -199,19 +184,13 @@ function App() {
       className={
         shareRouteActive
           ? 'min-h-[100svh]'
-          : 'desk px-4 py-6 pb-24 md:pb-6 mobile-sync-glow'
-      }
-      style={
-        shareRouteActive
-          ? undefined
-          : ({ '--sync-glow-tone': mobileSyncTone } as Record<string, string>)
+          : 'desk px-4 py-6 pb-24 md:pb-6'
       }
     >
       <EmailLinkDesktopHandoff />
       {!shareRouteActive ? <CharacterTabIconSync /> : null}
       {!shareRouteActive ? <ShopCosmeticEffects /> : null}
       {!shareRouteActive ? <StickyLayer /> : null}
-      <BackgroundActivityToast />
       {!shareRouteActive ? <DeskSpotlight /> : null}
 
       {shareRouteActive ? (
@@ -369,23 +348,6 @@ function TopBar({
                 <div className="ink-muted text-sm">local-first stationery journal</div>
               </div>
             </div>
-
-            {!settings.disablePoints ? (
-              <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2 md:hidden">
-                <ScoreTicker
-                  total={score.total}
-                  streak={score.streak}
-                  streakFreezes={score.streakFreezes}
-                  hint={incomingHint}
-                  streakOutcome={streakOutcome}
-                />
-                <MobileHeaderMascot />
-              </div>
-            ) : (
-              <div className="paper flex items-center rounded-2xl px-2 py-1 md:hidden">
-                <MobileHeaderMascot />
-              </div>
-            )}
           </div>
 
           <div className="relative z-10 hidden min-h-[5rem] items-center justify-center md:flex md:justify-self-center">
@@ -393,16 +355,33 @@ function TopBar({
           </div>
 
           <div className="flex items-start justify-between gap-3 md:justify-end md:justify-self-end">
-            <div className="flex flex-1 items-center justify-between gap-3 md:hidden">
-              <Link
-                to="/feedback"
-                className="paper focus-ring flex h-11 w-11 items-center justify-center rounded-full transition"
-                aria-label="Open feedback form"
-                title="Feedback form"
-              >
-                <SpeechBubbleIcon className="h-5 w-5" />
-              </Link>
-              <div className="flex min-h-[3rem] items-center justify-center">
+            <div className="grid flex-1 grid-cols-[1fr_auto] items-center gap-3 md:hidden">
+              {!settings.disablePoints ? (
+                <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
+                  <ScoreTicker
+                    total={score.total}
+                    streak={score.streak}
+                    streakFreezes={score.streakFreezes}
+                    hint={incomingHint}
+                    streakOutcome={streakOutcome}
+                  />
+                  <MobileHeaderMascot />
+                </div>
+              ) : (
+                <div className="paper flex items-center rounded-2xl px-2 py-1">
+                  <MobileHeaderMascot />
+                </div>
+              )}
+              <AccountButton />
+              <div className="flex min-h-[3rem] items-center justify-between gap-3">
+                <Link
+                  to="/feedback"
+                  className="paper focus-ring flex h-11 w-11 items-center justify-center rounded-full transition"
+                  aria-label="Open feedback form"
+                  title="Feedback form"
+                >
+                  <SpeechBubbleIcon className="h-5 w-5" />
+                </Link>
                 <PackageAlert onAward={onPackageAward} placement="inline" size="sm" />
               </div>
               <ThemeToggleButton mode={mode} onToggle={toggle} className="rounded-full" />
