@@ -386,7 +386,12 @@ function TopBar({
               <div className="flex min-h-[3rem] items-center justify-center">
                 <PackageAlert onAward={onPackageAward} placement="inline" size="sm" />
               </div>
-              <ThemeToggleButton mode={mode} onToggle={toggle} className="rounded-full" />
+              <div className="flex items-center gap-3">
+                <ThemeToggleButton mode={mode} onToggle={toggle} className="rounded-full" />
+                <div className="scale-90 origin-right">
+                  <AccountButton />
+                </div>
+              </div>
             </div>
 
             <div className="hidden md:flex">
