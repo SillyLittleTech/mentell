@@ -359,12 +359,10 @@ function TopBar({
                   streakOutcome={streakOutcome}
                 />
                 <MobileHeaderMascot />
-                <div className="scale-75 origin-right"><AccountButton /></div>
               </div>
             ) : (
               <div className="paper flex items-center rounded-2xl px-2 py-1 md:hidden">
                 <MobileHeaderMascot />
-                <div className="ml-2 scale-75 origin-right"><AccountButton /></div>
               </div>
             )}
           </div>
@@ -386,7 +384,7 @@ function TopBar({
               <div className="flex min-h-[3rem] items-center justify-center">
                 <PackageAlert onAward={onPackageAward} placement="inline" size="sm" />
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 md:mt-0 -mt-14">
                 <ThemeToggleButton mode={mode} onToggle={toggle} className="rounded-full" />
                 <div className="scale-90 origin-right">
                   <AccountButton />
