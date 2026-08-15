@@ -348,23 +348,6 @@ function TopBar({
                 <div className="ink-muted text-sm">local-first stationery journal</div>
               </div>
             </div>
-
-            {!settings.disablePoints ? (
-              <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2 md:hidden">
-                <ScoreTicker
-                  total={score.total}
-                  streak={score.streak}
-                  streakFreezes={score.streakFreezes}
-                  hint={incomingHint}
-                  streakOutcome={streakOutcome}
-                />
-                <MobileHeaderMascot />
-              </div>
-            ) : (
-              <div className="paper flex items-center rounded-2xl px-2 py-1 md:hidden">
-                <MobileHeaderMascot />
-              </div>
-            )}
           </div>
 
           <div className="relative z-10 hidden min-h-[5rem] items-center justify-center md:flex md:justify-self-center">
@@ -372,24 +355,36 @@ function TopBar({
           </div>
 
           <div className="flex items-start justify-between gap-3 md:justify-end md:justify-self-end">
-            <div className="flex flex-1 items-center justify-between gap-3 md:hidden">
-              <Link
-                to="/feedback"
-                className="paper focus-ring flex h-11 w-11 items-center justify-center rounded-full transition"
-                aria-label="Open feedback form"
-                title="Feedback form"
-              >
-                <SpeechBubbleIcon className="h-5 w-5" />
-              </Link>
-              <div className="flex min-h-[3rem] items-center justify-center">
+            <div className="grid flex-1 grid-cols-[1fr_auto] items-center gap-3 md:hidden">
+              {!settings.disablePoints ? (
+                <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
+                  <ScoreTicker
+                    total={score.total}
+                    streak={score.streak}
+                    streakFreezes={score.streakFreezes}
+                    hint={incomingHint}
+                    streakOutcome={streakOutcome}
+                  />
+                  <MobileHeaderMascot />
+                </div>
+              ) : (
+                <div className="paper flex items-center rounded-2xl px-2 py-1">
+                  <MobileHeaderMascot />
+                </div>
+              )}
+              <AccountButton />
+              <div className="flex min-h-[3rem] items-center justify-between gap-3">
+                <Link
+                  to="/feedback"
+                  className="paper focus-ring flex h-11 w-11 items-center justify-center rounded-full transition"
+                  aria-label="Open feedback form"
+                  title="Feedback form"
+                >
+                  <SpeechBubbleIcon className="h-5 w-5" />
+                </Link>
                 <PackageAlert onAward={onPackageAward} placement="inline" size="sm" />
               </div>
-              <div className="flex items-center gap-3 md:mt-0 -mt-14">
-                <ThemeToggleButton mode={mode} onToggle={toggle} className="rounded-full" />
-                <div className="scale-90 origin-right">
-                  <AccountButton />
-                </div>
-              </div>
+              <ThemeToggleButton mode={mode} onToggle={toggle} className="rounded-full" />
             </div>
 
             <div className="hidden md:flex">
