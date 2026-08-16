@@ -2,8 +2,19 @@ import { useState } from 'react'
 import { useAppSettings } from '../../shared/settings/useAppSettings'
 import { getFirebaseAuth } from '../../shared/firebase/firebaseApp'
 import { isFirebaseEnabled } from '../../shared/features/featureFlags'
-import { getPushClientId } from '../../pwa/pushSubscribe'
+import { getOrCreatePushClientId, getWorkerApiBase, getWorkerAuthHeaders } from '../../pwa/pushSubscribe'
 import { getFirestore, doc, setDoc } from 'firebase/firestore'
+import { getEffectiveGlobalName } from '../../shared/settings/effectiveGlobalName'
+
+async function readJsonResponse(res: Response): Promise<Record<string, unknown>> {
+  const text = await res.text().catch(() => '')
+  if (!text) return {}
+  try {
+    return JSON.parse(text) as Record<string, unknown>
+  } catch {
+    return { error: text }
+  }
+}
 
 export function SettingsEmailSection() {
   const { settings, updateSettings } = useAppSettings()
@@ -29,52 +40,62 @@ export function SettingsEmailSection() {
     setSubscribing(true)
 
     try {
-      let token = ''
-      if (isFirebaseEnabled()) {
-        const auth = getFirebaseAuth()
-        if (auth?.currentUser) {
-          token = await auth.currentUser.getIdToken()
-        }
+      const apiBase = getWorkerApiBase()
+      if (!apiBase) {
+        throw new Error('Email API is not configured (VITE_PUSH_API_BASE)')
       }
 
-      const res = await fetch(import.meta.env.VITE_PUSH_API_BASE + '/email/subscribe', {
+      const authHeaders = await getWorkerAuthHeaders()
+      if (!authHeaders.Authorization) {
+        throw new Error('Missing API token. Set VITE_WEEKLY_AI_TOKEN or sign in, then try again.')
+      }
+
+      const res = await fetch(`${apiBase}/email/subscribe`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
+          ...authHeaders,
         },
         body: JSON.stringify({
-          email: emailDraft,
-          clientId: getPushClientId(),
+          email: emailDraft.trim(),
+          clientId: getOrCreatePushClientId(),
           dailyReminderEnabled: settings.dailyEmailReminderEnabled,
           dailyReminderHours: settings.dailyEmailReminderHours,
           weeklyPackageDropEnabled: settings.weeklyEmailEnabled,
           timezone: settings.timezone,
-          globalName: settings.globalName,
+          globalName:
+            getEffectiveGlobalName() ||
+            getFirebaseAuth()?.currentUser?.displayName?.trim() ||
+            '',
           disableAi: settings.disableAi,
-          autoVerify: isFirebaseEnabled() && getFirebaseAuth()?.currentUser?.email === emailDraft
         })
       })
 
-      const data = await res.json()
+      const data = await readJsonResponse(res)
+      const errorText = typeof data.error === 'string' ? data.error : undefined
+      const emailError = typeof data.emailError === 'string' ? data.emailError : undefined
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to subscribe')
+        throw new Error(errorText || emailError || `${res.status} ${res.statusText || 'No Content'}`)
       }
 
       updateSettings({
-        notificationEmail: emailDraft,
-        emailVerified: data.verified
+        notificationEmail: emailDraft.trim(),
+        emailVerified: Boolean(data.verified),
       })
 
       if (isFirebaseEnabled()) {
         const auth = getFirebaseAuth()
         if (auth?.currentUser) {
            const db = getFirestore()
-           await setDoc(doc(db, 'users', auth.currentUser.uid, 'meta', 'settings'), { emailNotification: { email: emailDraft, verified: data.verified } }, { merge: true }).catch(() => {})
+           await setDoc(doc(db, 'users', auth.currentUser.uid, 'meta', 'settings'), { emailNotification: { email: emailDraft.trim(), verified: Boolean(data.verified) } }, { merge: true }).catch(() => {})
         }
       }
 
-      setSuccess(true)
+      if (emailError) {
+        setError(`Saved, but the verification email failed: ${emailError}`)
+      } else {
+        setSuccess(true)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'An error occurred')
     } finally {

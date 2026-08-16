@@ -1,6 +1,17 @@
 import { corsJson, corsResponse } from './cors'
 import type { Env } from './env'
-import { sendResendEmail } from './emailSend'
+import { sendResendEmail, type EmailTemplateKind } from './emailSend'
+import { authorizeSharedToken } from './pushHandlers'
+
+function isValidEmail(email: string) {
+  return (
+    email.length > 0 &&
+    email.length <= 254 &&
+    email.indexOf('@') >= 1 &&
+    email.indexOf('@') === email.lastIndexOf('@') &&
+    email.indexOf('.') >= email.indexOf('@') + 2
+  )
+}
 
 export async function handleEmailTest(request: Request, env: Env) {
   const origin = request.headers.get('Origin')
@@ -10,34 +21,32 @@ export async function handleEmailTest(request: Request, env: Env) {
     return corsJson({ error: 'Method not allowed' }, 405, env, origin)
   }
 
-  let body: { email: string; template: 'daily' | 'package'; variables: Record<string, string> }
+  let body: { email: string; template: EmailTemplateKind; variables?: Record<string, string> }
   try {
     body = (await request.json()) as typeof body
   } catch {
     return corsJson({ error: 'Invalid JSON' }, 400, env, origin)
   }
 
-  if (!body.email || body.email.length > 254 || body.email.indexOf('@') < 1 || body.email.indexOf('@') !== body.email.lastIndexOf('@') || body.email.indexOf('.') < body.email.indexOf('@') + 2) {
+  const email = typeof body.email === 'string' ? body.email.trim() : ''
+  if (!isValidEmail(email)) {
     return corsJson({ error: 'Valid email required' }, 400, env, origin)
   }
 
-  // Very rudimentary auth via WEEKLY_SUMMARY_TOKEN or just open for testing on local dev
-  const authHeader = request.headers.get('Authorization') ?? ''
-  const token = authHeader.replace(/^Bearer\s+/i, '')
-  if (token !== env.WEEKLY_SUMMARY_TOKEN) {
+  if (!authorizeSharedToken(request, env)) {
     return corsJson({ error: 'Unauthorized' }, 401, env, origin)
   }
 
-  const templateId = body.template === 'daily' ? env.RESEND_TEMPLATE_DAILY : env.RESEND_TEMPLATE_PACKAGE
-  if (!templateId) {
-    return corsJson({ error: `Template ${body.template} not configured` }, 500, env, origin)
+  const template = body.template
+  if (template !== 'daily' && template !== 'package' && template !== 'verify') {
+    return corsJson({ error: 'template must be daily, package, or verify' }, 400, env, origin)
   }
 
-  const result = await sendResendEmail(env, templateId, body.email, body.variables || {})
+  const result = await sendResendEmail(env, template, email, body.variables || {})
 
-  if (!result) {
-    return corsJson({ error: 'Failed to send email' }, 500, env, origin)
+  if (!result.ok) {
+    return corsJson({ error: result.error, status: result.status }, 502, env, origin)
   }
 
-  return corsJson({ ok: true }, 200, env, origin)
+  return corsJson({ ok: true, id: result.id }, 200, env, origin)
 }

@@ -57,7 +57,7 @@ function consumeRateAllowance(now: number) {
 }
 
 /** Strip optional quotes; dotenv may leave them when values are quoted in .env.local. */
-function normalizeEnvToken(raw: string | undefined) {
+export function normalizeEnvToken(raw: string | undefined) {
   if (!raw) return undefined
   const t = raw.trim()
   if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {

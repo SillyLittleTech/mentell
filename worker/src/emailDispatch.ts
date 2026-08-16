@@ -13,11 +13,7 @@ export async function processEmailSubscriber(env: Env, key: string, sub: EmailSu
   const todayKey = dateKeyInTimeZone(now, tz)
 
   // 1. Daily Adherence Email
-  if (
-    sub.preferences.dailyReminderEnabled &&
-    env.RESEND_TEMPLATE_DAILY &&
-    sub.lastSent?.dailyDate !== todayKey
-  ) {
+  if (sub.preferences.dailyReminderEnabled && sub.lastSent?.dailyDate !== todayKey) {
     const targetHour = 24 - (sub.preferences.dailyReminderHours || 1)
     if (hour >= targetHour) {
       // Check if user has an entry today
@@ -32,11 +28,11 @@ export async function processEmailSubscriber(env: Env, key: string, sub: EmailSu
       }
 
       if (!hasEntryToday) {
-        const sent = await sendResendEmail(env, env.RESEND_TEMPLATE_DAILY, sub.email, {
-          global_name: sub.preferences.globalName || 'there',
+        const sent = await sendResendEmail(env, 'daily', sub.email, {
+          global_name: sub.preferences.globalName || '',
           date: todayKey
         })
-        if (sent) {
+        if (sent.ok) {
           sub.lastSent = sub.lastSent || {}
           sub.lastSent.dailyDate = todayKey
           updated = true
@@ -46,10 +42,7 @@ export async function processEmailSubscriber(env: Env, key: string, sub: EmailSu
   }
 
   // 2. Weekly Package Drop Email
-  if (
-    sub.preferences.weeklyPackageDropEnabled &&
-    env.RESEND_TEMPLATE_PACKAGE
-  ) {
+  if (sub.preferences.weeklyPackageDropEnabled) {
     const { weekKey, startKey, endKey } = lastCompletedWeekRange(now, tz)
 
     if (sub.lastSent?.lastPackageId !== weekKey) {
@@ -69,15 +62,15 @@ export async function processEmailSubscriber(env: Env, key: string, sub: EmailSu
           // Generate summary
           const summary = await generateWeeklySummary(env, sub.userId, weekKey, startKey, endKey, sub.preferences.globalName, sub.preferences.disableAi)
 
-          const sent = await sendResendEmail(env, env.RESEND_TEMPLATE_PACKAGE, sub.email, {
-            global_name: sub.preferences.globalName || 'there',
+          const sent = await sendResendEmail(env, 'package', sub.email, {
+            global_name: sub.preferences.globalName || '',
             date: todayKey,
             ent_count: 'Multiple', // We don't easily have exact count without a query
             ent_rank: '⼁', // We don't easily have rank
             ent_sum: summary
           })
 
-          if (sent) {
+          if (sent.ok) {
             sub.lastSent = sub.lastSent || {}
             sub.lastSent.lastPackageId = weekKey
             updated = true

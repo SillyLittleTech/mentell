@@ -11,7 +11,7 @@ const FALLBACK_TZ = 'America/New_York'
 const PUSH_HOUR_LIMIT = 60
 const PUSH_DAY_LIMIT = 180
 
-function normalizeToken(raw?: string) {
+export function normalizeToken(raw?: string) {
   if (!raw) return ''
   const t = raw.trim()
   if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
@@ -26,17 +26,17 @@ function bearerToken(request: Request) {
   return match?.[1]?.trim() ?? ''
 }
 
-async function authorizeSubscribe(
+export async function authorizeSubscribe(
   request: Request,
   env: PushEnv,
-): Promise<{ uid?: string } | null> {
+): Promise<{ uid?: string; email?: string } | null> {
   const token = bearerToken(request)
   if (!token) return null
   if (env.FIREBASE_SERVICE_ACCOUNT_JSON) {
     try {
       const projectId = firebaseProjectId(env.FIREBASE_SERVICE_ACCOUNT_JSON)
-      const { uid } = await verifyFirebaseIdToken(token, projectId)
-      return { uid }
+      const { uid, email } = await verifyFirebaseIdToken(token, projectId)
+      return { uid, email }
     } catch {
       /* fall through to shared token */
     }
@@ -45,7 +45,7 @@ async function authorizeSubscribe(
   return null
 }
 
-function authorizeSharedToken(request: Request, env: PushEnv) {
+export function authorizeSharedToken(request: Request, env: PushEnv) {
   const token = bearerToken(request)
   return token === normalizeToken(env.WEEKLY_SUMMARY_TOKEN)
 }

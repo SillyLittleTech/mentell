@@ -2,6 +2,40 @@ import { corsJson, corsResponse } from './cors'
 import type { Env } from './env'
 import type { EmailSubscriberRecord, SubscribeEmailBody } from './emailTypes'
 import { sendResendEmail } from './emailSend'
+import { authorizeSubscribe } from './pushHandlers'
+
+function isValidEmail(email: string) {
+  return (
+    email.length > 0 &&
+    email.length <= 254 &&
+    email.indexOf('@') >= 1 &&
+    email.indexOf('@') === email.lastIndexOf('@') &&
+    email.indexOf('.') >= email.indexOf('@') + 2
+  )
+}
+
+function publicAppBase(env: Env, request: Request) {
+  const configured = env.MENTELL_PUBLIC_URL?.trim().replace(/\/$/, '')
+  if (configured) return configured
+
+  const origin = request.headers.get('Origin')
+  if (!origin || origin === 'null') return 'https://projects.sillylittle.tech/mentell'
+  try {
+    const url = new URL(origin)
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return origin
+    if (url.hostname === 'projects.sillylittle.tech') return `${origin}/mentell`
+    return origin
+  } catch {
+    return 'https://projects.sillylittle.tech/mentell'
+  }
+}
+
+function subscriberUserId(uid: string | undefined, clientId: string | undefined) {
+  if (uid) return uid
+  const cid = clientId?.trim()
+  if (cid) return `anon_${cid}`
+  return `anon_${crypto.randomUUID()}`
+}
 
 export async function handleEmailSubscribe(request: Request, env: Env) {
   const origin = request.headers.get('Origin')
@@ -18,27 +52,22 @@ export async function handleEmailSubscribe(request: Request, env: Env) {
     return corsJson({ error: 'Invalid JSON' }, 400, env, origin)
   }
 
-  if (!body.email || body.email.length > 254 || body.email.indexOf('@') < 1 || body.email.indexOf('@') !== body.email.lastIndexOf('@') || body.email.indexOf('.') < body.email.indexOf('@') + 2) {
+  const email = typeof body.email === 'string' ? body.email.trim() : ''
+  if (!isValidEmail(email)) {
     return corsJson({ error: 'Valid email required' }, 400, env, origin)
   }
 
-  const authHeader = request.headers.get('Authorization') ?? ''
-  let uid: string | undefined
-  if (authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7)
-    if (token !== env.WEEKLY_SUMMARY_TOKEN && env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-      // Very basic best-effort token decode to get uid.
-      // Usually would verify via Firebase, but let's assume it's valid if passed.
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        if (payload.user_id) uid = payload.user_id
-      } catch {
-        /* ignore */
-      }
-    }
+  const auth = await authorizeSubscribe(request, env)
+  if (!auth) {
+    return corsJson(
+      { error: 'Unauthorized: sign in or send the shared worker API token' },
+      401,
+      env,
+      origin,
+    )
   }
 
-  const userId = uid || body.clientId || `anon_${crypto.randomUUID()}`
+  const userId = subscriberUserId(auth.uid, body.clientId)
   const key = `email_sub:${userId}`
 
   const previousRaw = await env.PUSH_KV.get(key)
@@ -51,72 +80,158 @@ export async function handleEmailSubscribe(request: Request, env: Env) {
     }
   }
 
-  const emailChanged = existing?.email !== body.email
+  const emailChanged = existing?.email !== email
+  const autoVerified = Boolean(auth.email && auth.email.toLowerCase() === email.toLowerCase())
 
   const record: EmailSubscriberRecord = {
     userId,
-    email: body.email,
-    verified: existing && !emailChanged ? existing.verified : Boolean(body.autoVerify),
+    email,
+    verified: existing && !emailChanged ? existing.verified : autoVerified,
     createdAt: existing?.createdAt || Date.now(),
     preferences: {
       dailyReminderEnabled: Boolean(body.dailyReminderEnabled),
       dailyReminderHours: typeof body.dailyReminderHours === 'number' ? body.dailyReminderHours : 1,
       weeklyPackageDropEnabled: Boolean(body.weeklyPackageDropEnabled),
       timezone: body.timezone || 'America/New_York',
-      globalName: body.globalName
+      globalName: body.globalName,
+      disableAi: Boolean(body.disableAi),
     },
-    lastSent: existing?.lastSent || {}
+    lastSent: existing?.lastSent || {},
   }
 
-  if (!record.verified && env.RESEND_TEMPLATE_VERIFY) {
+  let emailSent = record.verified
+  let emailError: string | undefined
+
+  if (!record.verified) {
     const verifyToken = crypto.randomUUID()
     record.verifyToken = verifyToken
+    const verifyUrl = `${publicAppBase(env, request)}/verify?token=${encodeURIComponent(verifyToken)}`
 
-    await env.PUSH_KV.put(`verify_token:${verifyToken}`, JSON.stringify({
-      userId,
-      email: body.email,
-      expiresAt: Date.now() + 1000 * 60 * 60 * 24 // 24 hours
-    }), { expirationTtl: 60 * 60 * 24 })
+    await env.PUSH_KV.put(
+      `verify_token:${verifyToken}`,
+      JSON.stringify({
+        userId,
+        email,
+        expiresAt: Date.now() + 1000 * 60 * 60 * 24,
+      }),
+      { expirationTtl: 60 * 60 * 24 },
+    )
 
-    // Send async
-    env.PUSH_KV.put(key, JSON.stringify(record)).then(() => {
-      sendResendEmail(env, env.RESEND_TEMPLATE_VERIFY!, body.email, {
-        verify_token: verifyToken,
-        global_name: body.globalName || 'there'
-      })
+    await env.PUSH_KV.put(key, JSON.stringify(record))
+
+    const sent = await sendResendEmail(env, 'verify', email, {
+      verify_token: verifyToken,
+      verify_url: verifyUrl,
+      global_name: body.globalName?.trim() || '',
     })
+    emailSent = sent.ok
+    if (!sent.ok) emailError = sent.error
   } else {
     await env.PUSH_KV.put(key, JSON.stringify(record))
   }
 
-  return corsJson({ ok: true, userId, verified: record.verified }, 200, env, origin)
+  return corsJson(
+    {
+      ok: true,
+      userId,
+      verified: record.verified,
+      emailSent,
+      ...(emailError ? { emailError } : {}),
+    },
+    200,
+    env,
+    origin,
+  )
+}
+
+export async function handleEmailUnverify(request: Request, env: Env) {
+  const origin = request.headers.get('Origin')
+  if (request.method === 'OPTIONS') return corsResponse(null, 204, env, origin)
+
+  if (request.method !== 'POST') {
+    return corsJson({ error: 'Method not allowed' }, 405, env, origin)
+  }
+
+  const auth = await authorizeSubscribe(request, env)
+  if (!auth) {
+    return corsJson({ error: 'Unauthorized' }, 401, env, origin)
+  }
+
+  let body: { clientId?: string } = {}
+  try {
+    body = (await request.json()) as { clientId?: string }
+  } catch {
+    /* empty body is fine */
+  }
+
+  const userId = subscriberUserId(auth.uid, body.clientId)
+  const key = `email_sub:${userId}`
+  const raw = await env.PUSH_KV.get(key)
+  if (!raw) {
+    return corsJson({ ok: true, userId, existed: false }, 200, env, origin)
+  }
+
+  try {
+    const sub = JSON.parse(raw) as EmailSubscriberRecord
+    if (sub.verifyToken) {
+      await env.PUSH_KV.delete(`verify_token:${sub.verifyToken}`)
+      await env.PUSH_KV.delete(`verify_token_used:${sub.verifyToken}`)
+    }
+    sub.verified = false
+    delete sub.verifyToken
+    await env.PUSH_KV.put(key, JSON.stringify(sub))
+  } catch {
+    return corsJson({ error: 'Invalid subscriber record' }, 500, env, origin)
+  }
+
+  return corsJson({ ok: true, userId, existed: true }, 200, env, origin)
+}
+
+function sanitizeVerifyToken(raw: string | null) {
+  if (!raw) return ''
+  return raw
+    .trim()
+    .replace(/^["']+|["']+$/g, '')
+    .replace(/[<>]/g, '')
+    .split(/[&\s]/)[0]
+    .trim()
 }
 
 export async function handleEmailVerify(request: Request, env: Env) {
   const origin = request.headers.get('Origin')
-  if (request.method === 'OPTIONS') return corsResponse(null, 204, env, origin, 'GET, OPTIONS')
+  if (request.method === 'OPTIONS') return corsResponse(null, 204, env, origin, 'GET, POST, OPTIONS')
 
-  if (request.method !== 'GET') {
-    return corsJson({ error: 'Method not allowed' }, 405, env, origin, 'GET, OPTIONS')
+  if (request.method !== 'GET' && request.method !== 'POST') {
+    return corsJson({ error: 'Method not allowed' }, 405, env, origin, 'GET, POST, OPTIONS')
   }
 
   const url = new URL(request.url)
-  const token = url.searchParams.get('token')
+  let token = sanitizeVerifyToken(url.searchParams.get('token'))
+  if (!token && request.method === 'POST') {
+    try {
+      const body = (await request.json()) as { token?: string }
+      token = sanitizeVerifyToken(typeof body.token === 'string' ? body.token : '')
+    } catch {
+      /* ignore */
+    }
+  }
 
   if (!token) {
-    return corsJson({ error: 'Token missing' }, 400, env, origin, 'GET, OPTIONS')
+    return corsJson({ error: 'Token missing' }, 400, env, origin, 'GET, POST, OPTIONS')
   }
 
-  const tokenRaw = await env.PUSH_KV.get(`verify_token:${token}`)
+  const usedKey = `verify_token_used:${token}`
+  const tokenKey = `verify_token:${token}`
+  const tokenRaw = (await env.PUSH_KV.get(tokenKey)) || (await env.PUSH_KV.get(usedKey))
   if (!tokenRaw) {
-    return corsJson({ error: 'Invalid or expired token' }, 400, env, origin, 'GET, OPTIONS')
+    return corsJson({ error: 'Invalid or expired token' }, 400, env, origin, 'GET, POST, OPTIONS')
   }
 
-  let tokenData
+  let tokenData: { userId?: string; email?: string }
   try {
-    tokenData = JSON.parse(tokenRaw)
+    tokenData = JSON.parse(tokenRaw) as { userId?: string; email?: string }
   } catch {
-    return corsJson({ error: 'Invalid token data' }, 400, env, origin, 'GET, OPTIONS')
+    return corsJson({ error: 'Invalid token data' }, 400, env, origin, 'GET, POST, OPTIONS')
   }
 
   const key = `email_sub:${tokenData.userId}`
@@ -125,7 +240,7 @@ export async function handleEmailVerify(request: Request, env: Env) {
   if (subRaw) {
     try {
       const sub = JSON.parse(subRaw) as EmailSubscriberRecord
-      if (sub.verifyToken === token || sub.email === tokenData.email) {
+      if (sub.verifyToken === token || sub.email === tokenData.email || sub.verified) {
         sub.verified = true
         delete sub.verifyToken
         await env.PUSH_KV.put(key, JSON.stringify(sub))
@@ -135,7 +250,8 @@ export async function handleEmailVerify(request: Request, env: Env) {
     }
   }
 
-  await env.PUSH_KV.delete(`verify_token:${token}`)
+  await env.PUSH_KV.put(usedKey, tokenRaw, { expirationTtl: 60 * 60 * 24 })
+  await env.PUSH_KV.delete(tokenKey)
 
-  return corsJson({ ok: true }, 200, env, origin, 'GET, OPTIONS')
+  return corsJson({ ok: true }, 200, env, origin, 'GET, POST, OPTIONS')
 }

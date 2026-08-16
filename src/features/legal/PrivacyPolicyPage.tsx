@@ -17,6 +17,7 @@ export function PrivacyPolicyPage() {
   const shareOn = isShareLinksEnabled()
   const weeklyAiOn = import.meta.env.VITE_ENABLE_WEEKLY_AI_SUMMARY === '1'
   const projectorSearchOn = import.meta.env.VITE_ENABLE_PROJECTOR_AI_SEARCH === '1'
+  const emailNotifyOn = Boolean(import.meta.env.VITE_PUSH_API_BASE?.trim())
 
   useEffect(() => {
     if (hash) {
@@ -173,6 +174,19 @@ export function PrivacyPolicyPage() {
           </p>
           <p className="ink-muted mt-3 text-sm leading-relaxed">
             Prefer not to search content you would not want processed by an AI retrieval service.
+          </p>
+        </section>
+      ) : null}
+
+      {emailNotifyOn ? (
+        <section className="paper rounded-3xl p-6">
+          <h2 className="font-paper text-xl">Email reminders (optional)</h2>
+          <p className="ink-muted mt-3 text-sm leading-relaxed">
+            If you opt in under Settings, Mentell can send daily writing reminders and weekly package
+            notices to an address you provide. Those messages are sent through the same{' '}
+            <strong>Cloudflare Worker</strong> using an email delivery provider. A verification link
+            is emailed before scheduled messages start. You can change or stop email notifications
+            in Settings at any time.
           </p>
         </section>
       ) : null}
