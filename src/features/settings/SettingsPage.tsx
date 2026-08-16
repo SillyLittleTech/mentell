@@ -212,7 +212,11 @@ export function SettingsPage() {
             placeholder={aiNameFallback || 'e.g. Kiya'}
             maxLength={40}
             value={nameDraft}
-            onChange={(e) => setNameDraftOverride(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value
+              setNameDraftOverride(next)
+              updateSettingsAndMarkDirty({ globalName: next, globalNameManuallySet: true })
+            }}
             onBlur={() => {
               updateSettingsAndMarkDirty({ globalName: nameDraft, globalNameManuallySet: true })
               setNameDraftOverride(null)

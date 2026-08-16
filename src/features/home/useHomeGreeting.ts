@@ -7,7 +7,7 @@ import { resolveHomeGreeting, type ResolvedHomeGreeting } from './resolveHomeGre
 import { getOldestUserContentAt } from './userContentAge'
 
 export function useHomeGreeting(context?: string): ResolvedHomeGreeting | null {
-  useAppSettings()
+  const { settings } = useAppSettings()
   const auth = useAuthOptional()
   const [oldestContentAt, setOldestContentAt] = useState<number | null | undefined>(
     undefined,
@@ -30,7 +30,7 @@ export function useHomeGreeting(context?: string): ResolvedHomeGreeting | null {
     }
   }, [])
 
-  const displayName = getEffectiveGlobalName()
+  const displayName = getEffectiveGlobalName(settings)
   if (!displayName && oldestContentAt === undefined) return null
   return resolveHomeGreeting({
     context,
