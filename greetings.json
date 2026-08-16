@@ -1,21 +1,187 @@
 {
   "greetings": [
-    { "id": "good-morning", "text": "Good morning {name}", "timeOfDay": "morning" },
-    { "id": "good-afternoon", "text": "Good afternoon {name}", "timeOfDay": "afternoon" },
-    { "id": "good-evening", "text": "Good evening {name}", "timeOfDay": "evening" },
-    { "id": "greetings", "text": "Greetings {name}" },
-    { "id": "hello", "text": "Hello {name}" },
-    { "id": "hey-there", "text": "Hey there {name}" },
-    { "id": "hi", "text": "Hi {name}" },
-    { "id": "welcome-back", "text": "Welcome back {name}" },
-    { "id": "good-to-see-you", "text": "Good to see you {name}" },
-    { "id": "hello-again", "text": "Hello again {name}" },
-    { "id": "howdy", "text": "Howdy {name}" },
-    { "id": "salutations", "text": "Salutations {name}" },
-    { "id": "ahoy", "text": "Ahoy {name}" },
-    { "id": "whats-new", "text": "What's new, {name}" },
-    { "id": "warm-hello", "text": "A warm hello, {name}" },
-    { "id": "lovely-day", "text": "Lovely day, {name}" }
+    {
+      "id": "good-morning",
+      "text": "Good morning {name}",
+      "timeOfDay": "morning"
+    },
+    {
+      "id": "good-afternoon",
+      "text": "Good afternoon {name}",
+      "timeOfDay": "afternoon"
+    },
+    {
+      "id": "good-evening",
+      "text": "Good evening {name}",
+      "timeOfDay": "evening"
+    },
+    {
+      "id": "greetings",
+      "text": "Greetings {name}"
+    },
+    {
+      "id": "hello",
+      "text": "Hello {name}"
+    },
+    {
+      "id": "hey-there",
+      "text": "Hey there {name}"
+    },
+    {
+      "id": "hi",
+      "text": "Hi {name}"
+    },
+    {
+      "id": "welcome-back",
+      "text": "Welcome back {name}"
+    },
+    {
+      "id": "good-to-see-you",
+      "text": "Good to see you {name}"
+    },
+    {
+      "id": "hello-again",
+      "text": "Hello again {name}"
+    },
+    {
+      "id": "howdy",
+      "text": "Howdy {name}"
+    },
+    {
+      "id": "salutations",
+      "text": "Salutations {name}"
+    },
+    {
+      "id": "ahoy",
+      "text": "Ahoy {name}"
+    },
+    {
+      "id": "whats-new",
+      "text": "What's new, {name}"
+    },
+    {
+      "id": "warm-hello",
+      "text": "A warm hello, {name}"
+    },
+    {
+      "id": "lovely-day",
+      "text": "Lovely day, {name}"
+    },
+    {
+      "id": "shop-goodies-await",
+      "text": "What goodies await us, {name}?",
+      "context": "shop"
+    },
+    {
+      "id": "shop-welcome",
+      "text": "Welcome to the Shoppe, {name}",
+      "context": "shop"
+    },
+    {
+      "id": "shop-spending-time",
+      "text": "Time to treat yourself, {name}",
+      "context": "shop"
+    },
+    {
+      "id": "shop-find-something-nice",
+      "text": "Let's find something nice, {name}",
+      "context": "shop"
+    },
+    {
+      "id": "settings-building-today",
+      "text": "What are we building today, {name}?",
+      "context": "settings"
+    },
+    {
+      "id": "settings-tweaking",
+      "text": "Making some adjustments, {name}?",
+      "context": "settings"
+    },
+    {
+      "id": "settings-tinkering",
+      "text": "Tinkering under the hood, {name}",
+      "context": "settings"
+    },
+    {
+      "id": "settings-preferences",
+      "text": "Your space, your rules, {name}",
+      "context": "settings"
+    },
+    {
+      "id": "verify-initiation",
+      "text": "{name}, It's a Verification Initiation!",
+      "context": "verify"
+    },
+    {
+      "id": "verify-secure",
+      "text": "Keeping things secure, {name}",
+      "context": "verify"
+    },
+    {
+      "id": "verify-identity",
+      "text": "Confirming it's really you, {name}",
+      "context": "verify"
+    },
+    {
+      "id": "week-reflecting",
+      "text": "Reflecting on the week, {name}?",
+      "context": "week"
+    },
+    {
+      "id": "week-looking-back",
+      "text": "Looking back on it all, {name}",
+      "context": "week"
+    },
+    {
+      "id": "week-summary",
+      "text": "Your week in review, {name}",
+      "context": "week"
+    },
+    {
+      "id": "week-memories",
+      "text": "Let's revisit the week, {name}",
+      "context": "week"
+    },
+    {
+      "id": "notes-jotting",
+      "text": "Jotting down thoughts, {name}?",
+      "context": "notes"
+    },
+    {
+      "id": "notes-capturing",
+      "text": "Capturing the moment, {name}",
+      "context": "notes"
+    },
+    {
+      "id": "notes-brainstorming",
+      "text": "Brainstorming session, {name}?",
+      "context": "notes"
+    },
+    {
+      "id": "notes-scribbles",
+      "text": "Ready to scribble, {name}?",
+      "context": "notes"
+    },
+    {
+      "id": "archive-dusting-off",
+      "text": "Dusting off the archives, {name}?",
+      "context": "archive"
+    },
+    {
+      "id": "archive-nostalgia",
+      "text": "A walk down memory lane, {name}",
+      "context": "archive"
+    },
+    {
+      "id": "archive-history",
+      "text": "Looking into the past, {name}",
+      "context": "archive"
+    },
+    {
+      "id": "archive-treasures",
+      "text": "Unearthed treasures, {name}",
+      "context": "archive"
+    }
   ],
   "nicknames": [
     "cutie pie",

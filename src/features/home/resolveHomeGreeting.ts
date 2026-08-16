@@ -10,7 +10,7 @@ import {
 } from './greetingAddress'
 import { greetingsCatalog } from './greetingsCatalog'
 
-const STORAGE_KEY = scopedStorageKey('mentell.home-greeting')
+
 
 type StoredGreetingPick = {
   dateKey: string
@@ -26,12 +26,13 @@ export type ResolvedHomeGreeting = {
   phrase: string
 }
 
-let memoryPick: StoredGreetingPick | null = null
+let memoryPicks: Record<string, StoredGreetingPick> = {}
 
-function readStoredPick(): StoredGreetingPick | null {
-  if (memoryPick) return memoryPick
+function readStoredPick(context?: string): StoredGreetingPick | null {
+  const key = context ?? 'default';
+  if (memoryPicks[key]) return memoryPicks[key];
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY)
+    const raw = sessionStorage.getItem(scopedStorageKey(`mentell.home-greeting.${key}`))
     if (!raw) return null
     const parsed = JSON.parse(raw) as Partial<StoredGreetingPick>
     if (
@@ -42,17 +43,18 @@ function readStoredPick(): StoredGreetingPick | null {
     ) {
       return null
     }
-    memoryPick = parsed as StoredGreetingPick
-    return memoryPick
+    memoryPicks[key] = parsed as StoredGreetingPick
+    return memoryPicks[key]
   } catch {
     return null
   }
 }
 
-function writeStoredPick(pick: StoredGreetingPick) {
-  memoryPick = pick
+function writeStoredPick(pick: StoredGreetingPick, context?: string) {
+  const key = context ?? 'default'
+  memoryPicks[key] = pick
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(pick))
+    sessionStorage.setItem(scopedStorageKey(`mentell.home-greeting.${key}`), JSON.stringify(pick))
   } catch {
     // Ignore quota / private-mode failures; in-memory pick still keeps both mounts in sync.
   }
@@ -63,6 +65,7 @@ function templateById(id: string, pool: GreetingTemplate[]) {
 }
 
 export function resolveHomeGreeting(input: {
+  context?: string
   displayName: string
   isLoggedIn: boolean
   oldestContentAt: number | null
@@ -71,7 +74,7 @@ export function resolveHomeGreeting(input: {
   const now = input.now ?? new Date()
   const dateKey = dateKeyForLocalDay(now)
   const timeOfDay = timeOfDayAt(now)
-  const pool = eligibleGreetings(greetingsCatalog.greetings, timeOfDay)
+  const pool = eligibleGreetings(greetingsCatalog.greetings, timeOfDay, input.context)
   const kind = resolveGreetingAddresseeKind({
     displayName: input.displayName,
     isLoggedIn: input.isLoggedIn,
@@ -79,7 +82,7 @@ export function resolveHomeGreeting(input: {
     now: now.getTime(),
   })
 
-  let stored = readStoredPick()
+  let stored = readStoredPick(input.context)
   if (!stored || stored.dateKey !== dateKey) {
     stored = {
       dateKey,
@@ -87,10 +90,10 @@ export function resolveHomeGreeting(input: {
       nickname: pickRandomItem(greetingsCatalog.nicknames),
       anonNickname: pickRandomItem(greetingsCatalog.anonNicknames),
     }
-    writeStoredPick(stored)
+    writeStoredPick(stored, input.context)
   } else if (!templateById(stored.greetingId, pool)) {
     stored = { ...stored, greetingId: pickRandomItem(pool).id }
-    writeStoredPick(stored)
+    writeStoredPick(stored, input.context)
   }
 
   const template = templateById(stored.greetingId, pool) ?? pool[0]!
@@ -110,9 +113,9 @@ export function resolveHomeGreeting(input: {
 }
 
 export function resetHomeGreetingSessionForTests() {
-  memoryPick = null
+  memoryPicks = {}
   try {
-    sessionStorage.removeItem(STORAGE_KEY)
+    sessionStorage.clear() // Or clear all matching keys, but for tests this is fine.
   } catch {
     // ignore
   }

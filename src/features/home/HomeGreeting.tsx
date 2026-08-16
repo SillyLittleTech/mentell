@@ -16,9 +16,7 @@ type TokenRun = {
   tokens: LetterToken[]
 }
 
-const HOP_MS = 720
 const STAGGER_MS = 36
-const SPARKLE_MS = 900
 
 function wordsFromTokens(tokens: LetterToken[]): LetterToken[][] {
   const words: LetterToken[][] = []
@@ -77,15 +75,58 @@ const DUST_GRAINS = [
 
 function GreetingLetter({
   token,
-  glowing,
+  waves,
 }: {
   token: LetterToken
-  glowing: boolean
+  waves: number[]
 }) {
+  const [activeWave, setActiveWave] = useState<number | null>(null)
+  const waveGen = useRef(0)
+  const reduced = shouldReduceMotion()
+
+  useEffect(() => {
+    if (waves.length === 0) return
+    const latest = waves[waves.length - 1]!
+    waveGen.current += 1
+    const gen = waveGen.current
+
+    let hopTimer: number
+    let glowTimer: number
+
+    // Clear active state momentarily to force animation restart
+    setActiveWave(null)
+
+    window.requestAnimationFrame(() => {
+      if (waveGen.current !== gen) return
+
+      if (reduced) {
+        setActiveWave(latest)
+        glowTimer = window.setTimeout(() => {
+          if (waveGen.current === gen) setActiveWave(null)
+        }, 2500)
+      } else {
+        hopTimer = window.setTimeout(() => {
+          if (waveGen.current === gen) setActiveWave(latest)
+        }, token.letterIndex * STAGGER_MS)
+
+        glowTimer = window.setTimeout(() => {
+          if (waveGen.current === gen) setActiveWave(null)
+        }, token.letterIndex * STAGGER_MS + 2500)
+      }
+    })
+
+    return () => {
+      window.clearTimeout(hopTimer)
+      window.clearTimeout(glowTimer)
+    }
+  }, [waves, token.letterIndex, reduced])
+
+  const isHopping = activeWave !== null && !reduced
+  const isGlowing = activeWave !== null && token.isName
+
   return (
     <span
-      className={`home-greeting-letter${glowing && token.isName ? ' is-glowing' : ''}`}
-      style={{ '--letter-index': token.letterIndex } as CSSProperties}
+      className={`home-greeting-letter${isGlowing ? ' is-glowing' : ''}${isHopping ? ' is-hopping-active' : ''}`}
     >
       <span className="home-greeting-glyph">{token.char}</span>
       {DUST_GRAINS.map((grain, index) => (
@@ -116,21 +157,24 @@ const SPARKLES = [
 export function HomeGreeting({
   variant,
   fallback = null,
+  autoPlay = false,
+  context,
 }: {
   variant: 'desktop' | 'mobile'
   fallback?: ReactNode
+  autoPlay?: boolean
+  context?: string
 }) {
-  const greeting = useHomeGreeting()
+  const greeting = useHomeGreeting(context)
+  const [waves, setWaves] = useState<number[]>([])
   const playGen = useRef(0)
   const [playing, setPlaying] = useState(false)
-  const reduced = shouldReduceMotion()
   const glowTimer = useRef<number | null>(null)
 
-  const tokens = useMemo(
-    () => (greeting ? tokensFromPhrase(greeting.template.text, greeting.name) : []),
-    [greeting],
-  )
-  const runs = useMemo(() => runsFromTokens(tokens), [tokens])
+  useEffect(() => {
+    if (autoPlay && greeting) replay()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlay, greeting])
 
   useEffect(() => {
     return () => {
@@ -138,14 +182,18 @@ export function HomeGreeting({
     }
   }, [])
 
+  const tokens = useMemo(
+    () => (greeting ? tokensFromPhrase(greeting.template.text, greeting.name) : []),
+    [greeting],
+  )
+  const runs = useMemo(() => runsFromTokens(tokens), [tokens])
+
   if (!greeting) return fallback ? <>{fallback}</> : null
 
-  const lastLetterDelay = Math.max(0, tokens.length - 1) * STAGGER_MS
-  const glowMs = reduced
-    ? 950
-    : lastLetterDelay + HOP_MS + 280
-
   function replay() {
+    setWaves(prev => [...prev, Date.now()])
+
+    // Manage playing state for sparkles
     playGen.current += 1
     const gen = playGen.current
     setPlaying(false)
@@ -156,7 +204,7 @@ export function HomeGreeting({
     if (glowTimer.current != null) window.clearTimeout(glowTimer.current)
     glowTimer.current = window.setTimeout(() => {
       if (playGen.current === gen) setPlaying(false)
-    }, Math.max(glowMs, SPARKLE_MS))
+    }, 2500)
   }
 
   return (
@@ -164,7 +212,7 @@ export function HomeGreeting({
       type="button"
       className={`home-greeting home-greeting--${variant} focus-ring${
         playing ? ' is-playing' : ''
-      }${playing && !reduced ? ' is-hopping' : ''}`}
+      }`}
       onClick={replay}
       aria-label={`${greeting.phrase}. Play greeting animation.`}
     >
@@ -185,7 +233,7 @@ export function HomeGreeting({
                       <GreetingLetter
                         key={token.key}
                         token={token}
-                        glowing={playing}
+                        waves={waves}
                       />
                     ))}
                   </span>

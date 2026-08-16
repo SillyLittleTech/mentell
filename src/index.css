@@ -855,7 +855,9 @@ button.home-greeting:active,
 }
 
 .home-greeting--mobile {
-  font: inherit;
+  font-family: ui-serif, Georgia, serif;
+  font-size: 1.15em;
+  letter-spacing: -0.01em;
   color: inherit;
 }
 
@@ -880,16 +882,24 @@ button.home-greeting:active,
   overflow: visible;
 }
 
+.home-greeting-letter .home-greeting-glyph {
+  transition: text-shadow 1s ease-out, color 1s ease-out;
+}
+
 .home-greeting-glyph {
   display: inline-block;
   transform-origin: 50% 100%;
   backface-visibility: hidden;
 }
 
-.home-greeting.is-hopping .home-greeting-glyph {
+.home-greeting-letter.is-hopping-active .home-greeting-glyph {
   will-change: transform;
   animation: home-greeting-hop 720ms cubic-bezier(0.22, 0.84, 0.28, 1) both;
-  animation-delay: calc(var(--letter-index, 0) * 36ms);
+}
+
+/* Ensure the animation resets properly when re-applied via class toggle by separating it */
+.home-greeting-letter:not(.is-hopping-active) .home-greeting-glyph {
+  animation: none;
 }
 
 @keyframes home-greeting-hop {
@@ -941,9 +951,13 @@ html[data-theme='dark'] .home-greeting-letter.is-glowing .home-greeting-glyph {
   opacity: 0;
 }
 
-.home-greeting.is-hopping .home-greeting-dust {
+.home-greeting-letter.is-hopping-active .home-greeting-dust {
   animation: home-greeting-dust 360ms ease-out both;
-  animation-delay: calc(var(--letter-index, 0) * 36ms + 520ms);
+  animation-delay: 520ms;
+}
+
+.home-greeting-letter:not(.is-hopping-active) .home-greeting-dust {
+  animation: none;
 }
 
 @keyframes home-greeting-dust {
@@ -1002,7 +1016,7 @@ html[data-theme='dark'] .home-greeting-dust {
   }
 }
 
-html[data-reduced-motion='true'] .home-greeting.is-hopping .home-greeting-glyph,
-html[data-reduced-motion='true'] .home-greeting.is-hopping .home-greeting-dust {
+html[data-reduced-motion='true'] .home-greeting-letter.is-hopping-active .home-greeting-glyph,
+html[data-reduced-motion='true'] .home-greeting-letter.is-hopping-active .home-greeting-dust {
   animation: none;
 }
