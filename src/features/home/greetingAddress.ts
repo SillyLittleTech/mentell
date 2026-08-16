@@ -8,6 +8,7 @@ export type GreetingTemplate = {
   id: string
   text: string
   timeOfDay?: GreetingTimeOfDay
+  context?: string
 }
 
 /** Global / AI name wins. New or week-old journals use anon nicknames; established (or signed-in with history) use friendly nicknames. */
@@ -39,11 +40,17 @@ export function timeOfDayAt(date: Date): GreetingTimeOfDay {
 export function eligibleGreetings(
   greetings: GreetingTemplate[],
   timeOfDay: GreetingTimeOfDay,
+  context?: string,
 ): GreetingTemplate[] {
+  if (context) {
+    const contextMatches = greetings.filter((g) => g.context === context)
+    if (contextMatches.length > 0) return contextMatches
+  }
+
   const matching = greetings.filter(
-    (greeting) => !greeting.timeOfDay || greeting.timeOfDay === timeOfDay,
+    (greeting) => !greeting.context && (!greeting.timeOfDay || greeting.timeOfDay === timeOfDay),
   )
-  return matching.length > 0 ? matching : greetings
+  return matching.length > 0 ? matching : greetings.filter(g => !g.context)
 }
 
 export function pickRandomItem<T>(items: readonly T[], random = Math.random): T {

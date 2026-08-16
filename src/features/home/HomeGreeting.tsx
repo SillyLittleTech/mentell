@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import { formatGreetingSegments } from './greetingAddress'
 import { useHomeGreeting } from './useHomeGreeting'
@@ -16,9 +16,23 @@ type TokenRun = {
   tokens: LetterToken[]
 }
 
-const HOP_MS = 720
+type Unsubscribe = () => void
+
 const STAGGER_MS = 36
+const HOP_MS = 720
+const GLOW_MS = 2500
 const SPARKLE_MS = 900
+const MAX_QUEUED_HOPS = 1
+const HOP_EASING = 'cubic-bezier(0.22, 0.84, 0.28, 1)'
+const HOP_KEYFRAMES: Keyframe[] = [
+  { transform: 'translate3d(0, 0, 0) scale(1, 1)', offset: 0 },
+  { transform: 'translate3d(0, 8px, 0) scale(1.46, 0.46)', offset: 0.12 },
+  { transform: 'translate3d(0, -40px, 0) scale(0.66, 1.46)', offset: 0.4 },
+  { transform: 'translate3d(0, -42px, 0) scale(0.8, 1.18)', offset: 0.52 },
+  { transform: 'translate3d(0, 6px, 0) scale(1.4, 0.5)', offset: 0.76 },
+  { transform: 'translate3d(0, -4px, 0) scale(0.94, 1.12)', offset: 0.88 },
+  { transform: 'translate3d(0, 0, 0) scale(1, 1)', offset: 1 },
+]
 
 function wordsFromTokens(tokens: LetterToken[]): LetterToken[][] {
   const words: LetterToken[][] = []
@@ -77,31 +91,109 @@ const DUST_GRAINS = [
 
 function GreetingLetter({
   token,
-  glowing,
+  subscribeRipple,
 }: {
   token: LetterToken
-  glowing: boolean
+  subscribeRipple: (listener: () => void) => Unsubscribe
 }) {
+  const glyphRef = useRef<HTMLSpanElement>(null)
+  const hopBusy = useRef(false)
+  const hopQueued = useRef(0)
+  const hopAnim = useRef<Animation | null>(null)
+  const hopTimers = useRef<number[]>([])
+  const rafs = useRef<number[]>([])
+  const glowTimer = useRef<number | null>(null)
+  const [dustNonce, setDustNonce] = useState(0)
+  const [glowing, setGlowing] = useState(false)
+  const reduced = shouldReduceMotion()
+
+  useEffect(() => {
+    const playHop = () => {
+      const el = glyphRef.current
+      if (!el || reduced) {
+        hopBusy.current = false
+        return
+      }
+      hopBusy.current = true
+      setDustNonce((nonce) => nonce + 1)
+      hopAnim.current?.cancel()
+      const anim = el.animate(HOP_KEYFRAMES, {
+        duration: HOP_MS,
+        easing: HOP_EASING,
+        fill: 'none',
+        composite: 'replace',
+      })
+      hopAnim.current = anim
+      anim.onfinish = () => {
+        hopBusy.current = false
+        hopAnim.current = null
+        if (hopQueued.current > 0) {
+          hopQueued.current -= 1
+          playHop()
+        }
+      }
+    }
+
+    const requestHop = () => {
+      if (token.isName) {
+        setGlowing(true)
+        if (glowTimer.current != null) window.clearTimeout(glowTimer.current)
+        glowTimer.current = window.setTimeout(() => setGlowing(false), GLOW_MS)
+      }
+      if (reduced) return
+      if (hopBusy.current) {
+        hopQueued.current = Math.min(hopQueued.current + 1, MAX_QUEUED_HOPS)
+        return
+      }
+      playHop()
+    }
+
+    const onRipple = () => {
+      const delay = reduced ? 0 : token.letterIndex * STAGGER_MS
+      if (delay === 0) {
+        const frame = window.requestAnimationFrame(() => requestHop())
+        rafs.current.push(frame)
+        return
+      }
+      hopTimers.current.push(window.setTimeout(requestHop, delay))
+    }
+
+    const unsubscribe = subscribeRipple(onRipple)
+    return () => {
+      unsubscribe()
+      hopTimers.current.forEach((timer) => window.clearTimeout(timer))
+      hopTimers.current = []
+      rafs.current.forEach((frame) => window.cancelAnimationFrame(frame))
+      rafs.current = []
+      hopQueued.current = 0
+      hopBusy.current = false
+      hopAnim.current?.cancel()
+      hopAnim.current = null
+      if (glowTimer.current != null) window.clearTimeout(glowTimer.current)
+    }
+  }, [subscribeRipple, token.letterIndex, token.isName, reduced])
+
   return (
-    <span
-      className={`home-greeting-letter${glowing && token.isName ? ' is-glowing' : ''}`}
-      style={{ '--letter-index': token.letterIndex } as CSSProperties}
-    >
-      <span className="home-greeting-glyph">{token.char}</span>
-      {DUST_GRAINS.map((grain, index) => (
-        <span
-          key={index}
-          className="home-greeting-dust"
-          style={
-            {
-              '--dust-x': `${grain.x}px`,
-              '--dust-drift': `${grain.drift}px`,
-              width: grain.size,
-              height: grain.size * 0.5,
-            } as CSSProperties
-          }
-        />
-      ))}
+    <span className={`home-greeting-letter${glowing ? ' is-glowing' : ''}`}>
+      <span ref={glyphRef} className="home-greeting-glyph">
+        {token.char}
+      </span>
+      {dustNonce > 0 && !reduced
+        ? DUST_GRAINS.map((grain, index) => (
+            <span
+              key={`${dustNonce}-${index}`}
+              className="home-greeting-dust"
+              style={
+                {
+                  '--dust-x': `${grain.x}px`,
+                  '--dust-drift': `${grain.drift}px`,
+                  width: grain.size,
+                  height: grain.size * 0.5,
+                } as CSSProperties
+              }
+            />
+          ))
+        : null}
     </span>
   )
 }
@@ -116,15 +208,50 @@ const SPARKLES = [
 export function HomeGreeting({
   variant,
   fallback = null,
+  autoPlay = false,
+  context,
 }: {
   variant: 'desktop' | 'mobile'
   fallback?: ReactNode
+  autoPlay?: boolean
+  context?: string
 }) {
-  const greeting = useHomeGreeting()
-  const playGen = useRef(0)
+  const greeting = useHomeGreeting(context)
+  const rippleListeners = useRef(new Set<() => void>())
+  const [sparkNonce, setSparkNonce] = useState(0)
+  const sparkTimer = useRef<number | null>(null)
   const [playing, setPlaying] = useState(false)
-  const reduced = shouldReduceMotion()
-  const glowTimer = useRef<number | null>(null)
+
+  const subscribeRipple = useCallback((listener: () => void) => {
+    rippleListeners.current.add(listener)
+    return () => {
+      rippleListeners.current.delete(listener)
+    }
+  }, [])
+
+  const replay = useCallback(() => {
+    rippleListeners.current.forEach((listener) => listener())
+    setSparkNonce((nonce) => nonce + 1)
+    setPlaying(true)
+    if (sparkTimer.current != null) window.clearTimeout(sparkTimer.current)
+    sparkTimer.current = window.setTimeout(() => setPlaying(false), SPARKLE_MS)
+  }, [])
+
+  useEffect(() => {
+    if (!autoPlay || !greeting) return
+    // Defer so letter ripple listeners subscribe before the first wave, and so we
+    // do not setState synchronously inside the effect body.
+    const frame = window.requestAnimationFrame(() => replay())
+    return () => window.cancelAnimationFrame(frame)
+    // greeting is a new object each render; phrase is the stable signal for name/template changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPlay, greeting?.phrase, replay])
+
+  useEffect(() => {
+    return () => {
+      if (sparkTimer.current != null) window.clearTimeout(sparkTimer.current)
+    }
+  }, [])
 
   const tokens = useMemo(
     () => (greeting ? tokensFromPhrase(greeting.template.text, greeting.name) : []),
@@ -132,39 +259,14 @@ export function HomeGreeting({
   )
   const runs = useMemo(() => runsFromTokens(tokens), [tokens])
 
-  useEffect(() => {
-    return () => {
-      if (glowTimer.current != null) window.clearTimeout(glowTimer.current)
-    }
-  }, [])
-
   if (!greeting) return fallback ? <>{fallback}</> : null
-
-  const lastLetterDelay = Math.max(0, tokens.length - 1) * STAGGER_MS
-  const glowMs = reduced
-    ? 950
-    : lastLetterDelay + HOP_MS + 280
-
-  function replay() {
-    playGen.current += 1
-    const gen = playGen.current
-    setPlaying(false)
-    window.requestAnimationFrame(() => {
-      if (playGen.current !== gen) return
-      setPlaying(true)
-    })
-    if (glowTimer.current != null) window.clearTimeout(glowTimer.current)
-    glowTimer.current = window.setTimeout(() => {
-      if (playGen.current === gen) setPlaying(false)
-    }, Math.max(glowMs, SPARKLE_MS))
-  }
 
   return (
     <button
       type="button"
       className={`home-greeting home-greeting--${variant} focus-ring${
         playing ? ' is-playing' : ''
-      }${playing && !reduced ? ' is-hopping' : ''}`}
+      }`}
       onClick={replay}
       aria-label={`${greeting.phrase}. Play greeting animation.`}
     >
@@ -185,7 +287,7 @@ export function HomeGreeting({
                       <GreetingLetter
                         key={token.key}
                         token={token}
-                        glowing={playing}
+                        subscribeRipple={subscribeRipple}
                       />
                     ))}
                   </span>
@@ -197,8 +299,8 @@ export function HomeGreeting({
               {run.isName
                 ? SPARKLES.map((spark, index) => (
                     <span
-                      key={index}
-                      className="home-greeting-sparkle"
+                      key={`${sparkNonce}-${index}`}
+                      className={`home-greeting-sparkle${sparkNonce > 0 ? ' is-sparking' : ''}`}
                       style={
                         {
                           left: spark.left,

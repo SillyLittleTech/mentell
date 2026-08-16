@@ -6,6 +6,7 @@ const GreetingSchema = z.object({
   id: z.string().min(1),
   text: z.string().min(1),
   timeOfDay: z.enum(['morning', 'afternoon', 'evening']).optional(),
+  context: z.string().optional(),
 })
 
 const GreetingsFileSchema = z.object({

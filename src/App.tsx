@@ -334,6 +334,7 @@ function TopBar({
   const { settings } = useAppSettings()
   const location = useLocation()
   const onHome = location.pathname === '/'
+  const pageContext = location.pathname.split('/')[1] || 'home'
 
   return (
     <>
@@ -341,7 +342,7 @@ function TopBar({
         <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-start">
           <div className="flex min-w-0 flex-wrap items-start gap-3">
             <div className="relative z-0 hidden min-h-[5rem] min-w-0 flex-1 items-center overflow-visible md:flex">
-              {onHome ? <HomeGreeting variant="desktop" /> : null}
+              <HomeGreeting variant="desktop" autoPlay={onHome} context={pageContext} />
             </div>
             <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3 md:hidden">
               <img
@@ -350,9 +351,11 @@ function TopBar({
                 className="h-10 w-10 shrink-0 select-none object-contain"
                 draggable={false}
               />
-              <div>
-                <div className="font-paper text-2xl tracking-tight">Mentell</div>
-                <div className="ink-muted text-sm">local-first stationery journal</div>
+              <div className="min-w-0">
+                <div className="font-paper text-2xl tracking-tight truncate">
+                  <HomeGreeting variant="mobile" fallback="Mentell" context={pageContext} autoPlay={onHome} />
+                </div>
+                <div className="ink-muted text-sm truncate">local-first stationery journal</div>
               </div>
             </div>
           </div>

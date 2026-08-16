@@ -76,4 +76,26 @@ describe('resolveHomeGreeting', () => {
     expect(second.template.id).toBe(first.template.id)
     expect(second.phrase).toBe(first.phrase)
   })
+
+  it('updates the phrase immediately when the global name changes', () => {
+    const now = new Date(2026, 7, 14, 9, 0, 0)
+    const before = resolveHomeGreeting({
+      displayName: '',
+      isLoggedIn: false,
+      oldestContentAt: null,
+      now,
+    })
+    const after = resolveHomeGreeting({
+      displayName: 'Kiya',
+      isLoggedIn: false,
+      oldestContentAt: null,
+      now,
+    })
+    expect(before.kind).toBe('anon')
+    expect(after.kind).toBe('name')
+    expect(after.template.id).toBe(before.template.id)
+    expect(after.name).toBe('Kiya')
+    expect(after.phrase).toBe(after.template.text.replaceAll('{name}', 'Kiya'))
+    expect(after.phrase).not.toBe(before.phrase)
+  })
 })
