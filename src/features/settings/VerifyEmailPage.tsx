@@ -48,7 +48,7 @@ export function VerifyEmailPage() {
     }
 
     void verifyToken()
-  }, [searchParams])
+  }, [searchParams, updateSettings])
 
   return (
     <DeskCharacterLayout>
