@@ -15,3 +15,11 @@ VAPID_PRIVATE_KEY=
 # FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 # Optional extra CORS host suffixes (comma-separated), e.g. ".myotherdomain.com"
 # ALLOWED_HOST_SUFFIXES=".sillylittle.tech"
+# Email notifications (Resend). Use published template ids/aliases, not unpublished drafts.
+# RESEND_API_KEY=re_...
+# RESEND_FROM=Mentell <notifications@mentell.sillylittle.tech>
+# RESEND_TEMPLATE_VERIFY=
+# RESEND_TEMPLATE_DAILY=
+# RESEND_TEMPLATE_PACKAGE=
+# Public app URL used in verification links (no trailing slash)
+# MENTELL_PUBLIC_URL=http://127.0.0.1:5173

@@ -11,5 +11,6 @@ export async function verifyFirebaseIdToken(idToken: string, projectId: string) 
   })
   const uid = typeof payload.sub === 'string' ? payload.sub : ''
   if (!uid) throw new Error('Invalid token subject')
-  return { uid }
+  const email = typeof payload.email === 'string' ? payload.email : undefined
+  return { uid, email }
 }

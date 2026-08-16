@@ -38,7 +38,15 @@ function urlBase64ToUint8Array(base64: string) {
   return out
 }
 
-function getOrCreatePushClientId() {
+export function getWorkerApiBase() {
+  return pushApiBase()
+}
+
+export async function getWorkerAuthHeaders(): Promise<Record<string, string>> {
+  return authHeader()
+}
+
+export function getOrCreatePushClientId() {
   let id = localStorage.getItem(PUSH_CLIENT_ID_KEY)
   if (!id) {
     id = crypto.randomUUID()
@@ -47,8 +55,17 @@ function getOrCreatePushClientId() {
   return id
 }
 
+function normalizeBearerToken(raw?: string) {
+  if (!raw) return ''
+  const t = raw.trim()
+  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
+    return t.slice(1, -1)
+  }
+  return t
+}
+
 async function authHeader(): Promise<Record<string, string>> {
-  const weeklyToken = import.meta.env.VITE_WEEKLY_AI_TOKEN?.trim()
+  const weeklyToken = normalizeBearerToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
   // Debug + local worker usually has no FIREBASE_SERVICE_ACCOUNT_JSON — use shared token + clientId.
   if (isDebugMode() && weeklyToken) {
     return { Authorization: `Bearer ${weeklyToken}` }
@@ -160,7 +177,7 @@ async function pushTestPayload(): Promise<PushTestPayload> {
   if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
     return { ok: false, detail: 'Subscription missing keys' }
   }
-  const token = import.meta.env.VITE_WEEKLY_AI_TOKEN?.trim()
+  const token = normalizeBearerToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
   if (!token) {
     return { ok: false, detail: 'VITE_WEEKLY_AI_TOKEN not set (needed for push test routes)' }
   }

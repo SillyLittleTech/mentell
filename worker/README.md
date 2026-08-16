@@ -104,6 +104,43 @@ wrangler secret put FIREBASE_SERVICE_ACCOUNT_JSON
 
 Frontend (GitHub **Variables**, not secrets): `VITE_VAPID_PUBLIC_KEY`, `VITE_PUSH_API_BASE` = worker URL without trailing slash.
 
+## Email notifications (Resend)
+
+Optional daily reminder + weekly package emails. Settings → Email Notifications posts to this worker; cron in [`emailDispatch.ts`](src/emailDispatch.ts) sends after the address is verified.
+
+| Route | Auth | Purpose |
+|-------|------|---------|
+| `POST /email/subscribe` | Firebase ID token or `WEEKLY_SUMMARY_TOKEN` | Store prefs in `PUSH_KV` and send a verification email |
+| `GET /email/verify?token=` | none | Mark the subscriber verified |
+| `POST /email/test` | `WEEKLY_SUMMARY_TOKEN` | Send a published Resend template (`daily` / `package` / `verify`) |
+
+Publish the templates in Resend (alias `daily`, `package`, or `verify` — or set `RESEND_TEMPLATE_*` to the template id). The worker loads them with `resend.templates.get()`, fills `{{{variables}}}`, then sends HTML. OPTIONS `204 No Content` on `/email/*` is CORS preflight, not a send failure.
+
+Local `worker/.dev.vars`:
+
+```env
+RESEND_API_KEY=re_...
+RESEND_FROM=Mentell <notifications@mentell.sillylittle.tech>
+RESEND_TEMPLATE_VERIFY=
+RESEND_TEMPLATE_DAILY=
+RESEND_TEMPLATE_PACKAGE=
+MENTELL_PUBLIC_URL=http://127.0.0.1:5173
+```
+
+Production:
+
+```bash
+wrangler secret put RESEND_API_KEY
+wrangler secret put RESEND_TEMPLATE_VERIFY
+wrangler secret put RESEND_TEMPLATE_DAILY
+wrangler secret put RESEND_TEMPLATE_PACKAGE
+# optional
+wrangler secret put RESEND_FROM
+wrangler secret put MENTELL_PUBLIC_URL
+```
+
+Frontend already uses `VITE_PUSH_API_BASE` + `VITE_WEEKLY_AI_TOKEN` (same as push). Quote tokens that contain `#`.
+
 ## Auth handoff (offline ↔ web link codes)
 
 Optional one-time codes so a user signed in on the hosted app can link an offline ZIP, Tauri build, or `file://` copy without Google/email there.

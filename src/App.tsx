@@ -30,6 +30,7 @@ import { publicUrl } from './shared/publicUrl'
 import { SCORE_CHANGED_EVENT } from './features/score/scoreEvents'
 import { ShareDashboardPage } from './features/share/ShareDashboardPage'
 import { SyncOnboardingBanner } from './features/settings/SyncOnboardingBanner'
+import { VerifyEmailPage } from './features/settings/VerifyEmailPage'
 import { AppLegalFooter } from './components/AppLegalFooter'
 import { PrivacyPolicyPage } from './features/legal/PrivacyPolicyPage'
 import { FeedbackPage, FeedbackThankYouPage } from './features/feedback/FeedbackPage'
@@ -212,6 +213,7 @@ function App() {
               element={<ShopPlaceholder onScoreChange={handleScoreChange} />}
             />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/verify" element={<VerifyEmailPage />} />
             <Route path="/auth/deeplink" element={<AuthDeeplinkPage />} />
             <Route path="/auth/link" element={<AuthLinkPage />} />
             <Route path="/character-lab" element={<CharacterLabPage />} />
@@ -263,6 +265,7 @@ function App() {
                   element={<ShopPlaceholder onScoreChange={handleScoreChange} />}
                 />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/verify" element={<VerifyEmailPage />} />
                 <Route path="/auth/deeplink" element={<AuthDeeplinkPage />} />
                 <Route path="/auth/link" element={<AuthLinkPage />} />
                 <Route path="/character-lab" element={<CharacterLabPage />} />

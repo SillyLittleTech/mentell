@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { addDays } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
 import { getDb } from '../../db/schema'
-import { loadAppSettings, saveAppSettings } from '../../shared/settings/appSettings'
-import { getEffectiveGlobalName } from '../../shared/settings/effectiveGlobalName'
 import { makeId } from '../../shared/id'
 import {
   getForcePackages,
@@ -40,8 +38,7 @@ import {
   type NotificationDebugSnapshot,
 } from './debugNotifications'
 import { dexieDatabaseName, scopedStorageKey } from '../../shared/storage/storageScope'
-import { normalizeEndpointUrl, normalizeEnvToken } from '../compilation/weeklyAiSummary'
-import { getOrCreatePushClientId, getWorkerApiBase, getWorkerAuthHeaders } from '../../pwa/pushSubscribe'
+import { normalizeEndpointUrl } from '../compilation/weeklyAiSummary'
 import {
   getOrCreateAnonSearchUserId,
   loadAllEntriesForSearch,
@@ -83,40 +80,6 @@ const DEBUG_AI_TESTS = [
     emotion: 'happy' as const,
   },
 ]
-
-async function sendDebugEmailTest(template: 'daily' | 'package', variables: Record<string, string>) {
-  const apiBase = getWorkerApiBase()
-  if (!apiBase) return `${template} email test: VITE_PUSH_API_BASE is not set`
-  const token = normalizeEnvToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
-  if (!token) return `${template} email test: VITE_WEEKLY_AI_TOKEN is not set`
-  const email = loadAppSettings().notificationEmail.trim()
-  if (!email) return `${template} email test: save a notification email in Settings first`
-
-  try {
-    const res = await fetch(`${apiBase}/email/test`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ email, template, variables }),
-    })
-    const text = await res.text().catch(() => '')
-    let detail = text
-    if (text) {
-      try {
-        const parsed = JSON.parse(text) as { error?: string; id?: string }
-        detail = parsed.error || (parsed.id ? `id ${parsed.id}` : text)
-      } catch {
-        /* keep raw */
-      }
-    }
-    if (res.ok) return `${template} email test: Sent${detail ? ` (${detail})` : ''}`
-    return `${template} email test: Failed (${res.status} ${res.statusText || 'No Content'})${detail ? ` — ${detail}` : ''}`
-  } catch (err) {
-    return `${template} email test: ${err instanceof Error ? err.message : 'Network error'}`
-  }
-}
 
 export function DebugPanel() {
   const enabled = useMemo(() => isDebugMode(), [])
@@ -1388,10 +1351,16 @@ export function DebugPanel() {
               onClick={async () => {
                 setBusy(true)
                 try {
-                  alert(await sendDebugEmailTest('daily', {
-                    global_name: getEffectiveGlobalName(),
-                    date: new Date().toISOString().split('T')[0],
-                  }))
+                  const res = await fetch(import.meta.env.VITE_PUSH_API_BASE + '/email/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_WEEKLY_AI_TOKEN}` },
+                    body: JSON.stringify({
+                      email: loadAppSettings().notificationEmail || 'test@example.com',
+                      template: 'daily',
+                      variables: { global_name: loadAppSettings().globalName || 'there', date: new Date().toISOString().split('T')[0] }
+                    })
+                  })
+                  alert(`Daily email test: ${res.ok ? 'Sent' : 'Failed'}`)
                 } finally {
                   setBusy(false)
                 }
@@ -1407,13 +1376,16 @@ export function DebugPanel() {
               onClick={async () => {
                 setBusy(true)
                 try {
-                  alert(await sendDebugEmailTest('package', {
-                    global_name: getEffectiveGlobalName(),
-                    date: new Date().toISOString().split('T')[0],
-                    ent_count: '5',
-                    ent_rank: '⬆',
-                    ent_sum: 'You had a good week.',
-                  }))
+                  const res = await fetch(import.meta.env.VITE_PUSH_API_BASE + '/email/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_WEEKLY_AI_TOKEN}` },
+                    body: JSON.stringify({
+                      email: loadAppSettings().notificationEmail || 'test@example.com',
+                      template: 'package',
+                      variables: { global_name: loadAppSettings().globalName || 'there', date: new Date().toISOString().split('T')[0], ent_count: '5', ent_rank: '⬆', ent_sum: 'You had a good week.' }
+                    })
+                  })
+                  alert(`Package email test: ${res.ok ? 'Sent' : 'Failed'}`)
                 } finally {
                   setBusy(false)
                 }
@@ -1421,50 +1393,6 @@ export function DebugPanel() {
             >
               Test Package Email
               <div className="ink-muted text-xs">Sends package drop email to your saved email.</div>
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
-              onClick={async () => {
-                setBusy(true)
-                try {
-                  saveAppSettings({ emailVerified: false })
-                  const apiBase = getWorkerApiBase()
-                  if (!apiBase) {
-                    alert('Unverified locally. VITE_PUSH_API_BASE is not set, so the worker record was not cleared.')
-                    return
-                  }
-                  const res = await fetch(`${apiBase}/email/unverify`, {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      ...(await getWorkerAuthHeaders()),
-                    },
-                    body: JSON.stringify({ clientId: getOrCreatePushClientId() }),
-                  })
-                  const text = await res.text().catch(() => '')
-                  let detail = text
-                  if (text) {
-                    try {
-                      const parsed = JSON.parse(text) as { error?: string; existed?: boolean }
-                      detail = parsed.error || (parsed.existed === false ? 'no worker record' : 'worker record cleared')
-                    } catch {
-                      /* keep raw */
-                    }
-                  }
-                  if (!res.ok) {
-                    alert(`Unverify failed (${res.status}): ${detail}`)
-                    return
-                  }
-                  alert(`Notification email unmarked as verified (${detail}). Save & Subscribe in Settings to send a new link.`)
-                } finally {
-                  setBusy(false)
-                }
-              }}
-            >
-              Unverify notification email
-              <div className="ink-muted text-xs">Clears local + worker verified state so you can retest the link.</div>
             </button>
               </div>
             </div>
