@@ -187,14 +187,22 @@ export async function handleEmailUnverify(request: Request, env: Env) {
   return corsJson({ ok: true, userId, existed: true }, 200, env, origin)
 }
 
+function stripWrappingQuotes(value: string) {
+  let out = value
+  while (out.length > 0 && (out.startsWith('"') || out.startsWith("'"))) {
+    out = out.slice(1)
+  }
+  while (out.length > 0 && (out.endsWith('"') || out.endsWith("'"))) {
+    out = out.slice(0, -1)
+  }
+  return out
+}
+
 function sanitizeVerifyToken(raw: string | null) {
   if (!raw) return ''
-  return raw
-    .trim()
-    .replace(/^["']+|["']+$/g, '')
-    .replace(/[<>]/g, '')
-    .split(/[&\s]/)[0]
-    .trim()
+  const trimmed = stripWrappingQuotes(raw.trim())
+  const cut = trimmed.search(/[&\s<>]/)
+  return (cut === -1 ? trimmed : trimmed.slice(0, cut)).trim()
 }
 
 export async function handleEmailVerify(request: Request, env: Env) {
