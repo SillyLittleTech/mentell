@@ -23,6 +23,13 @@ export async function sendWebPush(
     throw new Error('VAPID not configured')
   }
 
+  let isApplePushHost = false
+  try {
+    isApplePushHost = new URL(subscription.endpoint).hostname === 'web.push.apple.com'
+  } catch {
+    isApplePushHost = false
+  }
+
   try {
     await sendNotification(
       {
@@ -30,7 +37,13 @@ export async function sendWebPush(
         keys: subscription.keys,
       },
       JSON.stringify(payload),
-      { vapidDetails },
+      {
+        vapidDetails,
+        urgency: 'high',
+        TTL: 7 * 24 * 60 * 60,
+        // RFC 8030 Topic can 400 on web.push.apple.com; omit it for APNs.
+        ...(isApplePushHost ? {} : { topic: 'mentellpkg' }),
+      },
     )
   } catch (err) {
     if (err instanceof WebPushError) {

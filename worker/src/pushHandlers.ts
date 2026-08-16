@@ -130,6 +130,12 @@ export async function handlePushSubscribe(request: Request, env: PushEnv) {
   if (previous?.endpoint && previous.endpoint !== sub.endpoint) {
     await env.PUSH_KV.delete(`ep:${await hashEndpoint(previous.endpoint)}`)
   }
+  // Promote anonymous client records once the user signs in so cron does not
+  // send twice (or at Eastern Time) for the same endpoint.
+  if (uid && clientId) {
+    const anonKey = `sub:cid:${clientId}`
+    if (anonKey !== key) await env.PUSH_KV.delete(anonKey)
+  }
 
   return corsJson({ ok: true }, 200, env, origin)
 }

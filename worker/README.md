@@ -92,7 +92,7 @@ Push delivery uses [`web-push-neo`](https://www.npmjs.com/package/web-push-neo) 
 | `POST /push/test` | `WEEKLY_SUMMARY_TOKEN` | Send test notification to a subscription body |
 | `POST /push/test-delayed` | `WEEKLY_SUMMARY_TOKEN` | Same + `delaySeconds` (5–120); returns immediately, push fires on worker |
 
-Cron `*/15 * * * *` runs [`pushCron.ts`](src/pushCron.ts): within each user’s delivery window, synced users get a package-ready push when last week has entries and no `weekly` package yet; others get a generic reminder using Eastern Time.
+Cron `*/15 * * * *` runs [`pushCron.ts`](src/pushCron.ts): after each user’s local delivery weekday+time (timezone stored on subscribe), synced users get a package-ready push when last week has entries and no `weekly` package yet; others get a generic reminder. Weekly KV dedupe allows a full-week catch-up window so a jittered cron still wakes a closed PWA.
 
 Production secrets:
 

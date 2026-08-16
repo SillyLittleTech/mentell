@@ -152,7 +152,7 @@ When `VITE_ENABLE_FIREBASE_SYNC=1` and push env vars are set, the Cloudflare Wor
 3. Keys → JSON → `wrangler secret put FIREBASE_SERVICE_ACCOUNT_JSON` (worker only; never in the client bundle).
 4. Client subscribe sends the user’s Firebase ID token; cron queries `users/{uid}/entries` and `users/{uid}/packages`.
 
-Non-synced users still receive generic weekly reminders on **Eastern Time** if they subscribed with push enabled. No change to [`firestore.rules`](../firestore.rules) for end users.
+Non-synced users still receive generic weekly reminders using the timezone stored on subscribe. No change to [`firestore.rules`](../firestore.rules) for end users.
 
 ## Share links
 

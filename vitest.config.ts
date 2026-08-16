@@ -8,7 +8,7 @@ export default defineConfig((env) => {
     defineConfig({
       test: {
         environment: 'jsdom',
-        include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+        include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'worker/src/**/*.test.ts'],
         globals: true,
       },
     })

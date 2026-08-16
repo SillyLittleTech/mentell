@@ -150,7 +150,7 @@ export function debugForegroundNotification() {
     'Mentell debug',
     'Foreground notification (tab may be open).',
   )
-  if (ok) return { ok: true, status: 0, detail: 'Shown via Notification API' }
+  if (ok) return { ok: true, status: 0, detail: 'Shown via service worker notification (Safari-safe)' }
   if (!('Notification' in window)) {
     return { ok: false, status: 0, detail: 'Notifications not supported' }
   }

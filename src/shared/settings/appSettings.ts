@@ -30,7 +30,7 @@ export type AppSettings = {
   /** 0 = Sunday … 6 = Saturday (date-fns weekStartsOn: 1) */
   deliveryWeekday: number;
   deliveryTimeLocal: string;
-  /** IANA timezone for push delivery when sync is on */
+  /** IANA timezone for push delivery (sent to the worker on subscribe) */
   timezone: string;
   notificationEmail: string;
   emailVerified: boolean;

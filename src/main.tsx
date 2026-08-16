@@ -8,20 +8,28 @@ import { AuthProvider } from './shared/firebase/AuthProvider.tsx'
 import { DebugAuthProvider } from './shared/firebase/DebugAuthProvider.tsx'
 import { isDebugMode } from './shared/debug/debugFlags.ts'
 import { isFirebaseEnabled, shouldUseDebugAuthProvider } from './shared/features/featureFlags.ts'
-import { isOfflineZipBuild } from './shared/platform/runtime.ts'
-import { isWebPushConfigured } from './pwa/pushSubscribe.ts'
+import { isOfflineZipBuild, isTauri } from './shared/platform/runtime.ts'
+import { isWebPushConfigured, syncPushSubscription, syncPushSubscriptionOnGesture } from './pwa/pushSubscribe.ts'
 import { registerDebugPushServiceWorker } from './pwa/registerDebugPushSw.ts'
 import { registerSW } from 'virtual:pwa-register'
 import { ToastProvider } from './shared/ui/ToastProvider.tsx'
 
-if (!isOfflineZipBuild()) {
+if (!isOfflineZipBuild() && !isTauri()) {
   if (isDebugMode()) {
     if (isWebPushConfigured()) {
-      void registerDebugPushServiceWorker()
+      void registerDebugPushServiceWorker().then(() => {
+        void syncPushSubscription()
+      })
     }
   } else {
-    registerSW({ immediate: true })
+    registerSW({
+      immediate: true,
+      onRegisteredSW() {
+        if (isWebPushConfigured()) void syncPushSubscription()
+      },
+    })
   }
+  syncPushSubscriptionOnGesture()
 }
 
 createRoot(document.getElementById('root')!).render(

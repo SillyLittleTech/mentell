@@ -15,9 +15,24 @@ export async function registerDebugPushServiceWorker() {
     }
   }
 
-  await navigator.serviceWorker.register(scriptUrl, {
+  const reg = await navigator.serviceWorker.register(scriptUrl, {
     scope,
     type: 'classic',
     updateViaCache: 'none',
   })
+  if (reg.installing) {
+    await new Promise<void>((resolve) => {
+      const worker = reg.installing
+      if (!worker || worker.state === 'activated' || worker.state === 'redundant') {
+        resolve()
+        return
+      }
+      const done = () => {
+        if (worker.state === 'activated' || worker.state === 'redundant') resolve()
+      }
+      worker.addEventListener('statechange', done)
+      window.setTimeout(resolve, 15_000)
+    })
+  }
+  return reg
 }
