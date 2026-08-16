@@ -15,6 +15,9 @@
       "allow": [{ "url": "mentell://*" }]
     },
     "allow-start-auth-callback",
-    "allow-stop-auth-callback"
+    "allow-stop-auth-callback",
+    "allow-show-native-notification",
+    "allow-schedule-weekly-notification",
+    "allow-cancel-weekly-notification"
   ]
 }

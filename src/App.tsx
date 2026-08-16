@@ -21,6 +21,8 @@ import { dateKeyForLocalDay } from './shared/dates'
 import { pushLocalChangesNow } from './shared/sync/syncService'
 import { isWebPushConfigured, syncPushSubscription } from './pwa/pushSubscribe'
 import { loadAppSettings } from './shared/settings/appSettings'
+import { isTauri } from './shared/platform/runtime'
+import { syncTauriDeliverySchedule } from './pwa/tauriNotifications'
 import { ScoreTicker } from './features/score/ScoreTicker'
 import { ScoreBurst } from './features/score/ScoreBurst'
 import { Shoppe } from './features/shop/Shoppe'
@@ -80,7 +82,9 @@ function App() {
 
   useEffect(() => {
     void runPackageDeliveryAndNotify()
-    if (!loadAppSettings().disableNotifications && isWebPushConfigured()) {
+    if (isTauri()) {
+      void syncTauriDeliverySchedule()
+    } else if (!loadAppSettings().disableNotifications && isWebPushConfigured()) {
       void syncPushSubscription()
     }
   }, [])
@@ -89,7 +93,7 @@ function App() {
   const authUid = auth?.user?.uid
 
   useEffect(() => {
-    if (authUid && !loadAppSettings().disableNotifications && isWebPushConfigured()) {
+    if (authUid && !isTauri() && !loadAppSettings().disableNotifications && isWebPushConfigured()) {
       void syncPushSubscription()
     }
   }, [authUid])

@@ -1,36 +1,50 @@
 /* Minimal push-only service worker for npm run dev:debug (no Workbox precache). */
-self.addEventListener('install', () => {
-  self.skipWaiting()
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting())
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim())
 })
 
-self.addEventListener('push', (event) => {
-  let data
+function parsePushPayload(data) {
+  if (!data) return undefined
   try {
-    data = event.data?.json()
+    return data.json()
   } catch {
-    data = undefined
+    return undefined
   }
-  const title = data?.title ?? 'Mentell'
-  const body = data?.body ?? 'Your weekly package may be ready.'
-  const scopePath = new URL(self.registration.scope).pathname
-  const icon = `${scopePath}asset/mentell-icon.png`.replace(/\/{2,}/g, '/')
-  event.waitUntil(
-    self.registration.showNotification(title, {
+}
+
+function weekUrl() {
+  return new URL('week', self.registration.scope).href
+}
+
+async function showPushNotification(event) {
+  const data = parsePushPayload(event.data)
+  const title = data?.title?.trim() || 'Mentell'
+  const body = data?.body?.trim() || 'Your weekly package may be ready.'
+  const url = weekUrl()
+  try {
+    await self.registration.showNotification(title, {
       body,
-      icon,
       tag: 'mentell-package',
-    }),
-  )
+      data: { url },
+    })
+  } catch {
+    await self.registration.showNotification(title, { body })
+  }
+}
+
+self.addEventListener('push', (event) => {
+  event.waitUntil(showPushNotification(event))
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const scopePath = new URL(self.registration.scope).pathname.replace(/\/$/, '')
-  const target = `${scopePath}/week`.replace(/\/{2,}/g, '/') || '/week'
+  const raw = event.notification.data
+  const target =
+    raw && typeof raw === 'object' && typeof raw.url === 'string' ? raw.url : weekUrl()
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {

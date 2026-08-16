@@ -1,0 +1,14 @@
+[[permission]]
+identifier = "allow-show-native-notification"
+description = "Show an immediate desktop OS notification."
+commands.allow = ["show_native_notification"]
+
+[[permission]]
+identifier = "allow-schedule-weekly-notification"
+description = "Schedule the repeating weekly package reminder (macOS UserNotifications)."
+commands.allow = ["schedule_weekly_notification"]
+
+[[permission]]
+identifier = "allow-cancel-weekly-notification"
+description = "Cancel the repeating weekly package reminder."
+commands.allow = ["cancel_weekly_notification"]

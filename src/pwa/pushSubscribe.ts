@@ -82,21 +82,104 @@ async function authHeader(): Promise<Record<string, string>> {
   return {}
 }
 
-async function getPushSubscription(): Promise<PushSubscription | null> {
+const SW_READY_TIMEOUT_MS = 20_000
+
+async function getReadyRegistration(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null
-  const reg = await navigator.serviceWorker.ready
+  try {
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) => {
+        window.setTimeout(() => reject(new Error('timeout')), SW_READY_TIMEOUT_MS)
+      }),
+    ])
+    return reg
+  } catch {
+    const regs = await navigator.serviceWorker.getRegistrations()
+    return regs.find((r) => r.active) ?? regs[0] ?? null
+  }
+}
+
+async function getPushSubscription(): Promise<PushSubscription | null> {
+  const reg = await getReadyRegistration()
+  if (!reg) return null
   return reg.pushManager.getSubscription()
+}
+
+function applicationServerKeysMatch(
+  existing: ArrayBuffer | ArrayBufferView | null | undefined,
+  expected: Uint8Array,
+) {
+  if (!existing) return true
+  const bytes =
+    existing instanceof ArrayBuffer
+      ? new Uint8Array(existing)
+      : new Uint8Array(existing.buffer, existing.byteOffset, existing.byteLength)
+  if (bytes.byteLength !== expected.byteLength) return false
+  return bytes.every((b, i) => b === expected[i])
+}
+
+function subscriptionExpired(sub: PushSubscription) {
+  return Boolean(sub.expirationTime && sub.expirationTime <= Date.now() + 60_000)
+}
+
+function vapidApplicationServerKey(base64: string): ArrayBuffer {
+  const u8 = urlBase64ToUint8Array(base64)
+  return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer
+}
+
+async function waitForActiveWorker(reg: ServiceWorkerRegistration) {
+  if (reg.active) return
+  const worker = reg.installing ?? reg.waiting
+  if (!worker) return
+  await new Promise<void>((resolve, reject) => {
+    const timeout = window.setTimeout(
+      () => reject(new Error('Service worker did not activate')),
+      SW_READY_TIMEOUT_MS,
+    )
+    const onChange = () => {
+      if (worker.state === 'activated' || worker.state === 'redundant') {
+        window.clearTimeout(timeout)
+        resolve()
+      }
+    }
+    worker.addEventListener('statechange', onChange)
+    onChange()
+  })
 }
 
 async function ensurePushSubscription(): Promise<PushSubscription | null> {
   const vapid = import.meta.env.VITE_VAPID_PUBLIC_KEY?.trim()
   if (!vapid) return null
-  const existing = await getPushSubscription()
-  if (existing) return existing
-  const reg = await navigator.serviceWorker.ready
+  const reg = await getReadyRegistration()
+  if (!reg) return null
+  try {
+    await waitForActiveWorker(reg)
+  } catch {
+    /* subscribe may still work on a waiting worker */
+  }
+  const key = vapidApplicationServerKey(vapid)
+  const expectedBytes = new Uint8Array(key)
+  const existing = await reg.pushManager.getSubscription()
+  if (existing && !subscriptionExpired(existing)) {
+    if (applicationServerKeysMatch(existing.options.applicationServerKey, expectedBytes)) {
+      return existing
+    }
+    try {
+      await existing.unsubscribe()
+    } catch {
+      /* resubscribe below */
+    }
+  } else if (existing) {
+    try {
+      await existing.unsubscribe()
+    } catch {
+      /* resubscribe below */
+    }
+  }
   return reg.pushManager.subscribe({
     userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(vapid),
+    applicationServerKey: key,
   })
 }
 
@@ -125,7 +208,13 @@ export async function syncPushSubscriptionWithResult(): Promise<PushSubscribeRes
     }
   }
 
-  const subscription = await ensurePushSubscription()
+  let subscription: PushSubscription | null
+  try {
+    subscription = await ensurePushSubscription()
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'subscribe failed'
+    return { ok: false, status: 0, detail: `Push subscribe failed: ${message}` }
+  }
   if (!subscription) {
     return { ok: false, status: 0, detail: 'No push subscription (service worker not ready?)' }
   }
@@ -158,7 +247,22 @@ export async function syncPushSubscriptionWithResult(): Promise<PushSubscribeRes
 }
 
 export async function syncPushSubscription() {
-  await syncPushSubscriptionWithResult()
+  try {
+    await syncPushSubscriptionWithResult()
+  } catch {
+    /* permission / SW errors are reported via WithResult when called directly */
+  }
+}
+
+/** Safari / iOS often refuse PushManager.subscribe() until a user gesture. */
+export function syncPushSubscriptionOnGesture() {
+  if (typeof document === 'undefined') return
+  const run = () => {
+    if (!loadAppSettings().disableNotifications && isWebPushConfigured()) {
+      void syncPushSubscription()
+    }
+  }
+  document.addEventListener('pointerdown', run, { once: true, passive: true })
 }
 
 type PushTestPayload =

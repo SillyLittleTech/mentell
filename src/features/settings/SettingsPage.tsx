@@ -3,6 +3,8 @@ import { loadAiProfile } from '../compilation/aiProfile'
 import { useAppSettings } from '../../shared/settings/useAppSettings'
 import { notificationPermission, maybeRequestNotificationPermission, notificationPermissionDeniedHint } from '../../pwa/notifications'
 import { isWebPushConfigured, syncPushSubscription, unsubscribePush } from '../../pwa/pushSubscribe'
+import { syncTauriDeliverySchedule } from '../../pwa/tauriNotifications'
+import { isTauri } from '../../shared/platform/runtime'
 import { browserTimezone } from '../../shared/settings/appSettings'
 import { AccountSyncSection } from './AccountSyncSection'
 import { SettingsAccountFeatures } from './SettingsAccountFeatures'
@@ -49,9 +51,13 @@ export function SettingsPage() {
   }, [])
 
   useEffect(() => {
-    if (!settings.disableNotifications && isWebPushConfigured()) {
-      void syncPushSubscription()
+    if (settings.disableNotifications) {
+      if (isTauri()) void syncTauriDeliverySchedule()
+      else if (isWebPushConfigured()) void unsubscribePush()
+      return
     }
+    if (isTauri()) void syncTauriDeliverySchedule()
+    else if (isWebPushConfigured()) void syncPushSubscription()
   }, [
     settings.disableNotifications,
     settings.deliveryWeekday,
@@ -120,7 +126,7 @@ export function SettingsPage() {
             <span>
               Disable notifications
               <div className="ink-muted text-xs">
-                Stops permission prompts, in-app alerts, and background push when configured.
+              Stops permission prompts, in-app alerts, web push, and the desktop weekly reminder.
               </div>
             </span>
             <input
@@ -128,7 +134,7 @@ export function SettingsPage() {
               checked={settings.disableNotifications}
               onChange={(e) => {
                 updateSettingsAndMarkDirty({ disableNotifications: e.target.checked })
-                if (e.target.checked) void unsubscribePush()
+                if (e.target.checked && !isTauri()) void unsubscribePush()
               }}
             />
           </label>
@@ -141,8 +147,10 @@ export function SettingsPage() {
             <div className="text-sm font-medium">Package delivery</div>
             <p className="ink-muted text-xs">
               Weekly packages appear after this day and time, once that journal week is complete
-              (Monday–Sunday). With cloud sync and push enabled, delivery uses your timezone below;
-              otherwise push reminders use Eastern Time.
+              (Monday–Sunday). On the web, background push uses your timezone below — Chrome and
+              Firefox on desktop are the most reliable; Safari (Mac and iOS Home Screen) is
+              stricter and may hold alerts until you open the app. The desktop app schedules a
+              native weekly reminder that still fires after you quit Mentell.
             </p>
             <label className="grid gap-1 text-sm">
               <span className="ink-muted text-xs font-medium">Delivery day</span>

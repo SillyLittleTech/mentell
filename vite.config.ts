@@ -13,7 +13,14 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url))
 const base = process.env.VITE_BASE ?? '/'
 const appVersion = readFileSync(path.join(rootDir, 'VERSION'), 'utf8').trim()
 
-const prodPrecacheGlobs = ['**/*.{js,css,html,ico,png,svg,webp,woff2}']
+const prodPrecacheGlobs = [
+  'index.html',
+  'manifest.webmanifest',
+  'manifest.json',
+  'asset/mentell-icon.png',
+  'assets/*.css',
+  'assets/index-*.js',
+]
 
 // https://vite.dev/config/
 export default defineConfig(({ command, mode }) => {
@@ -49,11 +56,13 @@ export default defineConfig(({ command, mode }) => {
               navigateFallback: 'index.html',
             },
             injectManifest: {
-              maximumFileSizeToCacheInBytes: 4_000_000,
-              /** Dev: skip precache so install does not hang on missing assets */
+              maximumFileSizeToCacheInBytes: 2_000_000,
+              /** App shell only — precaching transformers/PNGs/SVGs exceeds iOS SW quota and the worker never activates, so APNs is held until the PWA opens. */
               globPatterns: command === 'serve' ? [] : prodPrecacheGlobs,
+              globIgnores: ['**/transformers-*', '**/node_modules/**'],
             },
             manifest: {
+              id: base,
               name: 'Mentell',
               short_name: 'Mentell',
               description: 'Local-first stationery journal',
@@ -61,6 +70,8 @@ export default defineConfig(({ command, mode }) => {
               background_color: '#505153',
               display: 'standalone',
               start_url: base,
+              scope: base,
+              prefer_related_applications: false,
               icons: [
                 {
                   src: 'asset/mentell-icon.png',
