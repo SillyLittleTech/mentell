@@ -18,7 +18,7 @@ export async function handleEmailSubscribe(request: Request, env: Env) {
     return corsJson({ error: 'Invalid JSON' }, 400, env, origin)
   }
 
-  if (!body.email || body.email.length > 254 || body.email.indexOf('@') < 1 || body.email.indexOf('@') !== body.email.lastIndexOf('@')) {
+  if (!body.email || body.email.length > 254 || body.email.indexOf('@') < 1 || body.email.indexOf('@') !== body.email.lastIndexOf('@') || body.email.indexOf('.') < body.email.indexOf('@') + 2) {
     return corsJson({ error: 'Valid email required' }, 400, env, origin)
   }
 
