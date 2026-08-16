@@ -93,27 +93,33 @@ function GreetingLetter({
     let hopTimer: number
     let glowTimer: number
 
-    // Clear active state momentarily to force animation restart
-    setActiveWave(null)
 
-    window.requestAnimationFrame(() => {
-      if (waveGen.current !== gen) return
-
-      if (reduced) {
+    if (reduced) {
+      setActiveWave(null)
+      window.requestAnimationFrame(() => {
+        if (waveGen.current !== gen) return
         setActiveWave(latest)
         glowTimer = window.setTimeout(() => {
           if (waveGen.current === gen) setActiveWave(null)
         }, 2500)
-      } else {
-        hopTimer = window.setTimeout(() => {
-          if (waveGen.current === gen) setActiveWave(latest)
-        }, token.letterIndex * STAGGER_MS)
+      })
+    } else {
+      hopTimer = window.setTimeout(() => {
+        if (waveGen.current !== gen) return
 
-        glowTimer = window.setTimeout(() => {
-          if (waveGen.current === gen) setActiveWave(null)
-        }, token.letterIndex * STAGGER_MS + 2500)
-      }
-    })
+        // Clear active state momentarily to force animation restart, but only once the stagger time has been reached
+        setActiveWave(null)
+
+        window.requestAnimationFrame(() => {
+          if (waveGen.current !== gen) return
+          setActiveWave(latest)
+        })
+      }, token.letterIndex * STAGGER_MS)
+
+      glowTimer = window.setTimeout(() => {
+        if (waveGen.current === gen) setActiveWave(null)
+      }, token.letterIndex * STAGGER_MS + 2500)
+    }
 
     return () => {
       window.clearTimeout(hopTimer)
@@ -174,7 +180,7 @@ export function HomeGreeting({
   useEffect(() => {
     if (autoPlay && greeting) replay()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPlay, greeting])
+  }, [autoPlay, greeting?.phrase])
 
   useEffect(() => {
     return () => {
