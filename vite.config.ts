@@ -56,7 +56,7 @@ export default defineConfig(({ command, mode }) => {
               navigateFallback: 'index.html',
             },
             injectManifest: {
-              maximumFileSizeToCacheInBytes: 2_000_000,
+              maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
               /** App shell only — precaching transformers/PNGs/SVGs exceeds iOS SW quota and the worker never activates, so APNs is held until the PWA opens. */
               globPatterns: command === 'serve' ? [] : prodPrecacheGlobs,
               globIgnores: ['**/transformers-*', '**/node_modules/**'],
