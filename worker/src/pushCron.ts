@@ -17,20 +17,23 @@ export async function runPushCron(env: PushEnv) {
   // 1. Process Web Push
   if (env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY) {
     configureWebPush(env.VAPID_PUBLIC_KEY, env.VAPID_PRIVATE_KEY)
+    const sentEndpoints = new Set<string>()
     let pushCursor: string | undefined
     do {
       const list = await env.PUSH_KV.list({ prefix: 'sub:', cursor: pushCursor, limit: 100 })
       for (const key of list.keys) {
-        if (key.name.startsWith('sub:cid:') || key.name.startsWith('sub:')) {
-          const raw = await env.PUSH_KV.get(key.name)
-          if (!raw) continue
-          let sub: PushSubscriber
-          try {
-            sub = JSON.parse(raw) as PushSubscriber
-          } catch {
-            continue
-          }
-          await maybeNotifySubscriber(env, sub, now, key.name)
+        const raw = await env.PUSH_KV.get(key.name)
+        if (!raw) continue
+        let sub: PushSubscriber
+        try {
+          sub = JSON.parse(raw) as PushSubscriber
+        } catch {
+          continue
+        }
+        try {
+          await maybeNotifySubscriber(env, sub, now, key.name, sentEndpoints)
+        } catch (err) {
+          console.error('Failed to process push sub', key.name, err)
         }
       }
       pushCursor = list.list_complete ? undefined : list.cursor
@@ -60,11 +63,13 @@ async function maybeNotifySubscriber(
   sub: PushSubscriber,
   now: Date,
   kvKey: string,
+  sentEndpoints: Set<string>,
 ) {
   if (sub.disableNotifications) return
+  if (!sub.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) return
+  if (sentEndpoints.has(sub.endpoint)) return
 
-  const syncUser = Boolean(sub.uid && env.FIREBASE_SERVICE_ACCOUNT_JSON)
-  const tz = syncUser ? sub.timezone : GENERIC_PUSH_TIMEZONE
+  const tz = sub.timezone || GENERIC_PUSH_TIMEZONE
 
   if (!inDeliveryWindow(now, sub.deliveryWeekday, sub.deliveryTimeLocal, tz)) return
 
@@ -75,21 +80,26 @@ async function maybeNotifySubscriber(
   const title = 'Mentell'
   let body = 'Your weekly reflection package may be ready - open Mentell to check.'
 
+  const syncUser = Boolean(sub.uid && env.FIREBASE_SERVICE_ACCOUNT_JSON)
   if (syncUser && sub.uid && env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    const hasEntries = await firestoreHasEntriesInRange(
-      env.FIREBASE_SERVICE_ACCOUNT_JSON,
-      sub.uid,
-      startKey,
-      endKey,
-    )
-    if (!hasEntries) return
-    const hasPackage = await firestoreHasWeeklyPackage(
-      env.FIREBASE_SERVICE_ACCOUNT_JSON,
-      sub.uid,
-      weekKey,
-    )
-    if (hasPackage) return
-    body = `Your package for ${weekKey} is ready - tap to open your week.`
+    try {
+      const hasEntries = await firestoreHasEntriesInRange(
+        env.FIREBASE_SERVICE_ACCOUNT_JSON,
+        sub.uid,
+        startKey,
+        endKey,
+      )
+      if (!hasEntries) return
+      const hasPackage = await firestoreHasWeeklyPackage(
+        env.FIREBASE_SERVICE_ACCOUNT_JSON,
+        sub.uid,
+        weekKey,
+      )
+      if (hasPackage) return
+      body = `Your package for ${weekKey} is ready - tap to open your week.`
+    } catch (err) {
+      console.error('Firestore check failed; sending generic push', kvKey, err)
+    }
   }
 
   try {
@@ -97,12 +107,15 @@ async function maybeNotifySubscriber(
       { endpoint: sub.endpoint, keys: sub.keys },
       { title, body },
     )
+    sentEndpoints.add(sub.endpoint)
     await env.PUSH_KV.put(dedupeKey, String(Date.now()), { expirationTtl: SENT_TTL_SECONDS })
   } catch (err: unknown) {
     const status = err && typeof err === 'object' && 'statusCode' in err ? Number((err as { statusCode: number }).statusCode) : 0
     if (status === 404 || status === 410) {
       await env.PUSH_KV.delete(kvKey)
       await env.PUSH_KV.delete(`ep:${await hashEndpoint(sub.endpoint)}`)
+    } else {
+      console.error('Web push send failed', kvKey, err)
     }
   }
 }

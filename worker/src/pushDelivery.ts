@@ -23,31 +23,40 @@ export function localTimeParts(now: Date, timeZone: string) {
   const fmt = new Intl.DateTimeFormat('en-US', {
     timeZone,
     weekday: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
+    hour: 'numeric',
+    minute: 'numeric',
+    hourCycle: 'h23',
   })
   const parts = Object.fromEntries(fmt.formatToParts(now).map((p) => [p.type, p.value]))
-  const weekday = WEEKDAY_SHORT[parts.weekday ?? ''] ?? 0
-  const hour = Number(parts.hour ?? 0)
+  const weekday = WEEKDAY_SHORT[(parts.weekday ?? '').replace(/\.$/, '')] ?? 0
+  let hour = Number(parts.hour ?? 0)
+  if (hour === 24) hour = 0
   const minute = Number(parts.minute ?? 0)
   return { weekday, hour, minute }
 }
 
+/**
+ * True from the configured local weekday+time until the next weekly slot.
+ * Cron is every 15 minutes and can jitter past a tight window; weekly KV
+ * dedupe prevents double-sends, so a full-week window is safe and required
+ * for background delivery while the app is closed.
+ */
 export function inDeliveryWindow(
   now: Date,
   deliveryWeekday: number,
   deliveryTimeLocal: string,
   timeZone: string,
-  windowMinutes = 15,
+  windowMinutes = 7 * 24 * 60,
 ) {
   const { weekday, hour, minute } = localTimeParts(now, timeZone)
-  if (weekday !== deliveryWeekday) return false
   const m = deliveryTimeLocal.match(/^(\d{1,2}):(\d{2})$/)
   if (!m) return false
   const startMins = Number(m[1]) * 60 + Number(m[2])
   const nowMins = hour * 60 + minute
-  return nowMins >= startMins && nowMins < startMins + windowMinutes
+  const daysAgo = (weekday - deliveryWeekday + 7) % 7
+  const elapsed = daysAgo * 24 * 60 + (nowMins - startMins)
+  if (elapsed < 0) return false
+  return elapsed < windowMinutes
 }
 
 export function lastCompletedWeekRange(now: Date, timeZone: string) {
