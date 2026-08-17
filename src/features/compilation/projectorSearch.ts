@@ -1,6 +1,7 @@
 import type { EntryRow } from '../../db/schema'
 import { getDb } from '../../db/schema'
-import { isAiEnabledLocally } from '../../shared/settings/appSettings'
+import { isAiEnabledLocally, loadAppSettings } from '../../shared/settings/appSettings'
+import { customProjectorSearchAnalytical, customProjectorSearchChat } from '../../lib/aiClient'
 import { scopedStorageKey } from '../../shared/storage/storageScope'
 import { getSkipSearchRateLimit } from '../../shared/debug/debugFlags'
 import { normalizeEndpointUrl } from './weeklyAiSummary'
@@ -61,11 +62,26 @@ function normalizeEnvToken(raw: string | undefined) {
 }
 
 export function projectorSearchEnabled() {
+  const settings = loadAppSettings()
+  if (settings.aiProvider === 'custom') {
+    return isAiEnabledLocally() && settings.aiBaseUrl.trim().length > 0
+  }
   return (
     isAiEnabledLocally() &&
     import.meta.env.VITE_ENABLE_PROJECTOR_AI_SEARCH === '1' &&
     typeof import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT === 'string' &&
     import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT.length > 0
+  )
+}
+
+function localMatchEntries(entries: ProjectorSearchEntry[], query: string) {
+  const q = query.toLowerCase()
+  return entries.filter(
+    (e) =>
+      e.situation?.toLowerCase().includes(q) ||
+      e.details?.toLowerCase().includes(q) ||
+      e.behavioursNoted?.toLowerCase().includes(q) ||
+      e.reoccurringTheme?.toLowerCase().includes(q),
   )
 }
 
@@ -184,6 +200,47 @@ export async function requestProjectorSearch(options: {
     const allowance = consumeRateAllowance(Date.now())
     if (!allowance.ok) {
       return { type: 'error', message: allowance.reason }
+    }
+  }
+
+  const settings = loadAppSettings()
+
+  if (settings.aiProvider === 'custom') {
+    if (options.mode === 'index') {
+      return { type: 'entries', entryIds: [], entries: [], indexStatus: 'idle' }
+    }
+
+    if (options.mode === 'chat' || options.mode === 'search') {
+      try {
+        const wantsAnalytical = options.mode === 'search' || /analyze|summary|count/i.test(options.query)
+        const matched = localMatchEntries(entries, options.query)
+
+        if (wantsAnalytical && matched.length > 0) {
+          const preamble = await customProjectorSearchAnalytical(options.query, matched)
+          return {
+            type: 'entries',
+            entryIds: matched.map(e => e.id),
+            entries: matched,
+            preamble,
+            indexStatus: 'skipped'
+          }
+        }
+
+        const contextEntries = matched.length > 0 ? matched : entries.slice(0, 40)
+        const answer = await customProjectorSearchChat(options.query, options.messages, contextEntries, options.mode === 'chat')
+
+        return {
+          type: 'answer',
+          text: answer,
+          indexStatus: 'skipped'
+        }
+      } catch (err) {
+        return {
+          type: 'error',
+          message: err instanceof Error ? err.message : 'Custom AI Search Failed',
+          indexStatus: 'skipped'
+        }
+      }
     }
   }
 

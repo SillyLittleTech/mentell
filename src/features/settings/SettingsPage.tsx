@@ -10,6 +10,7 @@ import { AccountSyncSection } from './AccountSyncSection'
 import { SettingsAccountFeatures } from './SettingsAccountFeatures'
 import { SettingsEmailSection } from './SettingsEmailSection'
 import { SettingsDebugCloudSection } from './SettingsDebugCloudSection'
+import { SettingsCustomAiSection } from './SettingsCustomAiSection'
 import { DeskCharacterLayout } from '../character/DeskCharacterLayout'
 import { pushLocalChangesNow } from '../../shared/sync/syncService'
 import { isAuthDebugPanelEnabled } from '../../shared/features/featureFlags'
@@ -96,6 +97,8 @@ export function SettingsPage() {
           />
         </label>
       </section>
+
+      <SettingsCustomAiSection />
 
       <section className="paper rounded-3xl p-6">
         <div className="font-paper text-xl">Features</div>
