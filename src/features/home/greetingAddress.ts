@@ -9,7 +9,6 @@ export type GreetingTemplate = {
   text: string
   timeOfDay?: GreetingTimeOfDay
   context?: string
-  short?: boolean
 }
 
 /** Global / AI name wins. New or week-old journals use anon nicknames; established (or signed-in with history) use friendly nicknames. */
@@ -42,26 +41,16 @@ export function eligibleGreetings(
   greetings: GreetingTemplate[],
   timeOfDay: GreetingTimeOfDay,
   context?: string,
-  isMobile?: boolean,
 ): GreetingTemplate[] {
-  let pool = greetings
-
-  if (isMobile) {
-    const shortPool = pool.filter((g) => g.short)
-    if (shortPool.length > 0) pool = shortPool
-  }
-
   if (context) {
-    const contextMatches = pool.filter((g) => g.context === context)
+    const contextMatches = greetings.filter((g) => g.context === context)
     if (contextMatches.length > 0) return contextMatches
-    // If no context matches in the filtered pool, but there were some originally, we might fall back,
-    // but typically we should stick to the pool to respect the mobile constraint.
   }
 
-  const matching = pool.filter(
+  const matching = greetings.filter(
     (greeting) => !greeting.context && (!greeting.timeOfDay || greeting.timeOfDay === timeOfDay),
   )
-  return matching.length > 0 ? matching : pool.filter((g) => !g.context)
+  return matching.length > 0 ? matching : greetings.filter(g => !g.context)
 }
 
 export function pickRandomItem<T>(items: readonly T[], random = Math.random): T {

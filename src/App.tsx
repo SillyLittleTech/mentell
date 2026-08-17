@@ -353,7 +353,7 @@ function TopBar({
               />
               <div className="min-w-0">
                 <div className="font-paper text-2xl tracking-tight truncate">
-                  Mentell
+                  <HomeGreeting variant="mobile" fallback="Mentell" context={pageContext} autoPlay={onHome} />
                 </div>
                 <div className="ink-muted text-sm truncate">local-first stationery journal</div>
               </div>
@@ -589,14 +589,7 @@ function ShopPlaceholder({
 function ArchivePlaceholder() {
   return (
     <PaperSection
-      title={
-        <>
-          <span className="hidden md:inline">Archive</span>
-          <span className="md:hidden">
-            <HomeGreeting variant="mobile" fallback="Archive" context="archive" />
-          </span>
-        </>
-      }
+      title="Archive"
       subtitle="Past packages (weekly/monthly/yearly) will show up here."
     >
       <div className="ink-muted rounded-2xl border border-[var(--paper-border)] p-4">
