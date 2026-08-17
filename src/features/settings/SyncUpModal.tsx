@@ -139,7 +139,7 @@ export function SyncUpModal({ open, onClose }: { open: boolean; onClose: () => v
               {tab === 'scan' ? (
                 <div className="overflow-hidden rounded-2xl">
                   <Scanner
-                    onScan={(result: any) => {
+                    onScan={(result: Array<{ rawValue: string }>) => {
                       if (result && result.length > 0) {
                         void handleCode(result[0].rawValue)
                       }

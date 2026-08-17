@@ -51,6 +51,7 @@ export function SharingPanel() {
   const [displayName, setDisplayName] = useState('')
   const [hours, setHours] = useState(24 * 7)
   const [persistentShare, setPersistentShare] = useState(false)
+  const [offlineCrypt, setOfflineCrypt] = useState(false)
   const [viewerCode, setViewerCode] = useState('')
   const [permissions, setPermissions] = useState<SharePermissions>(SHARE_PRESETS.family)
   const [lastCreatedUrl, setLastCreatedUrl] = useState<string | null>(null)
@@ -79,35 +80,78 @@ export function SharingPanel() {
 
   if (!enabled || !auth) return null
 
-  if (!uid) {
+  if (!uid && !offlineCrypt) {
     return (
       <section className="paper rounded-3xl p-6">
         <div className="font-paper text-xl">Sharing</div>
-        <p className="ink-muted mt-2 text-sm">
-          Sign in under Settings &gt; Account to create share links.
+        <div className="mt-4 grid gap-3">
+          <label className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-3 text-sm">
+            <span>
+              Offline / Crypt Share (Zero-Knowledge)
+              <div className="ink-muted text-xs">
+                Generates an encrypted link/QR without saving any data on the server.
+              </div>
+            </span>
+            <input
+              type="checkbox"
+              checked={offlineCrypt}
+              onChange={(e) => {
+                setOfflineCrypt(e.target.checked)
+                if (e.target.checked) {
+                  setPersistentShare(false)
+                }
+              }}
+            />
+          </label>
+        </div>
+        <p className="ink-muted mt-4 text-sm">
+          Sign in under Settings &gt; Account to create online share links.
         </p>
       </section>
     )
   }
 
-  if (!auth.syncEnabled) {
+  if (!auth.syncEnabled && !offlineCrypt) {
     return (
       <section className="paper rounded-3xl p-6">
         <div className="font-paper text-xl">Sharing</div>
-        <p className="ink-muted mt-2 text-sm">
-          Cloud sync is off. Enable it in Settings &gt; Features, or sign in again.
+        <div className="mt-4 grid gap-3">
+          <label className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-3 text-sm">
+            <span>
+              Offline / Crypt Share (Zero-Knowledge)
+              <div className="ink-muted text-xs">
+                Generates an encrypted link/QR without saving any data on the server.
+              </div>
+            </span>
+            <input
+              type="checkbox"
+              checked={offlineCrypt}
+              onChange={(e) => {
+                setOfflineCrypt(e.target.checked)
+                if (e.target.checked) {
+                  setPersistentShare(false)
+                }
+              }}
+            />
+          </label>
+        </div>
+        <p className="ink-muted mt-4 text-sm">
+          Cloud sync is off. Enable it in Settings &gt; Features, or sign in again to create online share links.
         </p>
       </section>
     )
   }
 
   async function handleCreate() {
-    if (!uid) return
+    if (!offlineCrypt && (!uid || !auth.syncEnabled)) {
+        setError('Must be signed in with sync enabled to create online share links.')
+        return
+    }
     setBusy(true)
     setError(null)
     try {
       const record = await createShareLink({
-        uid,
+        uid: uid || '',
         preset,
         permissions,
         label: label.trim() || 'Shared view',
@@ -368,7 +412,7 @@ export function SharingPanel() {
                   <button
                     type="button"
                     className="focus-ring rounded-xl border border-[var(--paper-border)] px-2 py-1 text-xs"
-                    onClick={() => void revokeShareLink(uid, l.code).then(refreshLinks)}
+                    onClick={() => void revokeShareLink(uid!, l.code).then(refreshLinks)}
                   >
                     Revoke
                   </button>
