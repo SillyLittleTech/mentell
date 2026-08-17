@@ -6,7 +6,7 @@ import { LOCAL_DATA_CHANGED_EVENT } from '../../shared/sync/localDataEvents'
 import { resolveHomeGreeting, type ResolvedHomeGreeting } from './resolveHomeGreeting'
 import { getOldestUserContentAt } from './userContentAge'
 
-export function useHomeGreeting(context?: string, isMobile?: boolean): ResolvedHomeGreeting | null {
+export function useHomeGreeting(context?: string): ResolvedHomeGreeting | null {
   const { settings } = useAppSettings()
   const auth = useAuthOptional()
   const [oldestContentAt, setOldestContentAt] = useState<number | null | undefined>(
@@ -37,6 +37,5 @@ export function useHomeGreeting(context?: string, isMobile?: boolean): ResolvedH
     displayName,
     isLoggedIn: Boolean(auth?.user),
     oldestContentAt: oldestContentAt ?? null,
-    isMobile,
   })
 }

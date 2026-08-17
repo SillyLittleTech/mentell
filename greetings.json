@@ -3,85 +3,69 @@
     {
       "id": "good-morning",
       "text": "Good morning {name}",
-      "timeOfDay": "morning",
-      "short": true
+      "timeOfDay": "morning"
     },
     {
       "id": "good-afternoon",
       "text": "Good afternoon {name}",
-      "timeOfDay": "afternoon",
-      "short": true
+      "timeOfDay": "afternoon"
     },
     {
       "id": "good-evening",
       "text": "Good evening {name}",
-      "timeOfDay": "evening",
-      "short": true
+      "timeOfDay": "evening"
     },
     {
       "id": "greetings",
-      "text": "Greetings {name}",
-      "short": true
+      "text": "Greetings {name}"
     },
     {
       "id": "hello",
-      "text": "Hello {name}",
-      "short": true
+      "text": "Hello {name}"
     },
     {
       "id": "hey-there",
-      "text": "Hey there {name}",
-      "short": true
+      "text": "Hey there {name}"
     },
     {
       "id": "hi",
-      "text": "Hi {name}",
-      "short": true
+      "text": "Hi {name}"
     },
     {
       "id": "welcome-back",
-      "text": "Welcome back {name}",
-      "short": true
+      "text": "Welcome back {name}"
     },
     {
       "id": "good-to-see-you",
-      "text": "Good to see you {name}",
-      "short": true
+      "text": "Good to see you {name}"
     },
     {
       "id": "hello-again",
-      "text": "Hello again {name}",
-      "short": true
+      "text": "Hello again {name}"
     },
     {
       "id": "howdy",
-      "text": "Howdy {name}",
-      "short": true
+      "text": "Howdy {name}"
     },
     {
       "id": "salutations",
-      "text": "Salutations {name}",
-      "short": true
+      "text": "Salutations {name}"
     },
     {
       "id": "ahoy",
-      "text": "Ahoy {name}",
-      "short": true
+      "text": "Ahoy {name}"
     },
     {
       "id": "whats-new",
-      "text": "What's new, {name}",
-      "short": true
+      "text": "What's new, {name}"
     },
     {
       "id": "warm-hello",
-      "text": "A warm hello, {name}",
-      "short": true
+      "text": "A warm hello, {name}"
     },
     {
       "id": "lovely-day",
-      "text": "Lovely day, {name}",
-      "short": true
+      "text": "Lovely day, {name}"
     },
     {
       "id": "shop-goodies-await",
@@ -91,14 +75,12 @@
     {
       "id": "shop-welcome",
       "text": "Welcome to the Shoppe, {name}",
-      "context": "shop",
-      "short": true
+      "context": "shop"
     },
     {
       "id": "shop-spending-time",
       "text": "Time to treat yourself, {name}",
-      "context": "shop",
-      "short": true
+      "context": "shop"
     },
     {
       "id": "shop-find-something-nice",
@@ -123,8 +105,7 @@
     {
       "id": "settings-preferences",
       "text": "Your space, your rules, {name}",
-      "context": "settings",
-      "short": true
+      "context": "settings"
     },
     {
       "id": "verify-initiation",
@@ -134,8 +115,7 @@
     {
       "id": "verify-secure",
       "text": "Keeping things secure, {name}",
-      "context": "verify",
-      "short": true
+      "context": "verify"
     },
     {
       "id": "verify-identity",
@@ -150,20 +130,17 @@
     {
       "id": "week-looking-back",
       "text": "Looking back on it all, {name}",
-      "context": "week",
-      "short": true
+      "context": "week"
     },
     {
       "id": "week-summary",
       "text": "Your week in review, {name}",
-      "context": "week",
-      "short": true
+      "context": "week"
     },
     {
       "id": "week-memories",
       "text": "Let's revisit the week, {name}",
-      "context": "week",
-      "short": true
+      "context": "week"
     },
     {
       "id": "notes-jotting",
@@ -173,8 +150,7 @@
     {
       "id": "notes-capturing",
       "text": "Capturing the moment, {name}",
-      "context": "notes",
-      "short": true
+      "context": "notes"
     },
     {
       "id": "notes-brainstorming",
@@ -184,8 +160,7 @@
     {
       "id": "notes-scribbles",
       "text": "Ready to scribble, {name}?",
-      "context": "notes",
-      "short": true
+      "context": "notes"
     },
     {
       "id": "archive-dusting-off",
@@ -200,14 +175,12 @@
     {
       "id": "archive-history",
       "text": "Looking into the past, {name}",
-      "context": "archive",
-      "short": true
+      "context": "archive"
     },
     {
       "id": "archive-treasures",
       "text": "Unearthed treasures, {name}",
-      "context": "archive",
-      "short": true
+      "context": "archive"
     }
   ],
   "nicknames": [

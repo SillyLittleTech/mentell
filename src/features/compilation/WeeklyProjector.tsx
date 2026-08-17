@@ -34,7 +34,6 @@ import {
   fetchEntriesForRange,
   type RawReportRange,
 } from './weeklyReportExport'
-import { HomeGreeting } from '../home/HomeGreeting'
 import {
   ProjectorEntryDetail,
   ProjectorEntrySlide,
@@ -254,12 +253,7 @@ export function WeeklyProjector() {
       <div className="paper rounded-3xl p-6">
         <div className="flex flex-wrap items-baseline justify-between gap-4">
           <div>
-            <div className="font-paper text-2xl">
-              <span className="hidden md:inline">Weekly compilation</span>
-              <span className="md:hidden">
-                <HomeGreeting variant="mobile" fallback="Weekly compilation" context="week" />
-              </span>
-            </div>
+            <div className="font-paper text-2xl">Weekly compilation</div>
             <div className="ink-muted mt-1 text-sm">
               {stats.weekKey} ({stats.startDateKey || '—'} → {stats.endDateKey || '—'})
             </div>
