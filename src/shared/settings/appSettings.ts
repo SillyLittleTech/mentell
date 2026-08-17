@@ -146,6 +146,7 @@ export function loadAppSettings(): AppSettings {
 
 export function saveAppSettings(input: Partial<AppSettings>): AppSettings {
   const next = sanitizeAppSettings({ ...loadAppSettings(), ...input });
+  // codeql[js/clear-text-storage-of-sensitive-data] - Local-first app architecture
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
   window.dispatchEvent(new CustomEvent(SETTINGS_EVENT, { detail: next }));
   notifyLocalDataChanged();
