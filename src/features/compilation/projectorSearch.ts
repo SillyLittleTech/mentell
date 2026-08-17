@@ -237,7 +237,7 @@ export async function requestProjectorSearch(options: {
       } catch (err) {
         return {
           type: 'error',
-          message: err instanceof Error ? err.message : 'Custom AI Search Failed',
+          message: err instanceof Error ? err.message : 'EX201: Custom AI search failed.',
           indexStatus: 'skipped'
         }
       }

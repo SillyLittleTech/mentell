@@ -46,7 +46,7 @@ export async function runCustomAi(messages: ChatMessage[]): Promise<string> {
       const errBody = await response.json() as { error?: { message?: string } }
       detail = errBody.error?.message || ''
     } catch { /* */ }
-    throw new Error(`Custom AI error (${response.status}): ${detail}`)
+    throw new Error(`EX201: Custom AI error (${response.status})${detail ? `: ${detail}` : ''}`)
   }
 
   const body = await response.json()
