@@ -28,8 +28,8 @@ export type ResolvedHomeGreeting = {
 
 let memoryPicks: Record<string, StoredGreetingPick> = {}
 
-function readStoredPick(context?: string): StoredGreetingPick | null {
-  const key = context ?? 'default';
+function readStoredPick(context?: string, isMobile?: boolean): StoredGreetingPick | null {
+  const key = (context ?? 'default') + (isMobile ? '-mobile' : '');
   if (memoryPicks[key]) return memoryPicks[key];
   try {
     const raw = sessionStorage.getItem(scopedStorageKey(`mentell.home-greeting.${key}`))
@@ -50,8 +50,8 @@ function readStoredPick(context?: string): StoredGreetingPick | null {
   }
 }
 
-function writeStoredPick(pick: StoredGreetingPick, context?: string) {
-  const key = context ?? 'default'
+function writeStoredPick(pick: StoredGreetingPick, context?: string, isMobile?: boolean) {
+  const key = (context ?? 'default') + (isMobile ? '-mobile' : '')
   memoryPicks[key] = pick
   try {
     sessionStorage.setItem(scopedStorageKey(`mentell.home-greeting.${key}`), JSON.stringify(pick))
@@ -70,11 +70,12 @@ export function resolveHomeGreeting(input: {
   isLoggedIn: boolean
   oldestContentAt: number | null
   now?: Date
+  isMobile?: boolean
 }): ResolvedHomeGreeting {
   const now = input.now ?? new Date()
   const dateKey = dateKeyForLocalDay(now)
   const timeOfDay = timeOfDayAt(now)
-  const pool = eligibleGreetings(greetingsCatalog.greetings, timeOfDay, input.context)
+  const pool = eligibleGreetings(greetingsCatalog.greetings, timeOfDay, input.context, input.isMobile)
   const kind = resolveGreetingAddresseeKind({
     displayName: input.displayName,
     isLoggedIn: input.isLoggedIn,
@@ -82,7 +83,7 @@ export function resolveHomeGreeting(input: {
     now: now.getTime(),
   })
 
-  let stored = readStoredPick(input.context)
+  let stored = readStoredPick(input.context, input.isMobile)
   if (!stored || stored.dateKey !== dateKey) {
     stored = {
       dateKey,
@@ -90,10 +91,10 @@ export function resolveHomeGreeting(input: {
       nickname: pickRandomItem(greetingsCatalog.nicknames),
       anonNickname: pickRandomItem(greetingsCatalog.anonNicknames),
     }
-    writeStoredPick(stored, input.context)
+    writeStoredPick(stored, input.context, input.isMobile)
   } else if (!templateById(stored.greetingId, pool)) {
     stored = { ...stored, greetingId: pickRandomItem(pool).id }
-    writeStoredPick(stored, input.context)
+    writeStoredPick(stored, input.context, input.isMobile)
   }
 
   const template = templateById(stored.greetingId, pool) ?? pool[0]!
