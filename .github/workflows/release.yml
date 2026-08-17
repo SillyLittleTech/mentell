@@ -324,7 +324,7 @@ jobs:
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: ./artifacts
         if: needs.check-changes.outputs.app == 'true'
