@@ -118,7 +118,7 @@ jobs:
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Upload Android APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mentell-android
           path: android/app/build/outputs/apk/debug/app-debug.apk
@@ -159,7 +159,7 @@ jobs:
         if: needs.check-changes.outputs.app == 'true'
 
       - name: Upload Web Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mentell-web
           path: mentell-web.zip
@@ -280,7 +280,7 @@ jobs:
 
       - name: Upload Tauri Artifacts (macOS)
         if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'macos-latest')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mentell-macos
           path: |
@@ -289,7 +289,7 @@ jobs:
 
       - name: Upload Tauri Artifacts (Linux)
         if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'ubuntu-22.04')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mentell-linux
           path: |
@@ -298,7 +298,7 @@ jobs:
 
       - name: Upload Tauri Artifacts (Windows)
         if: needs.check-changes.outputs.app == 'true' && (matrix.platform == 'windows-latest')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mentell-windows
           path: |
