@@ -1,23 +1,31 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { NoteTag, NoteRow } from '../../db/schema'
-import { addNote, deleteNote, listNotes } from './notesService'
+import { useEffect, useMemo, useState } from "react";
+import type { NoteTag, NoteRow } from "../../db/schema";
+import { addNote, deleteNote, listNotes } from "./notesService";
+import { HomeGreeting } from "../home/HomeGreeting";
 
 export function Notepad() {
-  const [notes, setNotes] = useState<NoteRow[]>([])
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
-  const [tag, setTag] = useState<NoteTag>('self')
+  const [notes, setNotes] = useState<NoteRow[]>([]);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [tag, setTag] = useState<NoteTag>("self");
 
   useEffect(() => {
-    listNotes().then(setNotes)
-  }, [])
+    listNotes().then(setNotes);
+  }, []);
 
-  const canSave = useMemo(() => title.trim() || body.trim(), [body, title])
+  const canSave = useMemo(() => title.trim() || body.trim(), [body, title]);
 
   return (
     <section className="paper rounded-3xl p-6">
-      <div className="font-paper text-2xl">Notepad</div>
-      <div className="ink-muted mt-1 text-sm">Notes to self, a therapist, or anyone — stored locally.</div>
+      <div className="font-paper text-2xl">
+        <span className="hidden md:inline">Notepad</span>
+        <span className="md:hidden">
+          <HomeGreeting variant="mobile" fallback="Notepad" context="notes" />
+        </span>
+      </div>
+      <div className="ink-muted mt-1 text-sm">
+        Notes to self, a therapist, or anyone — stored locally.
+      </div>
 
       <div className="mt-5 grid gap-3">
         <div className="grid gap-2 md:grid-cols-[1fr_180px]">
@@ -48,12 +56,16 @@ export function Notepad() {
             type="button"
             className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-medium"
             onClick={async () => {
-              if (!canSave) return
-              const row = await addNote({ title: title.trim() || 'Untitled', body: body.trim(), tag })
-              setNotes((n) => [row, ...n])
-              setTitle('')
-              setBody('')
-              setTag('self')
+              if (!canSave) return;
+              const row = await addNote({
+                title: title.trim() || "Untitled",
+                body: body.trim(),
+                tag,
+              });
+              setNotes((n) => [row, ...n]);
+              setTitle("");
+              setBody("");
+              setTag("self");
             }}
           >
             Save note
@@ -68,7 +80,10 @@ export function Notepad() {
           </div>
         ) : (
           notes.map((n) => (
-            <article key={n.id} className="rounded-3xl border border-[var(--paper-border)] p-5">
+            <article
+              key={n.id}
+              className="rounded-3xl border border-[var(--paper-border)] p-5"
+            >
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="font-paper text-xl">{n.title}</div>
@@ -78,19 +93,20 @@ export function Notepad() {
                   type="button"
                   className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
                   onClick={async () => {
-                    await deleteNote(n.id)
-                    setNotes((all) => all.filter((x) => x.id !== n.id))
+                    await deleteNote(n.id);
+                    setNotes((all) => all.filter((x) => x.id !== n.id));
                   }}
                 >
                   Delete
                 </button>
               </div>
-              <div className="mt-4 whitespace-pre-wrap font-paper text-lg leading-relaxed">{n.body || '—'}</div>
+              <div className="mt-4 whitespace-pre-wrap font-paper text-lg leading-relaxed">
+                {n.body || "—"}
+              </div>
             </article>
           ))
         )}
       </div>
     </section>
-  )
+  );
 }
-

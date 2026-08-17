@@ -216,7 +216,7 @@ export function HomeGreeting({
   autoPlay?: boolean
   context?: string
 }) {
-  const greeting = useHomeGreeting(context)
+  const greeting = useHomeGreeting(context, variant === 'mobile')
   const rippleListeners = useRef(new Set<() => void>())
   const [sparkNonce, setSparkNonce] = useState(0)
   const sparkTimer = useRef<number | null>(null)
