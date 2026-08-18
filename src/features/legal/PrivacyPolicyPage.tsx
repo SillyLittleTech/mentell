@@ -139,6 +139,18 @@ export function PrivacyPolicyPage() {
         </section>
       )}
 
+      <section className="paper rounded-3xl p-6">
+        <h2 className="font-paper text-xl">Offline device sync and crypt shares</h2>
+        <p className="ink-muted mt-3 text-sm leading-relaxed">
+          Mentell can package a local journal snapshot on your device with in-browser encryption
+          (AES-GCM) and show it as a QR code, copyable crypto code, or{' '}
+          <code className="font-mono text-xs">/share/cryptl</code> link. These payloads are not
+          uploaded to Mentell or cloud backup. Anyone you give the code or link to can decrypt the
+          snapshot on their device. Treat them like passwords, and use the expiry option on crypt
+          shares when you do not want a lasting copy.
+        </p>
+      </section>
+
       {weeklyAiOn ? (
         <section className="paper rounded-3xl p-6">
           <h2 className="font-paper text-xl">Weekly AI summaries (optional)</h2>

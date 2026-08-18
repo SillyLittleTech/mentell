@@ -21,6 +21,31 @@ export type OfflineSyncData = {
   settings: AppSettings
 }
 
+export function isOfflineSyncData(
+  data: OfflineSyncPayload['data'],
+): data is OfflineSyncData {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'notes' in data &&
+    'packages' in data &&
+    'stickies' in data &&
+    'settings' in data
+  )
+}
+
+export function isShareDashboardPayload(
+  data: OfflineSyncPayload['data'],
+): data is ShareDashboardPayload {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'generatedAt' in data &&
+    'entryCount' in data &&
+    'entries' in data
+  )
+}
+
 const textEncoder = new TextEncoder()
 const textDecoder = new TextDecoder()
 

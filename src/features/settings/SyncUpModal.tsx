@@ -1,59 +1,51 @@
 import { useState, useEffect } from 'react'
-import { Scanner } from '@yudiel/react-qr-scanner'
-import { decryptOfflineSyncPayload, type OfflineSyncPayload, type OfflineSyncData } from '../sync/cryptSync'
-import { mergeOfflineSyncData } from '../sync/syncMerge'
-import { format } from 'date-fns'
-import type { ShareDashboardPayload } from '../share/shareTypes'
+import {
+  decryptOfflineSyncPayload,
+  isOfflineSyncData,
+  isShareDashboardPayload,
+  type OfflineSyncPayload,
+} from '../sync/cryptSync'
+import { mergeOfflineSyncData, replaceOfflineSyncData } from '../sync/syncMerge'
+import { buildCryptShareUrl, parseCryptCode } from '../sync/cryptCode'
+import { CryptCodeEntry } from '../sync/CryptCodeEntry'
+import { OfflineSyncImportConfirm } from '../sync/OfflineSyncImportConfirm'
+import { useToast } from '../../shared/ui/useToast'
 
 export function SyncUpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [tab, setTab] = useState<'scan' | 'paste'>('scan')
-  const [pastedCode, setPastedCode] = useState('')
+  const { showToast } = useToast()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const [preview, setPreview] = useState<{ payload: OfflineSyncPayload, entryCount: number } | null>(null)
+  const [preview, setPreview] = useState<{
+    payload: OfflineSyncPayload
+    entryCount: number
+    code: string
+  } | null>(null)
 
   useEffect(() => {
     if (!open) {
       const timeoutId = setTimeout(() => {
         setPreview(null)
-        setPastedCode('')
         setError(null)
-      }, 0);
+        setBusy(false)
+      }, 0)
       return () => clearTimeout(timeoutId)
     }
   }, [open])
 
   async function handleCode(code: string) {
-    if (!code) return
+    if (!code.trim()) return
     setBusy(true)
     setError(null)
     try {
-      const params = new URLSearchParams(code)
-      let payloadBase64Url = params.get('payload')
-      let keyBase64Url = params.get('key')
-
-      // Fallback if the user just pasted `#payload=...&key=...`
-      if (!payloadBase64Url && code.includes('payload=')) {
-        const hashParams = new URLSearchParams(code.split('#')[1] || code)
-        payloadBase64Url = hashParams.get('payload')
-        keyBase64Url = hashParams.get('key')
-      }
-
-      if (!payloadBase64Url || !keyBase64Url) {
-        throw new Error('Invalid crypto code format.')
-      }
-
+      const { payloadBase64Url, keyBase64Url } = parseCryptCode(code)
       const payload = await decryptOfflineSyncPayload(payloadBase64Url, keyBase64Url)
-
       let entryCount = 0
-      if ('entries' in payload.data) {
-        entryCount = (payload.data as OfflineSyncData).entries.length
-      } else if ('generatedAt' in payload.data) {
-        entryCount = (payload.data as ShareDashboardPayload).entryCount
+      if (isOfflineSyncData(payload.data)) {
+        entryCount = payload.data.entries.length
+      } else if (isShareDashboardPayload(payload.data)) {
+        entryCount = payload.data.entryCount
       }
-
-      setPreview({ payload, entryCount })
+      setPreview({ payload, entryCount, code })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to decrypt payload')
     } finally {
@@ -61,22 +53,28 @@ export function SyncUpModal({ open, onClose }: { open: boolean; onClose: () => v
     }
   }
 
-  async function handleConfirm() {
-    if (!preview) return
+  async function applyImport(mode: 'merge' | 'replace') {
+    if (!preview || !isOfflineSyncData(preview.payload.data)) return
     setBusy(true)
+    setError(null)
     try {
-      if ('entries' in preview.payload.data) {
-        await mergeOfflineSyncData(preview.payload.data as OfflineSyncData)
-        alert('Data merged successfully!')
-        onClose()
-      } else {
-        setError('This code appears to be a Share link, not a full Device Sync export.')
-      }
+      if (mode === 'replace') await replaceOfflineSyncData(preview.payload.data)
+      else await mergeOfflineSyncData(preview.payload.data)
+      showToast({
+        message: mode === 'replace' ? 'This device now matches the snapshot' : 'Snapshot merged',
+      })
+      onClose()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Merge failed')
+      setError(e instanceof Error ? e.message : mode === 'replace' ? 'Replace failed' : 'Merge failed')
     } finally {
       setBusy(false)
     }
+  }
+
+  function openAsShare() {
+    if (!preview) return
+    const { payloadBase64Url, keyBase64Url } = parseCryptCode(preview.code)
+    window.location.assign(buildCryptShareUrl(payloadBase64Url, keyBase64Url))
   }
 
   if (!open) return null
@@ -84,96 +82,55 @@ export function SyncUpModal({ open, onClose }: { open: boolean; onClose: () => v
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
       <div className="paper w-full max-w-md rounded-3xl p-6 shadow-2xl">
-        <h2 className="font-paper text-2xl">Sync Up (Import)</h2>
+        <h2 className="font-paper text-2xl">Sync up (import)</h2>
 
         {preview ? (
-          <div className="mt-4 space-y-3">
-            <div className="rounded-2xl border border-[var(--paper-border)] p-4 text-sm">
-              <div className="mb-2 font-bold">Import Sync Data?</div>
-              <div className="mb-1"><span className="font-semibold">Source:</span> {preview.payload.sender.displayName || 'Unknown'} {preview.payload.sender.identifier ? `(${preview.payload.sender.identifier})` : ''}</div>
-              <div className="mb-1"><span className="font-semibold">Created:</span> {format(preview.payload.createdAt, 'PPp')}</div>
-              <div className="mb-2"><span className="font-semibold">Payload:</span> Found {preview.entryCount} entries and settings to merge</div>
-              <div className="italic">Are you sure you want to merge this data into your local journal?</div>
+          isShareDashboardPayload(preview.payload.data) ? (
+            <div className="mt-4 space-y-3">
+              <div className="rounded-2xl border border-[var(--paper-border)] p-4 text-sm">
+                <div className="mb-2 font-bold">This is a share snapshot</div>
+                <div className="italic">
+                  Open it as a read-only shared view instead of importing a full journal.
+                </div>
+              </div>
+              {error ? (
+                <div className="text-sm" style={{ color: 'var(--danger)' }}>
+                  {error}
+                </div>
+              ) : null}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold"
+                  onClick={openAsShare}
+                >
+                  Open shared view
+                </button>
+                <button
+                  type="button"
+                  className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm"
+                  onClick={() => setPreview(null)}
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-            {error && <div className="text-sm" style={{ color: 'var(--danger)' }}>{error}</div>}
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold"
-                disabled={busy}
-                onClick={handleConfirm}
-              >
-                Confirm & Merge
-              </button>
-              <button
-                type="button"
-                className="focus-ring w-full rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm"
-                disabled={busy}
-                onClick={() => setPreview(null)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          ) : (
+            <OfflineSyncImportConfirm
+              payload={preview.payload}
+              entryCount={preview.entryCount}
+              busy={busy}
+              error={error}
+              onMerge={() => void applyImport('merge')}
+              onReplace={() => void applyImport('replace')}
+              onCancel={() => setPreview(null)}
+            />
+          )
         ) : (
           <>
-            <div className="mt-4 flex gap-4 border-b border-[var(--paper-border)] pb-2 text-sm font-semibold">
-              <button
-                type="button"
-                className={`px-2 ${tab === 'scan' ? 'border-b-2 border-[var(--accent)] text-[var(--accent)]' : 'opacity-60'}`}
-                onClick={() => setTab('scan')}
-              >
-                Camera Scanner
-              </button>
-              <button
-                type="button"
-                className={`px-2 ${tab === 'paste' ? 'border-b-2 border-[var(--accent)] text-[var(--accent)]' : 'opacity-60'}`}
-                onClick={() => setTab('paste')}
-              >
-                Enter Code
-              </button>
-            </div>
-
-            <div className="mt-4 min-h-[250px]">
-              {tab === 'scan' ? (
-                <div className="overflow-hidden rounded-2xl">
-                  <Scanner
-                    onScan={(result: Array<{ rawValue: string }>) => {
-                      if (result && result.length > 0) {
-                        void handleCode(result[0].rawValue)
-                      }
-                    }}
-                    formats={['qr_code']}
-                  />
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3">
-                  <textarea
-                    className="focus-ring h-32 w-full rounded-2xl border border-[var(--paper-border)] bg-transparent p-3 text-sm font-mono"
-                    placeholder="Paste raw crypto code..."
-                    value={pastedCode}
-                    onChange={(e) => setPastedCode(e.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold disabled:opacity-50"
-                    disabled={!pastedCode.trim() || busy}
-                    onClick={() => void handleCode(pastedCode)}
-                  >
-                    {busy ? 'Decrypting...' : 'Decrypt Code'}
-                  </button>
-                </div>
-              )}
-              {error && <div className="mt-4 text-sm" style={{ color: 'var(--danger)' }}>{error}</div>}
-            </div>
-
+            <CryptCodeEntry busy={busy} error={error} onCode={(code) => void handleCode(code)} />
             <div className="mt-4 flex justify-end gap-3">
-              <button
-                type="button"
-                className="focus-ring rounded-xl px-4 py-2 text-sm"
-                onClick={onClose}
-              >
+              <button type="button" className="focus-ring rounded-xl px-4 py-2 text-sm" onClick={onClose}>
                 Close
               </button>
             </div>
