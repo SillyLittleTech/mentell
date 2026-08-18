@@ -11,6 +11,9 @@ on:
     types:
       - requested
 
+permissions:
+  contents: read
+
 jobs:
   approve:
     runs-on: ubuntu-latest
