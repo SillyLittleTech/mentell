@@ -1,0 +1,39 @@
+name: Auto-Resolve Screenshots
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  resolve-screenshot-conflicts:
+    runs-on: ubuntu-latest
+    if: |
+      contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.pull_request.author_association) ||
+      github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.REPO_ADMIN_PAT }}
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Merge Base & Resolve
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin ${{ github.base_ref }}
+          
+          if ! git merge origin/${{ github.base_ref }} --no-commit --no-ff; then
+            git checkout --theirs "(ee)/**/*.png" || true
+            git add "(ee)/**/*.png"
+            
+            if git diff --name-only --diff-filter=U | grep -q .; then
+              git merge --abort
+              exit 0
+            fi
+            
+            git commit -m "chore: auto-resolve screenshot conflicts in (ee)"
+            git push origin ${{ github.head_ref }}
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.REPO_ADMIN_PAT }}
