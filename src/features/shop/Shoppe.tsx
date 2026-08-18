@@ -21,6 +21,7 @@ import { defaultCharacterAppearance } from '../character/characterAppearance'
 import { useAppSettings } from '../../shared/settings/useAppSettings'
 import { publicUrl } from '../../shared/publicUrl'
 import { pushLocalChangesNow } from '../../shared/sync/syncService'
+import { HomeGreeting } from '../home/HomeGreeting'
 import { SCORE_CHANGED_EVENT } from '../score/scoreEvents'
 import {
   equipShopItem,
@@ -454,7 +455,12 @@ export function Shoppe({
       <section className="paper rounded-3xl p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <div className="font-paper text-2xl">Shoppe</div>
+            <div className="font-paper text-2xl">
+              <span className="hidden md:inline">Shoppe</span>
+              <span className="md:hidden">
+                <HomeGreeting variant="mobile" fallback="Shoppe" context="shop" />
+              </span>
+            </div>
             <div className="ink-muted mt-1 text-sm">Spend points on little rewards.</div>
           </div>
           <div className="flex flex-wrap gap-2">
