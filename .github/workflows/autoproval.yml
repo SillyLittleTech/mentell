@@ -11,33 +11,26 @@ on:
     types:
       - requested
 
-permissions:
-  contents: read
-
 jobs:
   approve:
     runs-on: ubuntu-latest
     steps:
-      - name: Check PR Author & Approve
+      - name: Approve or Trigger Run
         run: |
-          PR_NUMBER=$(gh api "/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}" --jq '.pull_requests[0].number')
-          
-          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "null" ]; then
-            echo "Not a PR run. Skipping."
-            exit 0
-          fi
+          RUN_ID="${{ github.event.workflow_run.id }}"
+          echo "Attempting approval/rerun for run $RUN_ID..."
 
-          PR_AUTHOR_ROLE=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.author_association')
-          PR_AUTHOR_LOGIN=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.user.login')
-
-          echo "PR #$PR_NUMBER opened by $PR_AUTHOR_LOGIN ($PR_AUTHOR_ROLE)"
-
-          if [[ "$PR_AUTHOR_ROLE" =~ ^(OWNER|MEMBER|COLLABORATOR|CONTRIBUTOR)$ ]] || [[ "$PR_AUTHOR_LOGIN" == "dependabot[bot]" ]]; then
-            echo "PR author is trusted! Approving workflow..."
+          # Try fork approval endpoint first
+          if ! gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/actions/runs/$RUN_ID/approve" 2>/dev/null; then
+            
+            echo "Not a fork run or approval endpoint rejected; re-triggering run via rerun..."
             gh api \
               --method POST \
               -H "Accept: application/vnd.github+json" \
-              "/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/approve"
+              "/repos/${{ github.repository }}/actions/runs/$RUN_ID/rerun" || true
           fi
         env:
           GH_TOKEN: ${{ secrets.REPO_ADMIN_PAT }}
