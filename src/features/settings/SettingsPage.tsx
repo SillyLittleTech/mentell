@@ -7,7 +7,6 @@ import { syncTauriDeliverySchedule } from '../../pwa/tauriNotifications'
 import { isTauri } from '../../shared/platform/runtime'
 import { browserTimezone } from '../../shared/settings/appSettings'
 import { AccountSyncSection } from './AccountSyncSection'
-import { OfflineDeviceSyncSection } from './OfflineDeviceSyncSection'
 import { SettingsAccountFeatures } from './SettingsAccountFeatures'
 import { SettingsEmailSection } from './SettingsEmailSection'
 import { SettingsDebugCloudSection } from './SettingsDebugCloudSection'
@@ -202,7 +201,6 @@ export function SettingsPage() {
         </section>
       ) : null}
       <AccountSyncSection />
-      <OfflineDeviceSyncSection />
 
       <section className="paper rounded-3xl p-6">
         <div className="font-paper text-xl">Profile</div>

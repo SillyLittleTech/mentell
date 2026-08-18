@@ -16,15 +16,6 @@ import {
   type SharePermissions,
   type SharePreset,
 } from '../share/shareTypes'
-import { buildSharePayload } from '../share/sharePayloadBuilder'
-import { createOfflineSyncPayload, type OfflineSyncPayload } from '../sync/cryptSync'
-import {
-  buildCryptShareUrl,
-  canEncodeQrValue,
-  encodeCryptCode,
-} from '../sync/cryptCode'
-import { CryptQrBlock } from '../sync/CryptQrBlock'
-import { getEffectiveGlobalName } from '../../shared/settings/effectiveGlobalName'
 
 const DURATIONS = [
   { label: '24 hours', hours: 24 },
@@ -44,7 +35,7 @@ function currentTimestamp() {
 }
 
 export function SharingPanel() {
-  const cloudSharing = isShareLinksEnabled()
+  const enabled = isShareLinksEnabled()
   const auth = useAuthOptional()
   const [links, setLinks] = useState<ShareLinkRecord[]>([])
   const [busy, setBusy] = useState(false)
@@ -60,15 +51,12 @@ export function SharingPanel() {
   const [displayName, setDisplayName] = useState('')
   const [hours, setHours] = useState(24 * 7)
   const [persistentShare, setPersistentShare] = useState(false)
-  const [offlineCrypt, setOfflineCrypt] = useState(!cloudSharing)
+  const [offlineCrypt, setOfflineCrypt] = useState(false)
   const [viewerCode, setViewerCode] = useState('')
   const [permissions, setPermissions] = useState<SharePermissions>(SHARE_PRESETS.family)
   const [lastCreatedUrl, setLastCreatedUrl] = useState<string | null>(null)
-  const [lastCreatedCode, setLastCreatedCode] = useState<string | null>(null)
   const [now, setNow] = useState(() => currentTimestamp())
   const uid = auth?.user?.uid
-  const canCreateOnline = cloudSharing && Boolean(uid) && Boolean(auth?.syncEnabled)
-  const useCrypt = offlineCrypt || !canCreateOnline
 
   async function refreshLinks() {
     if (!uid) return
@@ -78,7 +66,7 @@ export function SharingPanel() {
   }
 
   useEffect(() => {
-    if (!uid || !cloudSharing) return
+    if (!uid) return
     let active = true
     void listShareLinks(uid).then((rows) => {
       if (!active) return
@@ -88,36 +76,80 @@ export function SharingPanel() {
     return () => {
       active = false
     }
-  }, [uid, cloudSharing])
+  }, [uid])
+
+  if (!enabled || !auth) return null
+
+  if (!uid && !offlineCrypt) {
+    return (
+      <section className="paper rounded-3xl p-6">
+        <div className="font-paper text-xl">Sharing</div>
+        <div className="mt-4 grid gap-3">
+          <label className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-3 text-sm">
+            <span>
+              Offline / Crypt Share (Zero-Knowledge)
+              <div className="ink-muted text-xs">
+                Generates an encrypted link/QR without saving any data on the server.
+              </div>
+            </span>
+            <input
+              type="checkbox"
+              checked={offlineCrypt}
+              onChange={(e) => {
+                setOfflineCrypt(e.target.checked)
+                if (e.target.checked) {
+                  setPersistentShare(false)
+                }
+              }}
+            />
+          </label>
+        </div>
+        <p className="ink-muted mt-4 text-sm">
+          Sign in under Settings &gt; Account to create online share links.
+        </p>
+      </section>
+    )
+  }
+
+  if (!auth.syncEnabled && !offlineCrypt) {
+    return (
+      <section className="paper rounded-3xl p-6">
+        <div className="font-paper text-xl">Sharing</div>
+        <div className="mt-4 grid gap-3">
+          <label className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-3 text-sm">
+            <span>
+              Offline / Crypt Share (Zero-Knowledge)
+              <div className="ink-muted text-xs">
+                Generates an encrypted link/QR without saving any data on the server.
+              </div>
+            </span>
+            <input
+              type="checkbox"
+              checked={offlineCrypt}
+              onChange={(e) => {
+                setOfflineCrypt(e.target.checked)
+                if (e.target.checked) {
+                  setPersistentShare(false)
+                }
+              }}
+            />
+          </label>
+        </div>
+        <p className="ink-muted mt-4 text-sm">
+          Cloud sync is off. Enable it in Settings &gt; Features, or sign in again to create online share links.
+        </p>
+      </section>
+    )
+  }
 
   async function handleCreate() {
-    if (!useCrypt && (!uid || !auth?.syncEnabled)) {
-      setError('Must be signed in with sync enabled to create online share links.')
-      return
+    if (!offlineCrypt && (!uid || !auth.syncEnabled)) {
+        setError('Must be signed in with sync enabled to create online share links.')
+        return
     }
     setBusy(true)
     setError(null)
-    setLastCreatedUrl(null)
-    setLastCreatedCode(null)
     try {
-      if (useCrypt) {
-        const sharePayload = await buildSharePayload(permissions)
-        const envelope: OfflineSyncPayload = {
-          version: 1,
-          createdAt: currentTimestamp(),
-          expiresAt: currentTimestamp() + durationToMs(hours),
-          sender: {
-            displayName: displayName.trim() || getEffectiveGlobalName() || null,
-            identifier: auth?.user?.email ?? null,
-          },
-          data: sharePayload,
-        }
-        const { payloadBase64Url, keyBase64Url } = await createOfflineSyncPayload(envelope)
-        setLastCreatedUrl(buildCryptShareUrl(payloadBase64Url, keyBase64Url))
-        setLastCreatedCode(encodeCryptCode(payloadBase64Url, keyBase64Url))
-        return
-      }
-
       const record = await createShareLink({
         uid: uid || '',
         preset,
@@ -152,12 +184,12 @@ export function SharingPanel() {
     }
   }
 
-  async function copyText(text: string, message = 'Link copied') {
+  async function copyUrl(url: string) {
     try {
-      await navigator.clipboard.writeText(text)
-      showToast(message)
+      await navigator.clipboard.writeText(url)
+      showToast('Link copied')
     } catch {
-      showToast('Copy failed - select the text manually', 0)
+      showToast('Copy failed - select the URL manually', 0)
     }
   }
 
@@ -170,64 +202,27 @@ export function SharingPanel() {
         /* user cancelled */
       }
     }
-    await copyText(url)
+    await copyUrl(url)
   }
-
-  const qrValue =
-    lastCreatedCode && canEncodeQrValue(lastCreatedUrl ?? '')
-      ? lastCreatedUrl
-      : lastCreatedCode && canEncodeQrValue(lastCreatedCode)
-        ? lastCreatedCode
-        : lastCreatedUrl && canEncodeQrValue(lastCreatedUrl)
-          ? lastCreatedUrl
-          : lastCreatedCode
 
   return (
     <section className="paper rounded-3xl p-6">
       <div className="font-paper text-xl">Sharing</div>
       <div className="ink-muted mt-1 text-sm">
-        {useCrypt
-          ? 'Create an encrypted snapshot as a QR code or link. Nothing is stored on a server.'
-          : 'Share links for family, friends, or professionals. Snapshot links expire on schedule; protected links keep the same slug and ask viewers for a code.'}
+        Share links for family, friends, or professionals. Snapshot links expire on schedule;
+        protected links keep the same slug and ask viewers for a code.
       </div>
 
       <div className="mt-4 grid gap-3">
-        <label className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-3 text-sm">
-          <span>
-            Offline / Crypt share (zero-knowledge)
-            <div className="ink-muted text-xs">
-              Generates an encrypted link/QR without saving any data on the server.
-            </div>
-          </span>
+        <label className="grid gap-1 text-sm">
+          <span className="ink-muted">Label (private)</span>
           <input
-            type="checkbox"
-            checked={useCrypt}
-            disabled={!canCreateOnline}
-            onChange={(e) => {
-              setOfflineCrypt(e.target.checked)
-              if (e.target.checked) setPersistentShare(false)
-            }}
+            className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            placeholder="For Dr. Lee"
           />
         </label>
-        {!canCreateOnline ? (
-          <p className="ink-muted text-xs">
-            {cloudSharing
-              ? 'Sign in under Settings → Account with cloud sync on to create hosted share links. Offline crypt sharing still works here.'
-              : 'Hosted share links are off. Offline crypt sharing still works on this device.'}
-          </p>
-        ) : null}
-
-        {!useCrypt ? (
-          <label className="grid gap-1 text-sm">
-            <span className="ink-muted">Label (private)</span>
-            <input
-              className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="For Dr. Lee"
-            />
-          </label>
-        ) : null}
         <label className="grid gap-1 text-sm">
           <span className="ink-muted">Display name (shown to viewers)</span>
           <input
@@ -258,23 +253,21 @@ export function SharingPanel() {
           <span className="ink-muted text-xs">{presetDataWindowLabel(preset)}</span>
         </label>
 
-        {!useCrypt ? (
-          <label className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-3 text-sm">
-            <span>
-              Permanent protected link
-              <div className="ink-muted text-xs">
-                Uses /share/&lt;your id&gt; and requires a viewer code.
-              </div>
-            </span>
-            <input
-              type="checkbox"
-              checked={persistentShare}
-              onChange={(e) => setPersistentShare(e.target.checked)}
-            />
-          </label>
-        ) : null}
+        <label className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--paper-border)] px-3 py-3 text-sm">
+          <span>
+            Permanent protected link
+            <div className="ink-muted text-xs">
+              Uses /share/&lt;your id&gt; and requires a viewer code.
+            </div>
+          </span>
+          <input
+            type="checkbox"
+            checked={persistentShare}
+            onChange={(e) => setPersistentShare(e.target.checked)}
+          />
+        </label>
 
-        {persistentShare && !useCrypt ? (
+        {persistentShare ? (
           <label className="grid gap-1 text-sm">
             <span className="ink-muted">Viewer code</span>
             <input
@@ -290,9 +283,7 @@ export function SharingPanel() {
         ) : null}
 
         <label className="grid gap-1 text-sm">
-          <span className="ink-muted">
-            {persistentShare && !useCrypt ? 'Renew every' : 'Link expires in'}
-          </span>
+          <span className="ink-muted">{persistentShare ? 'Renew every' : 'Link expires in'}</span>
           <select
             className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
             value={hours}
@@ -334,57 +325,36 @@ export function SharingPanel() {
 
       <button
         type="button"
-        disabled={busy || (!useCrypt && persistentShare && !viewerCode.trim())}
+        disabled={busy || (persistentShare && !viewerCode.trim())}
         className="focus-ring mt-4 w-full rounded-2xl border border-[var(--paper-border)] bg-[rgba(42,155,88,0.12)] px-4 py-2 text-sm font-semibold disabled:opacity-60"
         onClick={() => void handleCreate()}
       >
-        {useCrypt
-          ? 'Create encrypted share'
-          : persistentShare
-            ? 'Create protected share link'
-            : 'Create share link'}
+        {persistentShare ? 'Create protected share link' : 'Create share link'}
       </button>
 
-      {lastCreatedUrl || lastCreatedCode ? (
+      {lastCreatedUrl ? (
         <div className="mt-4 rounded-2xl border border-[var(--paper-border)] p-3">
-          <div className="ink-muted text-xs">{useCrypt ? 'Encrypted share' : 'New link'}</div>
-          {qrValue ? (
-            <div className="mt-3 flex justify-center">
-              <CryptQrBlock value={qrValue} />
-            </div>
-          ) : null}
-          {lastCreatedUrl ? (
-            <input
-              readOnly
-              className="mt-3 w-full rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-2 font-mono text-xs"
-              value={lastCreatedUrl}
-            />
-          ) : null}
-          {persistentShare && !useCrypt ? (
+          <div className="ink-muted text-xs">New link</div>
+          <input
+            readOnly
+            className="mt-1 w-full rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-2 font-mono text-xs"
+            value={lastCreatedUrl}
+          />
+          {persistentShare ? (
             <div className="ink-muted mt-2 text-xs">
-              Keep the viewer code private. The URL stays the same until you revoke it or renew it.
+              Keep the viewer code private. The URL stays the same until you revoke it or renew
+              it.
             </div>
           ) : null}
           <div className="mt-2 flex flex-wrap gap-2">
-            {lastCreatedUrl ? (
-              <button
-                type="button"
-                className="focus-ring rounded-xl border border-[var(--paper-border)] px-3 py-1.5 text-xs font-semibold"
-                onClick={() => void copyText(lastCreatedUrl)}
-              >
-                Copy link
-              </button>
-            ) : null}
-            {lastCreatedCode ? (
-              <button
-                type="button"
-                className="focus-ring rounded-xl border border-[var(--paper-border)] px-3 py-1.5 text-xs"
-                onClick={() => void copyText(lastCreatedCode, 'Crypto code copied')}
-              >
-                Copy crypto code
-              </button>
-            ) : null}
-            {lastCreatedUrl && 'share' in navigator ? (
+            <button
+              type="button"
+              className="focus-ring rounded-xl border border-[var(--paper-border)] px-3 py-1.5 text-xs font-semibold"
+              onClick={() => void copyUrl(lastCreatedUrl)}
+            >
+              Copy link
+            </button>
+            {'share' in navigator ? (
               <button
                 type="button"
                 className="focus-ring rounded-xl border border-[var(--paper-border)] px-3 py-1.5 text-xs"
@@ -403,7 +373,7 @@ export function SharingPanel() {
         </div>
       ) : null}
 
-      {!useCrypt && links.length > 0 ? (
+      {links.length > 0 ? (
         <div className="mt-6 space-y-2">
           <div className="font-mono text-xs font-bold uppercase opacity-70">Active links</div>
           {links.map((l) => {
@@ -435,7 +405,7 @@ export function SharingPanel() {
                   <button
                     type="button"
                     className="focus-ring rounded-xl border border-[var(--paper-border)] px-2 py-1 text-xs"
-                    onClick={() => void copyText(l.shareUrl)}
+                    onClick={() => void copyUrl(l.shareUrl)}
                   >
                     Copy
                   </button>

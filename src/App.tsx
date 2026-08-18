@@ -31,7 +31,6 @@ import { useAppSettings } from './shared/settings/useAppSettings'
 import { publicUrl } from './shared/publicUrl'
 import { SCORE_CHANGED_EVENT } from './features/score/scoreEvents'
 import { ShareDashboardPage } from './features/share/ShareDashboardPage'
-import { CryptSharePage } from './features/share/CryptSharePage'
 import { SyncOnboardingBanner } from './features/settings/SyncOnboardingBanner'
 import { VerifyEmailPage } from './features/settings/VerifyEmailPage'
 import { AppLegalFooter } from './components/AppLegalFooter'
@@ -225,7 +224,6 @@ function App() {
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/feedback" element={<FeedbackPage />} />
             <Route path="/feedback/thanks" element={<FeedbackThankYouPage />} />
-            <Route path="/share/cryptl" element={<CryptSharePage />} />
             {isShareLinksEnabled() ? (
               <Route path="/share/:code" element={<ShareDashboardPage />} />
             ) : null}
@@ -278,7 +276,6 @@ function App() {
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
                 <Route path="/feedback" element={<FeedbackPage />} />
                 <Route path="/feedback/thanks" element={<FeedbackThankYouPage />} />
-                <Route path="/share/cryptl" element={<CryptSharePage />} />
                 {isShareLinksEnabled() ? (
                   <Route path="/share/:code" element={<ShareDashboardPage />} />
                 ) : null}
