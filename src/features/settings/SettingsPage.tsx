@@ -10,6 +10,7 @@ import { AccountSyncSection } from './AccountSyncSection'
 import { SettingsAccountFeatures } from './SettingsAccountFeatures'
 import { SettingsEmailSection } from './SettingsEmailSection'
 import { SettingsDebugCloudSection } from './SettingsDebugCloudSection'
+import { HomeGreeting } from '../home/HomeGreeting'
 import { SettingsCustomAiSection } from './SettingsCustomAiSection'
 import { DeskCharacterLayout } from '../character/DeskCharacterLayout'
 import { pushLocalChangesNow } from '../../shared/sync/syncService'
@@ -77,7 +78,12 @@ export function SettingsPage() {
     <DeskCharacterLayout>
     <div className="space-y-4">
       <section className="paper rounded-3xl p-6">
-        <div className="font-paper text-2xl">Settings</div>
+        <div className="font-paper text-2xl">
+          <span className="hidden md:inline">Settings</span>
+          <span className="md:hidden">
+            <HomeGreeting variant="mobile" fallback="Settings" context="settings" />
+          </span>
+        </div>
         <div className="ink-muted mt-1 text-sm">
           Stored only on this device. Changes apply immediately.
         </div>

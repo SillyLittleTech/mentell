@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { NoteTag, NoteRow } from '../../db/schema'
 import { addNote, deleteNote, listNotes } from './notesService'
+import { HomeGreeting } from '../home/HomeGreeting'
 
 export function Notepad() {
   const [notes, setNotes] = useState<NoteRow[]>([])
@@ -16,7 +17,12 @@ export function Notepad() {
 
   return (
     <section className="paper rounded-3xl p-6">
-      <div className="font-paper text-2xl">Notepad</div>
+      <div className="font-paper text-2xl">
+        <span className="hidden md:inline">Notepad</span>
+        <span className="md:hidden">
+          <HomeGreeting variant="mobile" fallback="Notepad" context="notes" />
+        </span>
+      </div>
       <div className="ink-muted mt-1 text-sm">Notes to self, a therapist, or anyone — stored locally.</div>
 
       <div className="mt-5 grid gap-3">
