@@ -1,0 +1,78 @@
+name: PR Automation & Approvals
+
+on:
+  workflow_run:
+    workflows: ["PR Build Check"]
+    types:
+      - requested
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  # Job 1: Auto-approve pending CI runs from trusted authors
+  auto-approve-run:
+    if: github.event_name == 'workflow_run'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Approve workflow run if trusted
+        if: |
+          (
+            github.event.workflow_run.head_repository.full_name == github.repository
+          ) || (
+            contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.workflow_run.actor.author_association)
+          )
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/approve"
+        env:
+          GH_TOKEN: ${{ secrets.REPO_ADMIN_PAT }}
+
+  # Job 2: Auto-resolve screenshot conflicts in the (ee) folder
+  resolve-screenshot-conflicts:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify trusted author
+        if: |
+          contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.pull_request.author_association)
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.REPO_ADMIN_PAT }}
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+
+      - name: Merge Base & Auto-resolve Screenshots
+        if: |
+          contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.pull_request.author_association)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git fetch origin ${{ github.base_ref }}
+          
+          if ! git merge origin/${{ github.base_ref }} --no-commit --no-ff; then
+            echo "Merge conflicts detected, resolving screenshot paths..."
+            
+            git checkout --theirs "(ee)/**/*.png" || true
+            git add "(ee)/**/*.png"
+            
+            # Abort if code files are also conflicting
+            if git diff --name-only --diff-filter=U | grep -q .; then
+              echo "Non-screenshot conflicts found. Aborting auto-merge."
+              git merge --abort
+              exit 0
+            fi
+            
+            git commit -m "chore: auto-resolve screenshot conflicts in (ee)"
+            git push origin ${{ github.head_ref }}
+          else
+            echo "No conflicts found."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.REPO_ADMIN_PAT }}
