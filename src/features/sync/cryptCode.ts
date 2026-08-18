@@ -7,7 +7,10 @@ export const CRYPT_SHARE_SLUG = 'cryptl'
 const QR_MAX_CHARS = 1800
 
 export function encodeCryptCode(payloadBase64Url: string, keyBase64Url: string): string {
-  return `payload=${payloadBase64Url}&key=${keyBase64Url}`
+  const params = new URLSearchParams()
+  params.set('payload', payloadBase64Url)
+  params.set('key', keyBase64Url)
+  return params.toString()
 }
 
 export function canEncodeQrValue(value: string): boolean {
