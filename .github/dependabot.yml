@@ -10,15 +10,21 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      all-npm-deps:
+      npm-minor-and-patch:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
     groups:
-      all-actions:
+      actions-minor-and-patch:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
