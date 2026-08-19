@@ -5,7 +5,8 @@ on:
     types: [opened, synchronize]
 
 permissions:
-  contents: read
+  contents: write
+
 jobs:
   resolve-screenshot-conflicts:
     runs-on: ubuntu-latest
@@ -16,7 +17,7 @@ jobs:
       - name: Checkout PR Branch
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.REPO_ADMIN_PAT }}
+          token: ${{ secrets.REPO_ADMIN_PAT || github.token }}
           ref: ${{ github.head_ref }}
           fetch-depth: 0
 
@@ -49,4 +50,4 @@ jobs:
             echo "No conflicts found."
           fi
         env:
-          GH_TOKEN: ${{ secrets.REPO_ADMIN_PAT }}
+          GH_TOKEN: ${{ secrets.REPO_ADMIN_PAT || github.token }}
