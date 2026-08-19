@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   decryptOfflineSyncPayload,
   isOfflineSyncData,
@@ -12,6 +13,7 @@ import { OfflineSyncImportConfirm } from '../sync/OfflineSyncImportConfirm'
 import { useToast } from '../../shared/ui/useToast'
 
 export function SyncUpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const navigate = useNavigate()
   const { showToast } = useToast()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -74,7 +76,8 @@ export function SyncUpModal({ open, onClose }: { open: boolean; onClose: () => v
   function openAsShare() {
     if (!preview) return
     const { payloadBase64Url, keyBase64Url } = parseCryptCode(preview.code)
-    window.location.assign(buildCryptShareUrl(payloadBase64Url, keyBase64Url))
+    navigate(buildCryptShareUrl(payloadBase64Url, keyBase64Url))
+    onClose()
   }
 
   if (!open) return null
