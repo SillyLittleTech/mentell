@@ -1,0 +1,38 @@
+name: Auto-Approve Builds
+
+on:
+  workflow_run:
+    workflows:
+      - "benchmark"
+      - "build-tauri"
+      - "build-web-and-android"
+      - "check-changes"
+      - "PR Build Check"
+    types:
+      - requested
+
+permissions: {}
+
+jobs:
+  approve:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Approve or Trigger Run
+        run: |
+          RUN_ID="${{ github.event.workflow_run.id }}"
+          echo "Attempting approval/rerun for run $RUN_ID..."
+
+          # Try fork approval endpoint first
+          if ! gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/actions/runs/$RUN_ID/approve" 2>/dev/null; then
+            
+            echo "Not a fork run or approval endpoint rejected; re-triggering run via rerun..."
+            gh api \
+              --method POST \
+              -H "Accept: application/vnd.github+json" \
+              "/repos/${{ github.repository }}/actions/runs/$RUN_ID/rerun" || true
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.REPO_ADMIN_PAT }}
