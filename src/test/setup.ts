@@ -5,9 +5,9 @@ import { webcrypto } from 'node:crypto'
 Object.defineProperty(window, 'crypto', {
   value: {
     subtle: webcrypto.subtle,
-    getRandomValues: (arr: Uint8Array) => webcrypto.getRandomValues(arr),
+    getRandomValues: (arr: any) => webcrypto.getRandomValues(arr),
   },
-  configurable: true
+  configurable: true,
 })
 
 Object.defineProperty(navigator, 'mediaDevices', {
