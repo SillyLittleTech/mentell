@@ -21,6 +21,10 @@ export function browserTimezone() {
 export type AppSettings = {
   reducedMotion: boolean;
   disableAi: boolean;
+  aiProvider: 'default' | 'custom';
+  aiBaseUrl: string;
+  aiApiKey: string;
+  aiModel: string;
   disablePoints: boolean;
   globalName: string;
   /** When true, RAW reports use only `globalName` (no AI display name fallback). */
@@ -42,6 +46,10 @@ export type AppSettings = {
 const DEFAULT_SETTINGS: AppSettings = {
   reducedMotion: false,
   disableAi: false,
+  aiProvider: 'default',
+  aiBaseUrl: '',
+  aiApiKey: '',
+  aiModel: '@cf/meta/llama-3.1-8b-instruct',
   disablePoints: false,
   globalName: "",
   globalNameManuallySet: false,
@@ -103,6 +111,10 @@ export function sanitizeAppSettings(input: Partial<AppSettings>): AppSettings {
   return {
     reducedMotion: Boolean(input.reducedMotion),
     disableAi: Boolean(input.disableAi),
+    aiProvider: input.aiProvider === 'custom' ? 'custom' : 'default',
+    aiBaseUrl: (input.aiBaseUrl ?? '').trim(),
+    aiApiKey: (input.aiApiKey ?? '').trim(),
+    aiModel: (input.aiModel ?? '').trim() || '@cf/meta/llama-3.1-8b-instruct',
     disablePoints: Boolean(input.disablePoints),
     globalName,
     globalNameManuallySet,
@@ -134,6 +146,7 @@ export function loadAppSettings(): AppSettings {
 
 export function saveAppSettings(input: Partial<AppSettings>): AppSettings {
   const next = sanitizeAppSettings({ ...loadAppSettings(), ...input });
+  // codeql[js/clear-text-storage-of-sensitive-data] - Local-first app architecture
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
   window.dispatchEvent(new CustomEvent(SETTINGS_EVENT, { detail: next }));
   notifyLocalDataChanged();

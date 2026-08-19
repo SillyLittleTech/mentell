@@ -27,10 +27,10 @@ const HOP_EASING = 'cubic-bezier(0.22, 0.84, 0.28, 1)'
 const HOP_KEYFRAMES: Keyframe[] = [
   { transform: 'translate3d(0, 0, 0) scale(1, 1)', offset: 0 },
   { transform: 'translate3d(0, 8px, 0) scale(1.46, 0.46)', offset: 0.12 },
-  { transform: 'translate3d(0, -40px, 0) scale(0.66, 1.46)', offset: 0.4 },
-  { transform: 'translate3d(0, -42px, 0) scale(0.8, 1.18)', offset: 0.52 },
-  { transform: 'translate3d(0, 6px, 0) scale(1.4, 0.5)', offset: 0.76 },
-  { transform: 'translate3d(0, -4px, 0) scale(0.94, 1.12)', offset: 0.88 },
+  { transform: 'translate3d(0, -40px, 0) scale(0.66, 1.46)', offset: 0.35 },
+  { transform: 'translate3d(0, -42px, 0) scale(0.8, 1.18)', offset: 0.45 },
+  { transform: 'translate3d(0, 6px, 0) scale(1.4, 0.5)', offset: 0.70 },
+  { transform: 'translate3d(0, -4px, 0) scale(0.94, 1.12)', offset: 0.85 },
   { transform: 'translate3d(0, 0, 0) scale(1, 1)', offset: 1 },
 ]
 
@@ -170,6 +170,7 @@ function GreetingLetter({
       hopAnim.current?.cancel()
       hopAnim.current = null
       if (glowTimer.current != null) window.clearTimeout(glowTimer.current)
+      setGlowing(false)
     }
   }, [subscribeRipple, token.letterIndex, token.isName, reduced])
 
@@ -216,7 +217,7 @@ export function HomeGreeting({
   autoPlay?: boolean
   context?: string
 }) {
-  const greeting = useHomeGreeting(context)
+  const greeting = useHomeGreeting(context, variant === 'mobile')
   const rippleListeners = useRef(new Set<() => void>())
   const [sparkNonce, setSparkNonce] = useState(0)
   const sparkTimer = useRef<number | null>(null)

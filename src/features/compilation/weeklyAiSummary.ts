@@ -1,5 +1,6 @@
 import type { EntryRow } from '../../db/schema'
-import { isAiEnabledLocally } from '../../shared/settings/appSettings'
+import { isAiEnabledLocally, loadAppSettings } from '../../shared/settings/appSettings'
+import { customWeeklyAiSummary } from '../../lib/aiClient'
 import { scopedStorageKey } from '../../shared/storage/storageScope'
 import type { AiProfile } from './aiProfile'
 import { sanitizeAiProfile } from './aiProfile'
@@ -75,6 +76,10 @@ export function normalizeEndpointUrl(raw: string) {
 }
 
 export function weeklyAiSummaryEnabled() {
+  const settings = loadAppSettings()
+  if (settings.aiProvider === 'custom') {
+    return isAiEnabledLocally() && settings.aiBaseUrl.trim().length > 0
+  }
   return (
     isAiEnabledLocally() &&
     import.meta.env.VITE_ENABLE_WEEKLY_AI_SUMMARY === '1' &&
@@ -117,49 +122,57 @@ export async function requestWeeklyAiSummary(
     throw new Error(allowance.reason)
   }
 
-  const endpoint = normalizeEndpointUrl(import.meta.env.VITE_WEEKLY_AI_ENDPOINT as string)
-  const token = normalizeEnvToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({
-      mode: options.mode,
-      profile: {
-        displayName: profile.displayName,
-        ageRange: profile.ageRange,
-        about: profile.about,
+  const settings = loadAppSettings()
+  let summaryText: string
+
+  if (settings.aiProvider === 'custom') {
+    summaryText = await customWeeklyAiSummary(entries, options.mode, profile)
+  } else {
+    const endpoint = normalizeEndpointUrl(import.meta.env.VITE_WEEKLY_AI_ENDPOINT as string)
+    const token = normalizeEnvToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      entries: entries.map((entry) => ({
-        dateKey: entry.dateKey,
-        sentiment: entry.sentiment,
-        emotion: entry.emotionNote || entry.emotion || '',
-        situation: entry.situation ?? '',
-        details: entry.details ?? '',
-        behavioursNoted: entry.behavioursNoted ?? '',
-        reoccurringTheme: entry.reoccurringTheme ?? '',
-      })),
-    }),
-  })
+      body: JSON.stringify({
+        mode: options.mode,
+        profile: {
+          displayName: profile.displayName,
+          ageRange: profile.ageRange,
+          about: profile.about,
+        },
+        entries: entries.map((entry) => ({
+          dateKey: entry.dateKey,
+          sentiment: entry.sentiment,
+          emotion: entry.emotionNote || entry.emotion || '',
+          situation: entry.situation ?? '',
+          details: entry.details ?? '',
+          behavioursNoted: entry.behavioursNoted ?? '',
+          reoccurringTheme: entry.reoccurringTheme ?? '',
+        })),
+      }),
+    })
 
-  if (!response.ok) {
-    const detail = await readEndpointError(response)
-    if (response.status === 405) {
-      throw new Error(
-        `The AI endpoint is reachable but does not accept this request. Check that VITE_WEEKLY_AI_ENDPOINT points to the Worker /weekly-summary route.${detail ? ` ${detail}` : ''}`,
-      )
+    if (!response.ok) {
+      const detail = await readEndpointError(response)
+      if (response.status === 405) {
+        throw new Error(
+          `The AI endpoint is reachable but does not accept this request. Check that VITE_WEEKLY_AI_ENDPOINT points to the Worker /weekly-summary route.${detail ? ` ${detail}` : ''}`,
+        )
+      }
+      if (response.status >= 500) {
+        throw new Error(`AI endpoint offline or unreachable (${response.status}). Data will be synced shortly after returning online.${detail ? ` ${detail}` : ''}`)
+      }
+      throw new Error(`AI endpoint error (${response.status}).${detail ? ` ${detail}` : ''}`)
     }
-    if (response.status >= 500) {
-      throw new Error(`AI endpoint offline or unreachable (${response.status}). Data will be synced shortly after returning online.${detail ? ` ${detail}` : ''}`)
-    }
-    throw new Error(`AI endpoint error (${response.status}).${detail ? ` ${detail}` : ''}`)
-  }
 
-  const body = (await response.json()) as { summary?: string; error?: string }
-  if (!body.summary) {
-    throw new Error(body.error ?? 'AI endpoint did not return a summary.')
+    const body = (await response.json()) as { summary?: string; error?: string }
+    if (!body.summary) {
+      throw new Error(body.error ?? 'AI endpoint did not return a summary.')
+    }
+    summaryText = body.summary
   }
 
   setCachedWeeklySummary({
@@ -167,10 +180,10 @@ export async function requestWeeklyAiSummary(
     mode: options.mode,
     entries,
     profile,
-    summary: body.summary,
+    summary: summaryText,
   })
 
-  return { summary: body.summary, fromCache: false as const }
+  return { summary: summaryText, fromCache: false as const }
 }
 
 async function readEndpointError(response: Response) {

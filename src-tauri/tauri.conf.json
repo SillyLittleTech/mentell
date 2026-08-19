@@ -1,11 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Mentell",
-<<<<<<< Updated upstream
-  "version": "1.18.29",
-=======
   "version": "1.18.30",
->>>>>>> Stashed changes
   "identifier": "com.mentell.app",
   "build": {
     "frontendDist": "../dist",
