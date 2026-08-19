@@ -12,7 +12,7 @@ import { runPushCron } from './pushCron'
 import { handleProjectorSearch } from './projectorSearch'
 import { handleRiskAssessment } from './riskAssessment'
 import { handleWeeklySummary } from './weeklySummary'
-import { handleEmailSubscribe, handleEmailVerify, handleEmailUnverify } from './emailHandlers'
+import { handleEmailSubscribe, handleEmailVerify, handleEmailUnverify, handleEmailUnsubscribe } from './emailHandlers'
 import { handleEmailTest } from './emailTestHandler'
 
 export type { Env } from './env'
@@ -25,6 +25,8 @@ export default {
     switch (url.pathname) {
       case '/email/subscribe':
         return handleEmailSubscribe(request, env)
+      case '/email/unsubscribe':
+        return handleEmailUnsubscribe(request, env)
       case '/email/verify':
         return handleEmailVerify(request, env)
       case '/email/unverify':
