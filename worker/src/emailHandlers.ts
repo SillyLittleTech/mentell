@@ -144,6 +144,47 @@ export async function handleEmailSubscribe(request: Request, env: Env) {
   )
 }
 
+export async function handleEmailUnsubscribe(request: Request, env: Env) {
+  const origin = request.headers.get('Origin')
+  if (request.method === 'OPTIONS') return corsResponse(null, 204, env, origin)
+
+  if (request.method !== 'POST') {
+    return corsJson({ error: 'Method not allowed' }, 405, env, origin)
+  }
+
+  const auth = await authorizeSubscribe(request, env)
+  if (!auth) {
+    return corsJson({ error: 'Unauthorized' }, 401, env, origin)
+  }
+
+  let body: { clientId?: string } = {}
+  try {
+    body = (await request.json()) as { clientId?: string }
+  } catch {
+    /* empty body is fine */
+  }
+
+  const userId = subscriberUserId(auth.uid, body.clientId)
+  const key = `email_sub:${userId}`
+  const raw = await env.PUSH_KV.get(key)
+  if (!raw) {
+    return corsJson({ ok: true, userId, existed: false }, 200, env, origin)
+  }
+
+  try {
+    const sub = JSON.parse(raw) as EmailSubscriberRecord
+    if (sub.verifyToken) {
+      await env.PUSH_KV.delete(`verify_token:${sub.verifyToken}`)
+      await env.PUSH_KV.delete(`verify_token_used:${sub.verifyToken}`)
+    }
+    await env.PUSH_KV.delete(key)
+  } catch {
+    await env.PUSH_KV.delete(key)
+  }
+
+  return corsJson({ ok: true, userId, existed: true }, 200, env, origin)
+}
+
 export async function handleEmailUnverify(request: Request, env: Env) {
   const origin = request.headers.get('Origin')
   if (request.method === 'OPTIONS') return corsResponse(null, 204, env, origin)

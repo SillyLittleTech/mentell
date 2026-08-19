@@ -20,6 +20,7 @@ export function SettingsEmailSection() {
   const { settings, updateSettings } = useAppSettings()
   const [emailDraft, setEmailDraft] = useState(settings.notificationEmail)
   const [subscribing, setSubscribing] = useState(false)
+  const [unsubscribing, setUnsubscribing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
@@ -103,6 +104,58 @@ export function SettingsEmailSection() {
     }
   }
 
+  async function handleUnsubscribe() {
+    setError(null)
+    setSuccess(false)
+    setUnsubscribing(true)
+
+    try {
+      const apiBase = getWorkerApiBase()
+      if (!apiBase) {
+        throw new Error('Email API is not configured (VITE_PUSH_API_BASE)')
+      }
+
+      const authHeaders = await getWorkerAuthHeaders()
+
+      const res = await fetch(`${apiBase}/email/unsubscribe`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        body: JSON.stringify({
+          clientId: getOrCreatePushClientId(),
+        })
+      })
+
+      if (!res.ok) {
+        const data = await readJsonResponse(res)
+        const errorText = typeof data.error === 'string' ? data.error : undefined
+        throw new Error(errorText || `${res.status} ${res.statusText || 'No Content'}`)
+      }
+
+      updateSettings({
+        notificationEmail: '',
+        emailVerified: false,
+      })
+      setEmailDraft('')
+
+      if (isFirebaseEnabled()) {
+        const auth = getFirebaseAuth()
+        if (auth?.currentUser) {
+           const db = getFirestore()
+           await setDoc(doc(db, 'users', auth.currentUser.uid, 'meta', 'settings'), { emailNotification: { email: '', verified: false } }, { merge: true }).catch(() => {})
+        }
+      }
+
+      setSuccess(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'An error occurred')
+    } finally {
+      setUnsubscribing(false)
+    }
+  }
+
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailDraft)
   // To properly sync settings changes automatically:
   const updateAndSync = (patch: Partial<typeof settings>) => {
@@ -178,14 +231,27 @@ export function SettingsEmailSection() {
       {error && <div className="text-sm text-[var(--danger)]">{error}</div>}
       {success && <div className="text-sm text-green-600">Preferences updated!</div>}
 
-      <button
-        type="button"
-        disabled={!isEmailValid || subscribing}
-        onClick={handleSubscribe}
-        className="focus-ring mt-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold disabled:opacity-50"
-      >
-        {subscribing ? 'Saving...' : 'Save & Subscribe'}
-      </button>
+      <div className="mt-2 flex items-center gap-3">
+        <button
+          type="button"
+          disabled={!isEmailValid || subscribing || unsubscribing}
+          onClick={handleSubscribe}
+          className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold disabled:opacity-50"
+        >
+          {subscribing ? 'Saving...' : 'Save & Subscribe'}
+        </button>
+
+        {settings.notificationEmail && (
+          <button
+            type="button"
+            disabled={subscribing || unsubscribing}
+            onClick={handleUnsubscribe}
+            className="focus-ring rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold text-[var(--danger)] disabled:opacity-50"
+          >
+            {unsubscribing ? 'Removing...' : 'Remove Email'}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
