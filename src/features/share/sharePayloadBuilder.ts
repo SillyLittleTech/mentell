@@ -14,12 +14,12 @@ export async function buildSharePayload(
 
   const entriesNorm = await getDb()
     .entries.where("dateKey")
-    .aboveOrEqual(cutoff)
+    .between(cutoff, "~", true, false)
     .toArray();
   const filteredNorm = entriesNorm.filter((e) => e.dateKey < "~");
   const entriesBulk = await getDb()
     .entries.where("dateKey")
-    .aboveOrEqual("~" + cutoff)
+    .between("~" + cutoff, "\uffff", true, false)
     .toArray();
 
   const inWindow = [...filteredNorm, ...entriesBulk].sort(
