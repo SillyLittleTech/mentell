@@ -23,6 +23,7 @@ export async function sendWebPush(
     throw new Error('VAPID not configured')
   }
 
+  // eslint-disable-next-line no-useless-assignment
   let isApplePushHost = false
   try {
     isApplePushHost = new URL(subscription.endpoint).hostname === 'web.push.apple.com'
