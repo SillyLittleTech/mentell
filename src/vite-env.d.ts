@@ -17,6 +17,8 @@ declare module 'virtual:pwa-register' {
 
 interface ImportMetaEnv {
   readonly VITE_APP_VERSION: string
+  readonly VITE_COMMIT_SHA: string
+  readonly VITE_BUILD_TIME: string
   readonly VITE_ENABLE_WEEKLY_AI_SUMMARY?: string
   readonly VITE_WEEKLY_AI_ENDPOINT?: string
   readonly VITE_WEEKLY_AI_TOKEN?: string

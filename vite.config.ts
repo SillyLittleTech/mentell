@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -10,6 +11,15 @@ const skipPwa = process.env.SKIP_PWA === '1'
 const offlineZip = process.env.VITE_OFFLINE_ZIP === '1'
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
 /** Production: https://projects.sillylittle.tech/mentell/ — set via VITE_BASE in CI */
+
+let commitSha = 'dev'
+try {
+  commitSha = execSync('git rev-parse --short HEAD').toString().trim()
+} catch (e) {
+  // ignore
+}
+const buildTime = new Date().toISOString()
+
 const base = process.env.VITE_BASE ?? '/'
 const appVersion = readFileSync(path.join(rootDir, 'VERSION'), 'utf8').trim()
 
@@ -30,6 +40,8 @@ export default defineConfig(({ command, mode }) => {
   base,
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+    'import.meta.env.VITE_COMMIT_SHA': JSON.stringify(commitSha),
+    'import.meta.env.VITE_BUILD_TIME': JSON.stringify(buildTime),
   },
   resolve: skipPwa
     ? {
