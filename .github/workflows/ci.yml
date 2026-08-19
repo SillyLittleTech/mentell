@@ -110,7 +110,7 @@ jobs:
             const prNumber = context.issue.number;
             const repoOwner = context.repo.owner;
             const repoName = context.repo.repo;
-            const branchName = context.payload.pull_request.head.ref;
+            const commitSha = context.payload.pull_request.head.sha;
 
             let unitTestsPass = false;
             let unitTestsSummary = "No test results found.";
@@ -125,8 +125,8 @@ jobs:
             }
             const testIcon = unitTestsPass ? "✅" : "❌";
 
-            // Construct raw URLs for the images
-            const baseUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${branchName}/(ee)`;
+            // Construct raw URLs for the images using the specific commit SHA
+            const baseUrl = `https://raw.githubusercontent.com/${repoOwner}/${repoName}/${commitSha}/(ee)`;
 
             const groupSections = [
               {
