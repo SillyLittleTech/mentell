@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: read
-
 jobs:
   resolve-screenshot-conflicts:
     runs-on: ubuntu-latest
@@ -14,7 +13,8 @@ jobs:
       contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.pull_request.author_association) ||
       github.event.pull_request.user.login == 'dependabot[bot]'
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout PR Branch
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.REPO_ADMIN_PAT }}
           ref: ${{ github.head_ref }}
@@ -27,16 +27,26 @@ jobs:
           git fetch origin ${{ github.base_ref }}
           
           if ! git merge origin/${{ github.base_ref }} --no-commit --no-ff; then
-            git checkout --theirs "(ee)/**/*.png" || true
-            git add "(ee)/**/*.png"
+            echo "Merge conflicts detected, resolving screenshot paths..."
+            
+            git diff --name-only --diff-filter=U | grep '\.png$' | while read -r file; do
+              echo "Resolving $file..."
+              git checkout --theirs -- "$file"
+              git add "$file"
+            done
             
             if git diff --name-only --diff-filter=U | grep -q .; then
+              echo "Non-screenshot conflicts still exist:"
+              git diff --name-only --diff-filter=U
+              echo "Aborting auto-merge."
               git merge --abort
               exit 0
             fi
             
             git commit -m "chore: auto-resolve screenshot conflicts in (ee)"
             git push origin ${{ github.head_ref }}
+          else
+            echo "No conflicts found."
           fi
         env:
           GH_TOKEN: ${{ secrets.REPO_ADMIN_PAT }}
