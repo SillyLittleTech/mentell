@@ -70,6 +70,7 @@ export function VerifyEmailPage() {
 
   useEffect(() => {
     if (!token) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setStatus('error')
       setErrorMsg('No token provided in URL.')
       return

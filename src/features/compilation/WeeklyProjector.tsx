@@ -26,7 +26,7 @@ import {
 } from './weeklyAiSummary'
 import { loadAiProfile, profileFingerprint, type AiProfile } from './aiProfile'
 import { clearWeeklyAiCache, getCachedWeeklySummary } from './weeklyAiCache'
-import { SharingPanel } from '../settings/SharingSection'
+import { OfflineDeviceSyncSection } from '../settings/OfflineDeviceSyncSection'
 import { WeeklyAiSettings, WeeklyAiSettingsButton } from './WeeklyAiSettings'
 import {
   buildRawReportHtml,
@@ -577,7 +577,7 @@ export function WeeklyProjector() {
         ) : null}
       </AnimatePresence>
 
-      <SharingPanel />
+      <OfflineDeviceSyncSection compact />
     </div>
   )
 }

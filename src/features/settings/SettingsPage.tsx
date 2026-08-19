@@ -7,6 +7,7 @@ import { syncTauriDeliverySchedule } from '../../pwa/tauriNotifications'
 import { isTauri } from '../../shared/platform/runtime'
 import { browserTimezone } from '../../shared/settings/appSettings'
 import { AccountSyncSection } from './AccountSyncSection'
+import { OfflineDeviceSyncSection } from './OfflineDeviceSyncSection'
 import { SettingsAccountFeatures } from './SettingsAccountFeatures'
 import { SettingsEmailSection } from './SettingsEmailSection'
 import { SettingsDebugCloudSection } from './SettingsDebugCloudSection'
@@ -76,169 +77,170 @@ export function SettingsPage() {
 
   return (
     <DeskCharacterLayout>
-    <div className="space-y-4">
-      <section className="paper rounded-3xl p-6">
-        <div className="font-paper text-2xl">
-          <span className="hidden md:inline">Settings</span>
-          <span className="md:hidden">
-            <HomeGreeting variant="mobile" fallback="Settings" context="settings" />
-          </span>
-        </div>
-        <div className="ink-muted mt-1 text-sm">
-          Stored only on this device. Changes apply immediately.
-        </div>
-      </section>
+      <div className="space-y-4">
+        <section className="paper rounded-3xl p-6">
+          <div className="font-paper text-2xl">
+            <span className="hidden md:inline">Settings</span>
+            <span className="md:hidden">
+              <HomeGreeting variant="mobile" fallback="Settings" context="settings" />
+            </span>
+          </div>
+          <div className="ink-muted mt-1 text-sm">
+            Stored only on this device. Changes apply immediately.
+          </div>
+        </section>
 
-      <section className="paper rounded-3xl p-6">
-        <div className="font-paper text-xl">Accessibility</div>
-        <label className="mt-4 flex items-center justify-between gap-3 text-sm">
-          <span>
-            Reduced motion
-            <div className="ink-muted text-xs">Minimizes animations; also respects OS preference.</div>
-          </span>
-          <input
-            type="checkbox"
-            checked={settings.reducedMotion}
-            onChange={(e) => updateSettingsAndMarkDirty({ reducedMotion: e.target.checked })}
-          />
-        </label>
-      </section>
-
-      <SettingsCustomAiSection />
-
-      <section className="paper rounded-3xl p-6">
-        <div className="font-paper text-xl">Features</div>
-        <div className="mt-4 grid gap-4">
-          <label className="flex items-center justify-between gap-3 text-sm">
+        <section className="paper rounded-3xl p-6">
+          <div className="font-paper text-xl">Accessibility</div>
+          <label className="mt-4 flex items-center justify-between gap-3 text-sm">
             <span>
-              Disable AI summaries
-              <div className="ink-muted text-xs">Hides weekly AI on the Week tab (cloud synchronization still required).</div>
+              Reduced motion
+              <div className="ink-muted text-xs">Minimizes animations; also respects OS preference.</div>
             </span>
             <input
               type="checkbox"
-              checked={settings.disableAi}
-              onChange={(e) => updateSettingsAndMarkDirty({ disableAi: e.target.checked })}
+              checked={settings.reducedMotion}
+              onChange={(e) => updateSettingsAndMarkDirty({ reducedMotion: e.target.checked })}
             />
           </label>
-          <label className="flex items-center justify-between gap-3 text-sm">
-            <span>
-              Disable points system
-              <div className="ink-muted text-xs">Hides score/streak and disables Shoppe purchases.</div>
-            </span>
+        </section>
+
+        <SettingsCustomAiSection />
+
+        <section className="paper rounded-3xl p-6">
+          <div className="font-paper text-xl">Features</div>
+          <div className="mt-4 grid gap-4">
+            <label className="flex items-center justify-between gap-3 text-sm">
+              <span>
+                Disable AI summaries
+                <div className="ink-muted text-xs">Hides weekly AI on the Week tab (cloud synchronization still required).</div>
+              </span>
+              <input
+                type="checkbox"
+                checked={settings.disableAi}
+                onChange={(e) => updateSettingsAndMarkDirty({ disableAi: e.target.checked })}
+              />
+            </label>
+            <label className="flex items-center justify-between gap-3 text-sm">
+              <span>
+                Disable points system
+                <div className="ink-muted text-xs">Hides score/streak and disables Shoppe purchases.</div>
+              </span>
+              <input
+                type="checkbox"
+                checked={settings.disablePoints}
+                onChange={(e) => updateSettingsAndMarkDirty({ disablePoints: e.target.checked })}
+              />
+            </label>
+            <label className="flex items-center justify-between gap-3 text-sm">
+              <span>
+                Disable notifications
+                <div className="ink-muted text-xs">
+                  Stops permission prompts, in-app alerts, web push, and the desktop weekly reminder.
+                </div>
+              </span>
+              <input
+                type="checkbox"
+                checked={settings.disableNotifications}
+                onChange={(e) => {
+                  updateSettingsAndMarkDirty({ disableNotifications: e.target.checked })
+                  if (e.target.checked && !isTauri()) void unsubscribePush()
+                }}
+              />
+            </label>
+            {!settings.disableNotifications && perm === 'denied' ? (
+              <p className="text-sm" style={{ color: 'var(--danger)' }}>
+                {notificationPermissionDeniedHint()}
+              </p>
+            ) : null}
+            <div className="grid gap-3 rounded-2xl border border-[var(--paper-border)] p-4">
+              <div className="text-sm font-medium">Package delivery</div>
+              <p className="ink-muted text-xs">
+                Weekly packages appear after this day and time, once that journal week is complete
+                (Monday–Sunday). On the web, background push uses your timezone below — Chrome and
+                Firefox on desktop are the most reliable; Safari (Mac and iOS Home Screen) is
+                stricter and may hold alerts until you open the app. The desktop app schedules a
+                native weekly reminder that still fires after you quit Mentell.
+              </p>
+              <label className="grid gap-1 text-sm">
+                <span className="ink-muted text-xs font-medium">Delivery day</span>
+                <select
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
+                  value={settings.deliveryWeekday}
+                  onChange={(e) => updateSettingsAndMarkDirty({ deliveryWeekday: Number(e.target.value) })}
+                >
+                  {WEEKDAY_OPTIONS.map((d) => (
+                    <option key={d.value} value={d.value}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span className="ink-muted text-xs font-medium">Delivery time</span>
+                <input
+                  type="time"
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
+                  value={settings.deliveryTimeLocal}
+                  onChange={(e) => updateSettingsAndMarkDirty({ deliveryTimeLocal: e.target.value })}
+                />
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span className="ink-muted text-xs font-medium">Timezone (push)</span>
+                <input
+                  type="text"
+                  readOnly
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 opacity-80"
+                  value={settings.timezone}
+                  onFocus={() => updateSettingsAndMarkDirty({ timezone: browserTimezone() })}
+                />
+                <span className="ink-muted text-xs">
+                  Detected from your device. Focus this field to refresh.
+                </span>
+              </label>
+            </div>
+            <SettingsEmailSection />
+            <SettingsAccountFeatures />
+          </div>
+        </section>
+
+        <SettingsDebugCloudSection />
+        {isAuthDebugPanelEnabled() && !isDebugMode() ? (
+          <section className="paper rounded-3xl p-6">
+            <DebugAuthSection />
+          </section>
+        ) : null}
+        <AccountSyncSection />
+        <OfflineDeviceSyncSection />
+
+        <section className="paper rounded-3xl p-6">
+          <div className="font-paper text-xl">Profile</div>
+          <label className="mt-4 grid gap-2">
+            <span className="ink-muted text-sm font-medium">Global name (RAW reports)</span>
             <input
-              type="checkbox"
-              checked={settings.disablePoints}
-              onChange={(e) => updateSettingsAndMarkDirty({ disablePoints: e.target.checked })}
-            />
-          </label>
-          <label className="flex items-center justify-between gap-3 text-sm">
-            <span>
-              Disable notifications
-              <div className="ink-muted text-xs">
-              Stops permission prompts, in-app alerts, web push, and the desktop weekly reminder.
-              </div>
-            </span>
-            <input
-              type="checkbox"
-              checked={settings.disableNotifications}
+              type="text"
+              className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
+              placeholder={aiNameFallback || 'e.g. Kiya'}
+              maxLength={40}
+              value={nameDraft}
               onChange={(e) => {
-                updateSettingsAndMarkDirty({ disableNotifications: e.target.checked })
-                if (e.target.checked && !isTauri()) void unsubscribePush()
+                const next = e.target.value
+                setNameDraftOverride(next)
+                updateSettingsAndMarkDirty({ globalName: next, globalNameManuallySet: true })
+              }}
+              onBlur={() => {
+                updateSettingsAndMarkDirty({ globalName: nameDraft, globalNameManuallySet: true })
+                setNameDraftOverride(null)
               }}
             />
+            <div className="ink-muted text-xs">
+              {aiNameFallback
+                ? `RAW reports use your AI display name (“${aiNameFallback}”) until you set a name here.`
+                : 'Used in RAW export reports only. AI weekly preferences use a separate display name on the Week tab.'}
+            </div>
           </label>
-          {!settings.disableNotifications && perm === 'denied' ? (
-            <p className="text-sm" style={{ color: 'var(--danger)' }}>
-              {notificationPermissionDeniedHint()}
-            </p>
-          ) : null}
-          <div className="grid gap-3 rounded-2xl border border-[var(--paper-border)] p-4">
-            <div className="text-sm font-medium">Package delivery</div>
-            <p className="ink-muted text-xs">
-              Weekly packages appear after this day and time, once that journal week is complete
-              (Monday–Sunday). On the web, background push uses your timezone below — Chrome and
-              Firefox on desktop are the most reliable; Safari (Mac and iOS Home Screen) is
-              stricter and may hold alerts until you open the app. The desktop app schedules a
-              native weekly reminder that still fires after you quit Mentell.
-            </p>
-            <label className="grid gap-1 text-sm">
-              <span className="ink-muted text-xs font-medium">Delivery day</span>
-              <select
-                className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
-                value={settings.deliveryWeekday}
-                onChange={(e) => updateSettingsAndMarkDirty({ deliveryWeekday: Number(e.target.value) })}
-              >
-                {WEEKDAY_OPTIONS.map((d) => (
-                  <option key={d.value} value={d.value}>
-                    {d.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span className="ink-muted text-xs font-medium">Delivery time</span>
-              <input
-                type="time"
-                className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2"
-                value={settings.deliveryTimeLocal}
-                onChange={(e) => updateSettingsAndMarkDirty({ deliveryTimeLocal: e.target.value })}
-              />
-            </label>
-            <label className="grid gap-1 text-sm">
-              <span className="ink-muted text-xs font-medium">Timezone (push)</span>
-              <input
-                type="text"
-                readOnly
-                className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 opacity-80"
-                value={settings.timezone}
-                onFocus={() => updateSettingsAndMarkDirty({ timezone: browserTimezone() })}
-              />
-              <span className="ink-muted text-xs">
-                Detected from your device. Focus this field to refresh.
-              </span>
-            </label>
-          </div>
-          <SettingsEmailSection />
-          <SettingsAccountFeatures />
-        </div>
-      </section>
-
-      <SettingsDebugCloudSection />
-      {isAuthDebugPanelEnabled() && !isDebugMode() ? (
-        <section className="paper rounded-3xl p-6">
-          <DebugAuthSection />
         </section>
-      ) : null}
-      <AccountSyncSection />
-
-      <section className="paper rounded-3xl p-6">
-        <div className="font-paper text-xl">Profile</div>
-        <label className="mt-4 grid gap-2">
-          <span className="ink-muted text-sm font-medium">Global name (RAW reports)</span>
-          <input
-            type="text"
-            className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3"
-            placeholder={aiNameFallback || 'e.g. Kiya'}
-            maxLength={40}
-            value={nameDraft}
-            onChange={(e) => {
-              const next = e.target.value
-              setNameDraftOverride(next)
-              updateSettingsAndMarkDirty({ globalName: next, globalNameManuallySet: true })
-            }}
-            onBlur={() => {
-              updateSettingsAndMarkDirty({ globalName: nameDraft, globalNameManuallySet: true })
-              setNameDraftOverride(null)
-            }}
-          />
-          <div className="ink-muted text-xs">
-            {aiNameFallback
-              ? `RAW reports use your AI display name (“${aiNameFallback}”) until you set a name here.`
-              : 'Used in RAW export reports only. AI weekly preferences use a separate display name on the Week tab.'}
-          </div>
-        </label>
-      </section>
-    </div>
+      </div>
     </DeskCharacterLayout>
   )
 }
