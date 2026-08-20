@@ -28,6 +28,11 @@
     }
   },
   "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/SillyLittleTech/mentell/releases/latest/download/updater.json"
+      ]
+    },
     "deep-link": {
       "desktop": {
         "schemes": [
