@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Mentell",
-  "version": "1.18.35",
+  "version": "1.18.31",
   "identifier": "com.mentell.app",
   "build": {
     "frontendDist": "../dist",
@@ -29,6 +29,7 @@
   },
   "plugins": {
     "updater": {
+      "pubkey": "UPDATE_SIGNING_KEY_PLACEHOLDER",
       "endpoints": [
         "https://github.com/SillyLittleTech/mentell/releases/latest/download/updater.json"
       ]
@@ -42,6 +43,7 @@
     }
   },
   "bundle": {
+    "createUpdaterArtifacts": true,
     "active": true,
     "targets": "all",
     "icon": [

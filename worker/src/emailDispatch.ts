@@ -8,7 +8,7 @@ export async function processEmailSubscriber(env: Env, key: string, sub: EmailSu
   if (!sub.verified) return
 
   let updated = false
-  const tz = sub.preferences.timezone || 'UTC'
+  const tz = sub.preferences.timezone || 'America/New_York'
   const { hour } = localTimeParts(now, tz)
   const todayKey = dateKeyInTimeZone(now, tz)
 
@@ -25,8 +25,6 @@ export async function processEmailSubscriber(env: Env, key: string, sub: EmailSu
           todayKey,
           todayKey
         )
-      } else {
-        hasEntryToday = true // Graceful fallback
       }
 
       if (!hasEntryToday) {

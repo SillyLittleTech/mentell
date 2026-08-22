@@ -56,14 +56,14 @@ async function runQuery(
   parent: string,
   structuredQuery: Record<string, unknown>,
 ) {
-  const url = `https://firestore.googleapis.com/v1/${parent}:runQuery`
+  const url = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents:runQuery`
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ structuredQuery }),
+    body: JSON.stringify({ parent, structuredQuery }),
   })
   if (!res.ok) {
     const text = await res.text()
