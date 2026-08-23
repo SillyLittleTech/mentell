@@ -10,6 +10,8 @@
     "notification:default",
     "deep-link:default",
     "opener:default",
+    "updater:default",
+    "process:default",
     {
       "identifier": "opener:allow-default-urls",
       "allow": [{ "url": "mentell://*" }]

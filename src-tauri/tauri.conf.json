@@ -34,6 +34,12 @@
           "mentell"
         ]
       }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdGNEY4MjZGNEZBNUM2MzAKUldRd3hxVlBiNEpQZjNtY1pJdDhiYnFyY2w2LytKVmhjYlpzbUxhWFVvM0VzSWdxL2ZUb1MwL28K",
+      "endpoints": [
+        "https://github.com/SillyLittleTech/mentell/releases/latest/download/updater.json"
+      ]
     }
   },
   "bundle": {

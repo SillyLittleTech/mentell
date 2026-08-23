@@ -1,15 +1,6 @@
 import { Link } from 'react-router-dom'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { format } from 'date-fns'
-
-interface BeforeInstallPromptEvent extends Event {
-  readonly platforms: Array<string>;
-  readonly userChoice: Promise<{
-    outcome: 'accepted' | 'dismissed',
-    platform: string
-  }>;
-  prompt(): Promise<void>;
-}
 import { appVersion, commitSha, buildTime, refreshTime } from '../shared/version'
 
 const SILLY_LITTLE_TECH_URL = 'https://sillylittle.tech'
@@ -17,41 +8,6 @@ const BSD_LICENSE_URL = 'https://opensource.org/license/bsd-2-clause'
 
 export function AppLegalFooter() {
   const [hover, setHover] = useState(false)
-
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
-  const isMobile = typeof navigator !== 'undefined' && /mobi|android|touch|mini/i.test(navigator.userAgent.toLowerCase())
-
-  let os = ''
-  if (typeof navigator !== 'undefined') {
-    const ua = navigator.userAgent.toLowerCase()
-    if (/mac os x/.test(ua)) os = 'macOS'
-    else if (/windows/.test(ua)) os = 'Windows'
-    else if (/linux/.test(ua)) os = 'Linux'
-  }
-
-  useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
-    }
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
-    }
-  }, [])
-
-  const handlePwaClick = (e: React.MouseEvent) => {
-    e.preventDefault()
-    if (deferredPrompt) {
-      deferredPrompt.prompt()
-    } else {
-      window.alert('To install the app, look for "Add to Home Screen" in your browser menu.')
-    }
-  }
-
 
   return (
     <footer className="mx-auto mt-10 w-full max-w-4xl pb-8 text-center">
@@ -95,26 +51,6 @@ export function AppLegalFooter() {
         >
           Privacy
         </Link>
-        <span className="mx-2 opacity-40" aria-hidden>
-          ·
-        </span>
-        {isMobile ? (
-          <button
-            onClick={handlePwaClick}
-            className="focus-ring underline-offset-2 hover:text-[var(--paper-ink)] hover:underline"
-          >
-            Download (PWA)
-          </button>
-        ) : (
-          <a
-            href="https://github.com/SillyLittleTech/mentell/releases"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="focus-ring underline-offset-2 hover:text-[var(--paper-ink)] hover:underline"
-          >
-            Download {os ? `(${os})` : ''}
-          </a>
-        )}
       </p>
       <p className="mt-2 text-xs leading-relaxed text-[var(--paper-ink-muted)] opacity-80">
         © {new Date().getFullYear()} Kiya Rose. Fiscally sponsored by The Hack Foundation (d.b.a.
