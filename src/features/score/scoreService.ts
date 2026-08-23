@@ -301,20 +301,32 @@ export function applyScoreSnapshotFromSync(payload: ScoreSyncPayload, updatedAt:
   if (typeof payload.total === 'number') {
     setInt(SCORE_KEY, payload.total)
   }
+
   if (typeof payload.streak === 'number') {
     setInt(STREAK_KEY, payload.streak)
   }
+
   if (payload.lastDay === null) {
-    localStorage.removeItem(LAST_DAY_KEY)
+    // We intentionally do not remove the last day if it's null on the remote,
+    // to avoid deleting legitimate local history on a sync overwrite.
+    // (If it was truly a full wipe, the wipe logic handles dropping the DB).
   } else if (typeof payload.lastDay === 'string' && payload.lastDay) {
-    localStorage.setItem(LAST_DAY_KEY, payload.lastDay)
+    const currentLastDay = localStorage.getItem(LAST_DAY_KEY)
+    // Only apply remote lastDay if it's chronologically newer or equal to the local lastDay
+    // This prevents older sync data from making the app think there's a day gap on the next log.
+    if (!currentLastDay || payload.lastDay >= currentLastDay) {
+      localStorage.setItem(LAST_DAY_KEY, payload.lastDay)
+    }
   }
+
   if (typeof payload.streakFreezes === 'number') {
     setStreakFreezesForSync(payload.streakFreezes)
   }
+
   if (payload.streakRestore === null || typeof payload.streakRestore === 'object') {
     setStreakRestoreForSync(payload.streakRestore ?? null)
   }
+
   localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Math.trunc(updatedAt)))
   notifyLocalDataChanged()
   if (typeof window !== 'undefined') {
