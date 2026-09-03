@@ -9,7 +9,7 @@ let vapidDetails: {
 
 export function configureWebPush(publicKey: string, privateKey: string) {
   vapidDetails = {
-    subject: 'mailto:hello@sillylittle.tech',
+    subject: 'mailto:hello@slt.ong',
     publicKey,
     privateKey,
   }

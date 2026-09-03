@@ -14,10 +14,10 @@ VAPID_PRIVATE_KEY=
 # Firebase service account JSON (one line) for cron Firestore reads when users sync
 # FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 # Optional extra CORS host suffixes (comma-separated), e.g. ".myotherdomain.com"
-# ALLOWED_HOST_SUFFIXES=".sillylittle.tech"
+# ALLOWED_HOST_SUFFIXES=".slt.ong"
 # Email notifications (Resend). Use published template ids/aliases, not unpublished drafts.
 # RESEND_API_KEY=re_...
-# RESEND_FROM=Mentell <notifications@mentell.sillylittle.tech>
+# RESEND_FROM=Mentell <notifications@mentell.slt.ong>
 # RESEND_TEMPLATE_VERIFY=
 # RESEND_TEMPLATE_DAILY=
 # RESEND_TEMPLATE_PACKAGE=

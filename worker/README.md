@@ -71,7 +71,7 @@ npm run deploy
 
 CORS allows browser requests from:
 
-- Any host on `sillylittle.tech` (e.g. `mentell.sillylittle.tech`, `app.sillylittle.tech`)
+- Any host on `slt.ong` (e.g. `mentell.slt.ong`, `app.slt.ong`)
 - Any `*.workers.dev` preview URL
 - `localhost` / `127.0.0.1` for local dev
 
@@ -120,7 +120,7 @@ Local `worker/.dev.vars`:
 
 ```env
 RESEND_API_KEY=re_...
-RESEND_FROM=Mentell <notifications@mentell.sillylittle.tech>
+RESEND_FROM=Mentell <notifications@mentell.slt.ong>
 RESEND_TEMPLATE_VERIFY=
 RESEND_TEMPLATE_DAILY=
 RESEND_TEMPLATE_PACKAGE=

@@ -2,7 +2,7 @@
 
 Personal journaling PWA (React + Vite + Dexie). See [`AGENTS.md`](AGENTS.md) for architecture and dev commands.
 
-**License:** BSD-2-Clause — see [`LICENSE`](LICENSE). A [SillyLittleTech](https://sillylittle.tech) project.
+**License:** BSD-2-Clause — see [`LICENSE`](LICENSE). A [SillyLittleTech](https://slt.ong) project.
 
 ## Optional: Firebase sync + share links
 

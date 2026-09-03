@@ -19,7 +19,7 @@ All `VITE_FIREBASE_*` config values are **public** in the client bundle (not Git
 2. Register **Web app** → copy config into `.env.local` / GitHub Actions **Variables**.
 3. **Authentication** → enable **Google**.
 4. **Authentication** → enable **Email/Password**, and turn on **Email link (passwordless sign-in)** on the same provider (required for magic links).
-5. **Authentication** → **Authorized domains**: `localhost`, `projects.sillylittle.tech`, `mentell.sillylittle.tech` (if used), and your custom auth host if used (e.g. `auth.mentell.sillylittle.tech`).
+5. **Authentication** → **Authorized domains**: `localhost`, `projects.slt.ong`, `mentell.slt.ong` (if used), and your custom auth host if used (e.g. `auth.mentell.slt.ong`).
 6. **Google Cloud Console** (same project) → **APIs & Services** → **Credentials** → **OAuth 2.0 Client ID** (Web client, auto-created by Firebase) → **Authorized redirect URIs** must include:
    ```text
    https://<VITE_FIREBASE_AUTH_DOMAIN>/__/auth/handler
@@ -27,20 +27,20 @@ All `VITE_FIREBASE_*` config values are **public** in the client bundle (not Git
    ```
    Examples:
    - Default: `https://men-tell-prod.firebaseapp.com/__/auth/handler`
-   - Custom auth host: `https://auth.mentell.sillylittle.tech/__/auth/handler`
+   - Custom auth host: `https://auth.mentell.slt.ong/__/auth/handler`
    - **Tauri desktop Google sign-in** uses the fixed localhost callback above. Without `http://127.0.0.1:42831`, Google returns **Error 400: redirect_uri_mismatch**.
    If you change `VITE_FIREBASE_AUTH_DOMAIN`, update the handler URI as well.
 7. **Firestore** → create database (production mode), pick a region.
 8. **(Recommended)** Firestore **TTL** on collection `publicShares`, field `expiresAt`.
 
-The **Mentell app** is hosted on **GitHub Pages** (`https://projects.sillylittle.tech/mentell/`). A **small landing page** on Firebase Hosting explains that sign-in happens in the app (see below).
+The **Mentell app** is hosted on **GitHub Pages** (`https://projects.slt.ong/mentell/`). A **small landing page** on Firebase Hosting explains that sign-in happens in the app (see below).
 
 ## Email link (magic link) sign-in
 
 The app implements [Firebase email link auth](https://firebase.google.com/docs/auth/web/email-link-auth):
 
-- **Continue URL (web/PWA):** `https://<your-app-origin>/<base>/settings` (e.g. `https://projects.sillylittle.tech/mentell/settings`). The origin must be in **Authorized domains**.
-- **Continue URL (Tauri desktop):** `https://projects.sillylittle.tech/mentell/auth/deeplink.html` by default (`VITE_NATIVE_AUTH_CONTINUE_URL` to override). Firebase cannot redirect to `tauri://` origins; the relay page forwards the link into the app via the `mentell://` deep link scheme.
+- **Continue URL (web/PWA):** `https://<your-app-origin>/<base>/settings` (e.g. `https://projects.slt.ong/mentell/settings`). The origin must be in **Authorized domains**.
+- **Continue URL (Tauri desktop):** `https://projects.slt.ong/mentell/auth/deeplink.html` by default (`VITE_NATIVE_AUTH_CONTINUE_URL` to override). Firebase cannot redirect to `tauri://` origins; the relay page forwards the link into the app via the `mentell://` deep link scheme.
 - **`handleCodeInApp: true`** — completion runs in the Mentell SPA (web) or desktop app (via deep link).
 - Email is stored in `localStorage` as `emailForSignIn` when the link is sent (not in the redirect URL).
 - If the user opens the link on another device, they confirm their email in-app before `signInWithEmailLink` runs.
@@ -91,7 +91,7 @@ Redeem CORS allows `null` Origin so `file://` copies can call the API. After lin
 
 Static files live in [`firebase-hosting/public/`](../firebase-hosting/public/). They provide a friendly page at `https://<PROJECT_ID>.firebaseapp.com/` (and on a **custom auth domain** if connected to this Hosting site in the Console).
 
-- Primary link: **https://mentell.sillylittle.tech**
+- Primary link: **https://mentell.slt.ong**
 - Copy points users to **Settings → Account & sync** for Google / email sign-in.
 
 Deploy:
@@ -157,7 +157,7 @@ Non-synced users still receive generic weekly reminders using the timezone store
 ## Share links
 
 - Creator must be signed in with **sync enabled**.
-- Snapshot URL: `https://projects.sillylittle.tech/mentell/share/XXXX-XXXX-XXXX-XXXX`
+- Snapshot URL: `https://projects.slt.ong/mentell/share/XXXX-XXXX-XXXX-XXXX`
 - Snapshot links are time-limited. Viewers need no account; data is a sanitized snapshot in `publicShares/{code}`.
 - Protected permanent links use `/share/<uid>` and require a viewer code to unlock an encrypted payload. The owner can renew the same slug instead of generating a new URL.
 

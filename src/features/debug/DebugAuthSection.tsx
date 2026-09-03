@@ -19,7 +19,7 @@ export function DebugAuthSection() {
   const [result, setResult] = useState<string | null>(null)
   const [callbackPort, setCallbackPort] = useState<number | null>(null)
   const [testLink, setTestLink] = useState(
-    'https://projects.sillylittle.tech/mentell/auth/deeplink?oobCode=TEST&mode=signIn&apiKey=test',
+    'https://projects.slt.ong/mentell/auth/deeplink?oobCode=TEST&mode=signIn&apiKey=test',
   )
 
   useEffect(() => {

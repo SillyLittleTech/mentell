@@ -14,12 +14,12 @@ export interface PushEnv {
   /** Optional AI Search instance binding (mentell-journals). */
   AI_SEARCH?: unknown
   RESEND_API_KEY?: string
-  /** Default From header when a template has none, e.g. Mentell <notifications@mentell.sillylittle.tech> */
+  /** Default From header when a template has none, e.g. Mentell <notifications@mentell.slt.ong> */
   RESEND_FROM?: string
   RESEND_TEMPLATE_VERIFY?: string
   RESEND_TEMPLATE_DAILY?: string
   RESEND_TEMPLATE_PACKAGE?: string
-  /** Public app origin used in verification links, e.g. https://projects.sillylittle.tech/mentell */
+  /** Public app origin used in verification links, e.g. https://projects.slt.ong/mentell */
   MENTELL_PUBLIC_URL?: string
 }
 

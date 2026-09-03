@@ -8,7 +8,7 @@ export type SendEmailResult =
   | { ok: true; id?: string }
   | { ok: false; error: string; status?: number }
 
-const DEFAULT_FROM = 'Mentell <notifications@mentell.sillylittle.tech>'
+const DEFAULT_FROM = 'Mentell <notifications@mentell.slt.ong>'
 
 const KIND_ALIASES: Record<EmailTemplateKind, string[]> = {
   daily: ['daily', 'mentell-daily', 'daily-reminder', 'adherence'],
