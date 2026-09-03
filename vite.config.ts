@@ -10,7 +10,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile'
 const skipPwa = process.env.SKIP_PWA === '1'
 const offlineZip = process.env.VITE_OFFLINE_ZIP === '1'
 const rootDir = path.dirname(fileURLToPath(import.meta.url))
-/** Production: https://projects.sillylittle.tech/mentell/ — set via VITE_BASE in CI */
+/** Production: https://projects.slt.ong/mentell/ — set via VITE_BASE in CI */
 
 let commitSha = 'dev'
 try {

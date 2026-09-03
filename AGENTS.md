@@ -8,7 +8,7 @@ Mentell is a local-first stationery-themed mental health / journaling PWA. It is
 
 An **optional** Cloudflare Worker (`worker/`) provides weekly AI summaries via Workers AI. The static app is deployed on **GitHub Pages**; the worker is deployed separately with Wrangler.
 
-**GitHub Pages base path:** Production URL is `https://projects.sillylittle.tech/mentell/`. CI sets `VITE_BASE=/mentell/` in `.github/workflows/gh-pages.yml`. Local dev uses `base: /`. Use `publicUrl()` for static assets under `public/`.
+**GitHub Pages base path:** Production URL is `https://projects.slt.ong/mentell/`. CI sets `VITE_BASE=/mentell/` in `.github/workflows/gh-pages.yml`. Local dev uses `base: /`. Use `publicUrl()` for static assets under `public/`.
 
 **UI assets:** Edit PNGs in [`asset/`](asset/) (source), then run `npm run sync:assets` to copy into `public/asset/`. Character SVGs live in [`asset/char/`](asset/char/) (also synced to `public/asset/char/`); `sync:assets` regenerates [`src/features/character/charManifest.generated.ts`](src/features/character/charManifest.generated.ts) from `charprod.svg` inkscape labels (DNI / III / TOGGLE). Test customization at `/character-lab`. Production builds run sync automatically. Reference PNGs in React via `publicUrl('/asset/…')`.
 
@@ -41,7 +41,7 @@ All commands are defined in `package.json` scripts:
 
 **Production**
 
-1. `wrangler secret put WEEKLY_SUMMARY_TOKEN` (CORS allows any `*.sillylittle.tech` and `*.workers.dev` by default)
+1. `wrangler secret put WEEKLY_SUMMARY_TOKEN` (CORS allows any `*.slt.ong` and `*.workers.dev` by default)
 2. `npm run worker:deploy` — note the `*.workers.dev` URL
 3. GitHub repo → Settings → Actions:
    - Secret: `WEEKLY_AI_TOKEN` (same as `WEEKLY_SUMMARY_TOKEN`)
@@ -111,7 +111,7 @@ Source is **BSD-2-Clause** — see [`LICENSE`](LICENSE). Footer legal copy match
 
 ### Privacy copy
 
-In-app page: [`src/features/legal/PrivacyPolicyPage.tsx`](src/features/legal/PrivacyPolicyPage.tsx) at `/privacy`. Links to [SillyLittleTech Privacy Policy](https://sillylittle.tech/policy). Mentell-specific sections cover individual-use (not HIPAA for providers), optional Firebase Auth/sync/share, and optional Cloudflare Workers AI. Update this page when cloud feature flags or data flows change.
+In-app page: [`src/features/legal/PrivacyPolicyPage.tsx`](src/features/legal/PrivacyPolicyPage.tsx) at `/privacy`. Links to [SillyLittleTech Privacy Policy](https://slt.ong/policy). Mentell-specific sections cover individual-use (not HIPAA for providers), optional Firebase Auth/sync/share, and optional Cloudflare Workers AI. Update this page when cloud feature flags or data flows change.
 
 ### Stickies
 

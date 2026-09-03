@@ -24,7 +24,7 @@ describe('crypt code encoding', () => {
     expect(parseCryptCode('#payload=pay&key=secret')).toEqual(expected)
     expect(parseCryptCode('?payload=pay&key=secret')).toEqual(expected)
     expect(
-      parseCryptCode('https://projects.sillylittle.tech/mentell/share/cryptl#payload=pay&key=secret'),
+      parseCryptCode('https://projects.slt.ong/mentell/share/cryptl#payload=pay&key=secret'),
     ).toEqual(expected)
     expect(
       parseCryptCode('https://example.test/index.html#/share/cryptl?payload=pay&key=secret'),

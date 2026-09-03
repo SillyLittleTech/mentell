@@ -16,7 +16,7 @@ export type SearchExportItem =
   | { kind: 'message'; role: 'user' | 'assistant'; content: string }
   | SearchExportEntries
 
-const SITE_URL = 'https://mentell.sillylittle.tech'
+const SITE_URL = 'https://mentell.slt.ong'
 
 function escapeHtml(s: string) {
   return s

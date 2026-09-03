@@ -8,7 +8,7 @@ import {
   isShareLinksEnabled,
 } from '../../shared/features/featureFlags'
 
-const SILLY_LITTLE_POLICY_URL = 'https://sillylittle.tech/policy'
+const SILLY_LITTLE_POLICY_URL = 'https://slt.ong/policy'
 
 export function PrivacyPolicyPage() {
   const { pathname, hash } = useLocation()
@@ -34,7 +34,7 @@ export function PrivacyPolicyPage() {
         <p className="ink-muted mt-2 text-sm leading-relaxed">
           Mentell is a personal journaling app by{' '}
           <a
-            href="https://sillylittle.tech"
+            href="https://slt.ong"
             className="font-medium text-[var(--success)] underline-offset-2 hover:underline"
             target="_blank"
             rel="noopener noreferrer"

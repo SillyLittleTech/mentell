@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { format } from 'date-fns'
 import { appVersion, commitSha, buildTime, refreshTime } from '../shared/version'
 
-const SILLY_LITTLE_TECH_URL = 'https://sillylittle.tech'
+const SILLY_LITTLE_TECH_URL = 'https://slt.ong'
 const BSD_LICENSE_URL = 'https://opensource.org/license/bsd-2-clause'
 
 export function AppLegalFooter() {

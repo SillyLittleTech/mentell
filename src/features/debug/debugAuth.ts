@@ -36,7 +36,7 @@ export function getAuthDebugSnapshot(): AuthDebugSnapshot {
   const href =
     typeof window !== 'undefined'
       ? window.location.href
-      : 'https://projects.sillylittle.tech/mentell/settings?oobCode=TEST&mode=signIn&apiKey=test'
+      : 'https://projects.slt.ong/mentell/settings?oobCode=TEST&mode=signIn&apiKey=test'
   const params = typeof window !== 'undefined' ? getMergedUrlParams() : new URLSearchParams()
 
   return {
