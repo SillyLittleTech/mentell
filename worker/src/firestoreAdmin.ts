@@ -51,19 +51,18 @@ function parseServiceAccount(raw: string): ServiceAccount {
 }
 
 async function runQuery(
-  sa: ServiceAccount,
   token: string,
   parent: string,
   structuredQuery: Record<string, unknown>,
 ) {
-  const url = `https://firestore.googleapis.com/v1/projects/${sa.project_id}/databases/(default)/documents:runQuery`
+  const url = `https://firestore.googleapis.com/v1/${parent}:runQuery`
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ parent, structuredQuery }),
+    body: JSON.stringify({ structuredQuery }),
   })
   if (!res.ok) {
     const text = await res.text()
@@ -90,7 +89,7 @@ export async function firestoreHasWeeklyPackage(
   const sa = parseServiceAccount(serviceAccountJson)
   const token = await getAccessToken(sa)
   const parent = `projects/${sa.project_id}/databases/(default)/documents/users/${uid}`
-  const rows = await runQuery(sa, token, parent, {
+  const rows = await runQuery(token, parent, {
     from: [{ collectionId: 'packages' }],
     where: {
       compositeFilter: {
@@ -115,7 +114,7 @@ export async function firestoreHasEntriesInRange(
   const sa = parseServiceAccount(serviceAccountJson)
   const token = await getAccessToken(sa)
   const parent = `projects/${sa.project_id}/databases/(default)/documents/users/${uid}`
-  const rows = await runQuery(sa, token, parent, {
+  const rows = await runQuery(token, parent, {
     from: [{ collectionId: 'entries' }],
     where: {
       compositeFilter: {
@@ -236,7 +235,7 @@ export async function firestoreFetchEntriesByIds(
   // Firestore IN supports up to 30 values; batch if needed.
   for (let i = 0; i < unique.length; i += 30) {
     const batch = unique.slice(i, i + 30)
-    const rows = await runQuery(sa, token, parent, {
+    const rows = await runQuery(token, parent, {
       from: [{ collectionId: 'entries' }],
       where: {
         fieldFilter: {
