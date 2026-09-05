@@ -148,7 +148,7 @@ async function resolveTemplate(
   for (const identifier of identifiers) {
     const got = await getTemplate(resend, apiKey, identifier)
     if (got.ok && got.template) return got
-    if (got.error) errors.push(got.error)
+    if (!got.ok) errors.push(got.error)
   }
 
   const listed = await resend.templates.list({ limit: 100 })
@@ -160,7 +160,7 @@ async function resolveTemplate(
     if (matchId && !identifiers.includes(matchId)) {
       const got = await getTemplate(resend, apiKey, matchId)
       if (got.ok && got.template) return got
-      if (got.error) errors.push(got.error)
+      if (!got.ok) errors.push(got.error)
     }
   }
 
@@ -186,7 +186,7 @@ export async function sendResendEmail(
   const resend = new Resend(apiKey)
   const resolved = await resolveTemplate(resend, apiKey, env, kind)
   if (!resolved.ok || !resolved.template) {
-    return { ok: false, error: resolved.error, status: resolved.status }
+    return { ok: false, error: !resolved.ok ? resolved.error : 'No template', status: !resolved.ok ? resolved.status : undefined }
   }
 
   const template = resolved.template
