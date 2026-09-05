@@ -1,15 +1,15 @@
 const MENTELL_CONTACT_EMAILS = [
   {
     purpose: "Policy questions",
-    address: "privacy@sillylittle.tech",
+    address: "privacy@slt.ong",
   },
   {
     purpose: "Technical support",
-    address: "technical@sillylittle.tech",
+    address: "technical@slt.ong",
   },
   {
     purpose: "Account security",
-    address: "security@sillylittle.tech",
+    address: "security@slt.ong",
     note: "Sign-in problems, suspected unauthorized access, or reporting a security concern",
   },
 ] as const;

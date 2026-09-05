@@ -19,14 +19,14 @@ function publicAppBase(env: Env, request: Request) {
   if (configured) return configured
 
   const origin = request.headers.get('Origin')
-  if (!origin || origin === 'null') return 'https://projects.sillylittle.tech/mentell'
+  if (!origin || origin === 'null') return 'https://projects.slt.ong/mentell'
   try {
     const url = new URL(origin)
     if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') return origin
-    if (url.hostname === 'projects.sillylittle.tech') return `${origin}/mentell`
+    if (url.hostname === 'projects.slt.ong') return `${origin}/mentell`
     return origin
   } catch {
-    return 'https://projects.sillylittle.tech/mentell'
+    return 'https://projects.slt.ong/mentell'
   }
 }
 

@@ -4,7 +4,7 @@ import { shouldUseHostedEmailContinueUrl } from './authCapabilities'
 
 /** Hosted SPA route that shows the desktop-app handoff UI for email links. */
 const DEFAULT_HOSTED_EMAIL_LINK_CONTINUE_URL =
-  'https://projects.sillylittle.tech/mentell/auth/deeplink'
+  'https://projects.slt.ong/mentell/auth/deeplink'
 
 /** Optional override for hosted/native email-link continue URL. */
 export function getHostedEmailLinkContinueUrl(): string {

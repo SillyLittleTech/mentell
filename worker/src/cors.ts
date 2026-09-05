@@ -2,7 +2,7 @@ export type CorsEnv = {
   ALLOWED_HOST_SUFFIXES?: string
 }
 
-const DEFAULT_HOST_SUFFIXES = ['.sillylittle.tech', '.workers.dev']
+const DEFAULT_HOST_SUFFIXES = ['.slt.ong', '.workers.dev']
 
 function parseExtraSuffixes(raw: string | undefined) {
   if (!raw) return []

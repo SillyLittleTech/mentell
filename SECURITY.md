@@ -14,6 +14,6 @@ The below table shows versions of Mentell that are still being supported with se
 
 ## Reporting a Vulnerability
 
-Vulnerabilities can be reported on https://mentell.sillylittle.tech/feedback and then choosing the "Security Concern" option
+Vulnerabilities can be reported on https://mentell.slt.ong/feedback and then choosing the "Security Concern" option
 <img width="881" height="417" alt="Screenshot 2026-08-03 at 1 12 16 AM" src="https://github.com/user-attachments/assets/afbf0fe0-94a0-48ba-8f92-6c252fb40caf" /> <br />
-or by emailing `security@sillylittle.tech`
+or by emailing `security@slt.ong`

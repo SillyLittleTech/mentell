@@ -2,8 +2,8 @@ import { isCapacitor, isFileProtocol, isOfflineZipBuild, isTauri } from '../plat
 import { isAuthHandoffConfigured } from './authHandoffClient'
 import { isAuthHandoffEnabled } from '../features/featureFlags'
 
-const HOSTED_SIGN_IN_URL = 'https://mentell.sillylittle.tech/settings'
-const HOSTED_LINK_URL = 'https://mentell.sillylittle.tech/auth/link'
+const HOSTED_SIGN_IN_URL = 'https://mentell.slt.ong/settings'
+const HOSTED_LINK_URL = 'https://mentell.slt.ong/auth/link'
 
 /** Google popup/redirect only works on https (or localhost dev). Tauri uses system browser. */
 export function supportsInAppGoogleSignIn(): boolean {

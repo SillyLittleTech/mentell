@@ -26,7 +26,7 @@ export function formatAuthError(e: unknown): string {
     case 'auth/unauthorized-domain':
       return 'This app origin is not authorized for sign-in. Use the hosted Mentell app, desktop app, or add this origin in Firebase Authorized domains.'
     case 'auth/unauthorized-continue-uri':
-      return 'This sign-in link destination is not authorized. For desktop/offline builds, ensure projects.sillylittle.tech is in Firebase Authorized domains.'
+      return 'This sign-in link destination is not authorized. For desktop/offline builds, ensure projects.slt.ong is in Firebase Authorized domains.'
     case 'auth/popup-closed-by-user':
     case 'auth/cancelled-popup-request':
       return 'Sign-in was cancelled.'

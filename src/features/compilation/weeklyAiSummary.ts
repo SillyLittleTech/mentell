@@ -215,7 +215,7 @@ export function buildAiSummaryMarkdown(input: {
     `- Week: ${input.weekKey} (${input.startDateKey} -> ${input.endDateKey})`,
     `- Mode: ${input.mode === 'overview' ? 'Narrative overview' : 'Reflection'}`,
     `- Generated: ${new Date().toISOString()}`,
-    `- mentell.sillylittle.tech`,
+    `- mentell.slt.ong`,
     '',
   ]
   if (profile.displayName) lines.push(`- Name (for tone): ${profile.displayName}`)
