@@ -222,25 +222,33 @@ export async function generateWeeklySummary(
   _startKey: string,
   _endKey: string,
   globalName?: string,
-  disableAi?: boolean
+  disableAi?: boolean,
+  entries?: any[]
 ): Promise<string> {
   if (disableAi) {
     return 'AI Features are disabled, enable in the settings.'
   }
 
   try {
+    let entriesText = ''
+    if (entries && entries.length > 0) {
+      entriesText = entries
+        .map((e) => `Date: ${e.dateKey}\nEmotion: ${e.emotion || 'none'}\nSentiment: ${e.sentiment || 'none'}\nDetails: ${e.details || 'none'}`)
+        .join('\n\n')
+    }
+
     const result = await runWorkersAi(env, '@cf/meta/llama-4-scout-17b-16e-instruct', {
       messages: [
         {
           role: 'system',
-          content: 'You generate short motivational summaries for a weekly mental health journal package. Be very brief (1-2 sentences) and encouraging. Address the user by name if provided.',
+          content: 'You generate short motivational summaries for a weekly mental health journal package. Be brief (1-3 sentences) but include good personalization detail without listing everything verbatim. If the user had a rough week, acknowledge it and be encouraging. Address the user by name if provided.',
         },
         {
           role: 'user',
-          content: `Write a short weekly summary for ${globalName || 'this user'}.`,
+          content: `Write a short weekly summary for ${globalName || 'this user'}. Here are their journal entries from the week:\n\n${entriesText || 'No entry details available.'}`,
         },
       ],
-      max_tokens: 64,
+      max_tokens: 256,
     })
     return extractAiText(result).trim() || 'Your weekly package is ready to open.'
   } catch {

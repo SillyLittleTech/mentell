@@ -1,7 +1,7 @@
 import type { Env } from './env'
 import type { EmailSubscriberRecord } from './emailTypes'
 import { localTimeParts, dateKeyInTimeZone, lastCompletedWeekRange } from './pushDelivery'
-import { firestoreHasEntriesInRange } from './firestoreAdmin'
+import { firestoreHasEntriesInRange, firestoreFetchEntriesInRange } from './firestoreAdmin'
 import { sendResendEmail, generateWeeklySummary } from './emailSend'
 
 export async function processEmailSubscriber(env: Env, key: string, sub: EmailSubscriberRecord, now: Date) {
@@ -48,24 +48,24 @@ export async function processEmailSubscriber(env: Env, key: string, sub: EmailSu
     if (sub.lastSent?.lastPackageId !== weekKey) {
       if (!sub.userId.startsWith('anon_') && env.FIREBASE_SERVICE_ACCOUNT_JSON) {
         // Need to check if there are any entries for the week
-        const hasEntries = await firestoreHasEntriesInRange(
+        const entries = await firestoreFetchEntriesInRange(
           env.FIREBASE_SERVICE_ACCOUNT_JSON,
           sub.userId,
           startKey,
           endKey
         )
 
-        if (hasEntries) {
+        if (entries.length > 0) {
           // Verify a package hasn't already been created by the frontend/sync (if this is relevant? The prompt just says when package is available)
           // Actually, we should send it if they have entries for the week and we haven't sent the email yet.
 
           // Generate summary
-          const summary = await generateWeeklySummary(env, sub.userId, weekKey, startKey, endKey, sub.preferences.globalName, sub.preferences.disableAi)
+          const summary = await generateWeeklySummary(env, sub.userId, weekKey, startKey, endKey, sub.preferences.globalName, sub.preferences.disableAi, entries)
 
           const sent = await sendResendEmail(env, 'package', sub.email, {
             global_name: sub.preferences.globalName || '',
             date: todayKey,
-            ent_count: 'Multiple', // We don't easily have exact count without a query
+            ent_count: entries.length.toString(), // Exact count for the package drop
             ent_rank: '⼁', // We don't easily have rank
             ent_sum: summary
           })
