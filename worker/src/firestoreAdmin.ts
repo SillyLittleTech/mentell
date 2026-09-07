@@ -142,6 +142,52 @@ export async function firestoreHasEntriesInRange(
   return rows.some((r) => r.document)
 }
 
+export async function firestoreFetchEntriesInRange(
+  serviceAccountJson: string,
+  uid: string,
+  startKey: string,
+  endKey: string,
+) {
+  const sa = parseServiceAccount(serviceAccountJson)
+  const token = await getAccessToken(sa)
+  const parent = `projects/${sa.project_id}/databases/(default)/documents/users/${uid}`
+  const rows = await runQuery(token, parent, {
+    from: [{ collectionId: 'entries' }],
+    where: {
+      compositeFilter: {
+        op: 'AND',
+        filters: [
+          {
+            fieldFilter: {
+              field: { fieldPath: 'dateKey' },
+              op: 'GREATER_THAN_OR_EQUAL',
+              value: { stringValue: startKey },
+            },
+          },
+          {
+            fieldFilter: {
+              field: { fieldPath: 'dateKey' },
+              op: 'LESS_THAN_OR_EQUAL',
+              value: { stringValue: endKey },
+            },
+          },
+        ],
+      },
+    },
+  })
+
+  const out: NonNullable<ReturnType<typeof documentToEntry>>[] = []
+  for (const row of rows) {
+    const doc = row.document as
+      | { name?: string; fields?: Record<string, Record<string, unknown>> }
+      | undefined
+    if (!doc) continue
+    const entry = documentToEntry(doc)
+    if (entry) out.push(entry)
+  }
+  return out
+}
+
 function readFirestoreValue(value: Record<string, unknown> | undefined): unknown {
   if (!value) return undefined
   if ('stringValue' in value) return value.stringValue
