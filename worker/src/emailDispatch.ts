@@ -1,7 +1,7 @@
 import type { Env } from './env'
 import type { EmailSubscriberRecord } from './emailTypes'
-import { localTimeParts, dateKeyInTimeZone, lastCompletedWeekRange } from './pushDelivery'
-import { firestoreHasEntriesInRange, firestoreFetchEntriesInRange } from './firestoreAdmin'
+import { localTimeParts, dateKeyInTimeZone, lastCompletedWeekRange, inDeliveryWindow } from './pushDelivery'
+import { firestoreHasEntriesInRange } from './firestoreAdmin'
 import { sendResendEmail, generateWeeklySummary } from './emailSend'
 
 export async function processEmailSubscriber(env: Env, key: string, sub: EmailSubscriberRecord, now: Date) {
@@ -45,7 +45,10 @@ export async function processEmailSubscriber(env: Env, key: string, sub: EmailSu
   if (sub.preferences.weeklyPackageDropEnabled) {
     const { weekKey, startKey, endKey } = lastCompletedWeekRange(now, tz)
 
-    if (sub.lastSent?.lastPackageId !== weekKey) {
+    if (
+      sub.lastSent?.lastPackageId !== weekKey &&
+      inDeliveryWindow(now, sub.preferences.deliveryWeekday ?? 1, sub.preferences.deliveryTimeLocal ?? '09:00', tz)
+    ) {
       if (!sub.userId.startsWith('anon_') && env.FIREBASE_SERVICE_ACCOUNT_JSON) {
         // Need to check if there are any entries for the week
         const entries = await firestoreFetchEntriesInRange(
