@@ -8,6 +8,8 @@ export interface EmailSubscriberRecord {
     dailyReminderEnabled: boolean
     dailyReminderHours: number // 1-4 hours before midnight
     weeklyPackageDropEnabled: boolean
+    deliveryWeekday?: number
+    deliveryTimeLocal?: string
     timezone: string
     globalName?: string
     disableAi?: boolean
@@ -30,6 +32,8 @@ export type SubscribeEmailBody = {
   dailyReminderEnabled?: boolean
   dailyReminderHours?: number
   weeklyPackageDropEnabled?: boolean
+  deliveryWeekday?: number
+  deliveryTimeLocal?: string
   timezone?: string
   globalName?: string
   disableAi?: boolean
