@@ -83,6 +83,20 @@ export async function handleEmailSubscribe(request: Request, env: Env) {
   const emailChanged = existing?.email !== email
   const autoVerified = Boolean(auth.email && auth.email.toLowerCase() === email.toLowerCase())
 
+  const sanitizeTime = (raw: string | undefined) => {
+    const m = (raw ?? '09:00').trim().match(/^(\d{1,2}):(\d{2})$/)
+    if (!m) return '09:00'
+    const h = Math.min(23, Math.max(0, Number(m[1])))
+    const min = Math.min(59, Math.max(0, Number(m[2])))
+    return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+  }
+
+  const sanitizeWeekday = (raw: number | undefined) => {
+    const n = Number(raw)
+    if (!Number.isFinite(n)) return 1
+    return Math.min(6, Math.max(0, Math.trunc(n)))
+  }
+
   const record: EmailSubscriberRecord = {
     userId,
     email,
@@ -92,6 +106,8 @@ export async function handleEmailSubscribe(request: Request, env: Env) {
       dailyReminderEnabled: Boolean(body.dailyReminderEnabled),
       dailyReminderHours: typeof body.dailyReminderHours === 'number' ? body.dailyReminderHours : 1,
       weeklyPackageDropEnabled: Boolean(body.weeklyPackageDropEnabled),
+      deliveryWeekday: sanitizeWeekday(body.deliveryWeekday),
+      deliveryTimeLocal: sanitizeTime(body.deliveryTimeLocal),
       timezone: body.timezone || 'America/New_York',
       globalName: body.globalName,
       disableAi: Boolean(body.disableAi),

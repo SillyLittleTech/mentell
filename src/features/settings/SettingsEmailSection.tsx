@@ -63,6 +63,8 @@ export function SettingsEmailSection() {
           dailyReminderEnabled: settings.dailyEmailReminderEnabled,
           dailyReminderHours: settings.dailyEmailReminderHours,
           weeklyPackageDropEnabled: settings.weeklyEmailEnabled,
+          deliveryWeekday: settings.deliveryWeekday,
+          deliveryTimeLocal: settings.deliveryTimeLocal,
           timezone: settings.timezone,
           globalName:
             getEffectiveGlobalName() ||
