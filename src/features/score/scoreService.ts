@@ -298,12 +298,16 @@ export type ScoreSyncPayload = {
 
 /** Apply a score document from cloud sync or recovery. */
 export function applyScoreSnapshotFromSync(payload: ScoreSyncPayload, updatedAt: number) {
-  if (typeof payload.total === 'number') {
+  let changed = false
+
+  if (typeof payload.total === 'number' && getInt(SCORE_KEY, 0) !== payload.total) {
     setInt(SCORE_KEY, payload.total)
+    changed = true
   }
 
-  if (typeof payload.streak === 'number') {
+  if (typeof payload.streak === 'number' && getInt(STREAK_KEY, 0) !== payload.streak) {
     setInt(STREAK_KEY, payload.streak)
+    changed = true
   }
 
   if (payload.lastDay === null) {
@@ -314,23 +318,37 @@ export function applyScoreSnapshotFromSync(payload: ScoreSyncPayload, updatedAt:
     const currentLastDay = localStorage.getItem(LAST_DAY_KEY)
     // Only apply remote lastDay if it's chronologically newer or equal to the local lastDay
     // This prevents older sync data from making the app think there's a day gap on the next log.
-    if (!currentLastDay || payload.lastDay >= currentLastDay) {
+    if (!currentLastDay || payload.lastDay > currentLastDay) {
       localStorage.setItem(LAST_DAY_KEY, payload.lastDay)
+      changed = true
     }
   }
 
-  if (typeof payload.streakFreezes === 'number') {
+  if (typeof payload.streakFreezes === 'number' && getInt(STREAK_FREEZE_KEY, 0) !== payload.streakFreezes) {
     setStreakFreezesForSync(payload.streakFreezes)
+    changed = true
   }
 
   if (payload.streakRestore === null || typeof payload.streakRestore === 'object') {
-    setStreakRestoreForSync(payload.streakRestore ?? null)
+    const currentRestore = localStorage.getItem(STREAK_RESTORE_KEY)
+    const nextRestore = payload.streakRestore ? JSON.stringify(payload.streakRestore) : null
+    if (currentRestore !== nextRestore) {
+      setStreakRestoreForSync(payload.streakRestore ?? null)
+      changed = true
+    }
   }
 
-  localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Math.trunc(updatedAt)))
-  notifyLocalDataChanged()
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('mentell:score-changed'))
+  const nextUpdatedAt = String(Math.trunc(updatedAt))
+  if (localStorage.getItem(SCORE_UPDATED_AT_KEY) !== nextUpdatedAt) {
+    localStorage.setItem(SCORE_UPDATED_AT_KEY, nextUpdatedAt)
+    changed = true
+  }
+
+  if (changed) {
+    notifyLocalDataChanged()
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('mentell:score-changed'))
+    }
   }
 }
 
