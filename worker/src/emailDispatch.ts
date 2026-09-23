@@ -1,7 +1,7 @@
 import type { Env } from './env'
 import type { EmailSubscriberRecord } from './emailTypes'
 import { localTimeParts, dateKeyInTimeZone, lastCompletedWeekRange, inDeliveryWindow } from './pushDelivery'
-import { firestoreHasEntriesInRange } from './firestoreAdmin'
+import { firestoreHasEntriesInRange, firestoreFetchEntriesInRange } from './firestoreAdmin'
 import { sendResendEmail, generateWeeklySummary } from './emailSend'
 
 export async function processEmailSubscriber(env: Env, key: string, sub: EmailSubscriberRecord, now: Date) {
