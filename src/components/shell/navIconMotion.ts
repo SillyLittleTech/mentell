@@ -68,77 +68,77 @@ export type NavMotionPlan = {
   shake?: TargetAndTransition
 }
 
-/** Snappy ease-out — keeps motion visible without feeling sluggish after click. */
-const quickEase: Transition = { type: 'tween', ease: [0.33, 1, 0.45, 1] }
+/** Ease-out curve — readable motion without feeling sluggish on click. */
+const quickEase: Transition = { type: 'tween', ease: [0.22, 1, 0.36, 1] }
 
 export function navMotionPlan(kind: NavAnimationKind): NavMotionPlan {
   switch (kind) {
     case 'envelope':
       return {
         kind,
-        durationSec: 0.3,
+        durationSec: 0.38,
         letter: {
           initial: { y: 0, opacity: 1 },
-          animate: { y: 8, opacity: 0 },
-          transition: { ...quickEase, duration: 0.14 },
+          animate: { y: 9, opacity: 0 },
+          transition: { ...quickEase, duration: 0.18 },
         },
         primary: {
-          initial: { y: -10, opacity: 0 },
+          initial: { y: -11, opacity: 0 },
           animate: { y: 0, opacity: 1 },
-          transition: { ...quickEase, duration: 0.16, delay: 0.08 },
+          transition: { ...quickEase, duration: 0.2, delay: 0.12 },
         },
       }
     case 'projector':
       return {
         kind,
-        durationSec: 0.3,
-        swapAtRatio: 0.45,
+        durationSec: 0.4,
+        swapAtRatio: 0.48,
         book: {
-          initial: { scale: 0.78, opacity: 1 },
-          animate: { scale: 1.08, opacity: 0 },
-          transition: { ...quickEase, duration: 0.15 },
+          initial: { scale: 0.75, opacity: 1 },
+          animate: { scale: 1.1, opacity: 0 },
+          transition: { ...quickEase, duration: 0.19 },
         },
         primary: {
-          initial: { scale: 0.78, opacity: 0 },
+          initial: { scale: 0.75, opacity: 0 },
           animate: { scale: 1, opacity: 1 },
-          transition: { ...quickEase, duration: 0.17, delay: 0.1 },
+          transition: { ...quickEase, duration: 0.21, delay: 0.14 },
         },
       }
     case 'notepad':
       return {
         kind,
-        durationSec: 0.26,
+        durationSec: 0.34,
         single: {
-          initial: { y: 12, opacity: 0.5 },
+          initial: { y: 13, opacity: 0.45 },
           animate: { y: 0, opacity: 1 },
-          transition: { ...quickEase, duration: 0.24 },
+          transition: { ...quickEase, duration: 0.32 },
         },
       }
     case 'shoppe':
       return {
         kind,
-        durationSec: 0.28,
+        durationSec: 0.36,
         single: {
-          initial: { x: -14, skewX: -12, scale: 0.86, opacity: 0.9 },
+          initial: { x: -16, skewX: -13, scale: 0.84, opacity: 0.88 },
           animate: { x: 0, skewX: 0, scale: 1, opacity: 1 },
-          transition: { ...quickEase, duration: 0.26 },
+          transition: { ...quickEase, duration: 0.34 },
         },
       }
     case 'settings':
       return {
         kind,
-        durationSec: 0.26,
+        durationSec: 0.34,
         single: {
-          initial: { rotate: -120, scale: 0.92 },
+          initial: { rotate: -140, scale: 0.9 },
           animate: { rotate: 0, scale: 1 },
-          transition: { ...quickEase, duration: 0.24 },
+          transition: { ...quickEase, duration: 0.32 },
         },
       }
     case 'character':
       return {
         kind,
-        durationSec: 0.22,
-        shake: { x: [0, -3, 3, -2, 2, 0] },
+        durationSec: 0.3,
+        shake: { x: [0, -3, 3, -2.5, 2.5, -1, 1, 0] },
       }
     default: {
       const _exhaustive: never = kind
