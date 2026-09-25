@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import { AnimatedNavIcon } from './AnimatedNavIcon'
 import { bumpNavReplayTokens } from './navReplay'
@@ -23,7 +24,9 @@ export function BottomNav() {
   const [replayTokens, setReplayTokens] = useState<Record<string, number>>({})
 
   const bumpReplay = useCallback((to: string) => {
-    setReplayTokens((prev) => bumpNavReplayTokens(prev, to))
+    flushSync(() => {
+      setReplayTokens((prev) => bumpNavReplayTokens(prev, to))
+    })
   }, [])
 
   const leftItems = NAV_ITEMS.filter((item) => !item.prominent).slice(0, 2)

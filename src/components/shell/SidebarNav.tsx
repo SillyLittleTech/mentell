@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import { CharacterCorner } from '../../features/character/CharacterCorner'
 import { publicUrl } from '../../shared/publicUrl'
@@ -25,7 +26,9 @@ export function SidebarNav() {
   const [replayTokens, setReplayTokens] = useState<Record<string, number>>({})
 
   const bumpReplay = useCallback((to: string) => {
-    setReplayTokens((prev) => bumpNavReplayTokens(prev, to))
+    flushSync(() => {
+      setReplayTokens((prev) => bumpNavReplayTokens(prev, to))
+    })
   }, [])
 
   return (
