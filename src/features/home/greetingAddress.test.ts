@@ -65,11 +65,12 @@ describe('resolveGreetingAddresseeKind', () => {
 })
 
 describe('timeOfDayAt / eligibleGreetings', () => {
-  it('classifies morning, afternoon, and evening hours', () => {
+  it('classifies morning, afternoon, evening, and night hours', () => {
     expect(timeOfDayAt(new Date(2026, 7, 14, 5, 0, 0))).toBe('morning')
     expect(timeOfDayAt(new Date(2026, 7, 14, 13, 0, 0))).toBe('afternoon')
     expect(timeOfDayAt(new Date(2026, 7, 14, 20, 0, 0))).toBe('evening')
-    expect(timeOfDayAt(new Date(2026, 7, 14, 2, 0, 0))).toBe('evening')
+    expect(timeOfDayAt(new Date(2026, 7, 14, 22, 0, 0))).toBe('night')
+    expect(timeOfDayAt(new Date(2026, 7, 14, 2, 0, 0))).toBe('night')
   })
 
   it('keeps untimed greetings plus the matching time of day', () => {

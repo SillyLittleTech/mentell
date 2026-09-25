@@ -1,0 +1,9 @@
+{
+  "timeCues": {
+    "morning": ["Morning", "Early", "Dawn", "Sunrise", "Daybreak"],
+    "afternoon": ["Afternoon", "Midday", "Daytime", "Noonday", "Sunlit"],
+    "evening": ["Evening", "Twilight", "Dusk", "Sundown", "Eventide"],
+    "night": ["Night", "Midnight", "Late", "Moonlight", "Starlit"]
+  },
+  "letterNicknames": ["jamboree", "letter", "note", "scratch", "blog", "journal", "entry", "reflection", "update", "log"]
+}

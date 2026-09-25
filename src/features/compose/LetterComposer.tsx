@@ -38,6 +38,7 @@ import {
 } from "../safety/riskAssessment";
 import { CrisisResourcePanel } from "../safety/CrisisResourcePanel";
 import type { EntryEmotion, RiskLevel } from "../../db/schema";
+import { useComposeInsight } from "./utils/useComposeInsight";
 
 export type Draft = {
   dateKey: string;
@@ -124,6 +125,7 @@ export function LetterComposer({
   onSubmit: (drafts: Draft[]) => Promise<void> | void;
   disabled?: boolean;
 }) {
+  const composeInsight = useComposeInsight();
   const [step, setStep] = useState<"write" | "review">("write");
 
   const createDraftInput = (): DraftInputState => ({
@@ -354,7 +356,7 @@ export function LetterComposer({
         <header className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="font-paper text-2xl">
-              {isBulkMode ? "Bulk Submission" : "Today’s letter"}
+              {isBulkMode ? "Bulk Submission" : composeInsight}
             </div>
             <div className="ink-muted mt-1 text-sm">Date: {dateKey}</div>
           </div>
