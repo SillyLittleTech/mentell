@@ -1,41 +1,35 @@
+import { useCallback, useState } from 'react'
+import { flushSync } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
-import { MaterialIcon } from '../MaterialIcon'
 import { CharacterCorner } from '../../features/character/CharacterCorner'
-import { CharacterNavIcon } from '../../features/character/CharacterNavIcon'
 import { publicUrl } from '../../shared/publicUrl'
+import { AnimatedNavIcon } from './AnimatedNavIcon'
+import { bumpNavReplayTokens } from './navReplay'
 
 type NavItem = {
   to: string
   label: string
   subtitle: string
-  icon: { kind: 'material'; name: string } | { kind: 'character' }
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { to: '/', label: 'Envelope', subtitle: 'Write', icon: { kind: 'material', name: 'mail' } },
-  { to: '/week', label: 'Projector', subtitle: 'Week', icon: { kind: 'material', name: 'auto_stories' } },
-  { to: '/notes', label: 'Notepad', subtitle: 'Notes', icon: { kind: 'material', name: 'description' } },
-  { to: '/shop', label: 'Shoppe', subtitle: 'Shop', icon: { kind: 'material', name: 'storefront' } },
-  { to: '/settings', label: 'Settings', subtitle: 'Prefs', icon: { kind: 'material', name: 'settings' } },
-  { to: '/character-lab', label: 'Character', subtitle: 'Lab', icon: { kind: 'character' } },
+  { to: '/', label: 'Envelope', subtitle: 'Write' },
+  { to: '/week', label: 'Projector', subtitle: 'Week' },
+  { to: '/notes', label: 'Notepad', subtitle: 'Notes' },
+  { to: '/shop', label: 'Shoppe', subtitle: 'Shop' },
+  { to: '/settings', label: 'Settings', subtitle: 'Prefs' },
+  { to: '/character-lab', label: 'Character', subtitle: 'Lab' },
 ]
-
-function NavIcon({ item, active }: { item: NavItem; active: boolean }) {
-  if (item.icon.kind === 'character') {
-    return <CharacterNavIcon className="h-9 w-9 -my-0.5 shrink-0 select-none" />
-  }
-  return (
-    <MaterialIcon
-      name={item.icon.name}
-      size={24}
-      className={active ? 'shrink-0' : 'shrink-0 opacity-90'}
-      accent={active}
-    />
-  )
-}
 
 export function SidebarNav() {
   const { pathname } = useLocation()
+  const [replayTokens, setReplayTokens] = useState<Record<string, number>>({})
+
+  const bumpReplay = useCallback((to: string) => {
+    flushSync(() => {
+      setReplayTokens((prev) => bumpNavReplayTokens(prev, to))
+    })
+  }, [])
 
   return (
     <aside className="hidden md:sticky md:top-4 md:flex md:h-[calc(100svh-2rem)] md:w-[16rem] md:flex-col md:gap-4">
@@ -59,12 +53,20 @@ export function SidebarNav() {
             <Link
               key={item.to}
               to={item.to}
+              onClick={() => bumpReplay(item.to)}
               className={`focus-ring group rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left transition hover:-translate-y-[1px] hover:shadow-[0_12px_22px_rgba(0,0,0,0.12)] ${
                 active ? 'bg-[var(--pill-surface)]' : 'bg-[var(--paper-bg)]'
               }`}
             >
               <div className="flex items-center gap-2">
-                <NavIcon item={item} active={active} />
+                <AnimatedNavIcon
+                  to={item.to}
+                  variant="sidebar"
+                  active={active}
+                  size={24}
+                  replayToken={replayTokens[item.to] ?? 0}
+                  characterClassName="h-9 w-9 -my-0.5 shrink-0 select-none"
+                />
                 <div>
                   <div className="font-mono text-xs opacity-70">{item.label}</div>
                   <div className="text-sm font-medium">{item.subtitle}</div>
@@ -84,4 +86,3 @@ export function SidebarNav() {
     </aside>
   )
 }
-

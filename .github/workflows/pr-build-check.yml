@@ -59,6 +59,10 @@ jobs:
       # intentionally left disabled (unset) here so this PR/test build never has
       # credentials for the production cloud services, even if the workflow later
       # gains a step that runs or uploads the build output.
+      - name: Unit tests
+        run: npm test
+        if: needs.check-changes.outputs.app == 'true'
+
       - name: Build app
         env:
           VITE_BASE: /mentell/
