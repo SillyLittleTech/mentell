@@ -38,16 +38,16 @@ describe('navPrimaryMaterialIcon', () => {
 describe('navMotionPlan — issue #206 animation skeleton', () => {
   it('envelope: letter slides down, envelope slides up', () => {
     const plan = navMotionPlan('envelope')
-    expect(plan.letter?.animate).toMatchObject({ y: 9, opacity: 0 })
-    expect(plan.primary?.initial).toMatchObject({ y: -11, opacity: 0 })
+    expect(plan.letter?.animate).toMatchObject({ y: 10, opacity: 0 })
+    expect(plan.primary?.initial).toMatchObject({ y: -12, opacity: 0 })
     expect(plan.primary?.animate).toMatchObject({ y: 0, opacity: 1 })
     expect((plan.primary?.transition as { delay?: number }).delay).toBeGreaterThan(0)
   })
 
   it('projector: closed book expands then swaps to stories icon mid animation', () => {
     const plan = navMotionPlan('projector')
-    expect(plan.book?.initial).toMatchObject({ scale: 0.75 })
-    expect(plan.book?.animate).toMatchObject({ scale: 1.1, opacity: 0 })
+    expect(plan.book?.initial).toMatchObject({ scale: 0.72 })
+    expect(plan.book?.animate).toMatchObject({ scale: 1.12, opacity: 0 })
     expect(plan.primary?.animate).toMatchObject({ scale: 1, opacity: 1 })
     expect(plan.swapAtRatio).toBeGreaterThan(0.4)
     expect(plan.swapAtRatio).toBeLessThan(0.55)
@@ -55,19 +55,19 @@ describe('navMotionPlan — issue #206 animation skeleton', () => {
 
   it('notepad: paper rises from below', () => {
     const plan = navMotionPlan('notepad')
-    expect(plan.single?.initial).toMatchObject({ y: 13 })
+    expect(plan.single?.initial).toMatchObject({ y: 14 })
     expect(plan.single?.animate).toMatchObject({ y: 0, opacity: 1 })
   })
 
   it('shoppe: slides in from the left with italic slant then settles', () => {
     const plan = navMotionPlan('shoppe')
-    expect(plan.single?.initial).toMatchObject({ x: -16, skewX: -13, scale: 0.84 })
+    expect(plan.single?.initial).toMatchObject({ x: -18, skewX: -14, scale: 0.82 })
     expect(plan.single?.animate).toMatchObject({ x: 0, skewX: 0, scale: 1 })
   })
 
   it('settings: cog rotates into place', () => {
     const plan = navMotionPlan('settings')
-    expect(plan.single?.initial).toMatchObject({ rotate: -140 })
+    expect(plan.single?.initial).toMatchObject({ rotate: -160 })
     expect(plan.single?.animate).toMatchObject({ rotate: 0, scale: 1 })
   })
 
@@ -85,8 +85,8 @@ describe('navMotionPlan — issue #206 animation skeleton', () => {
       'settings',
       'character',
     ] as const) {
-      expect(navMotionDurationSec(kind)).toBeGreaterThan(0.28)
-      expect(navMotionDurationSec(kind)).toBeLessThan(0.45)
+      expect(navMotionDurationSec(kind)).toBeGreaterThan(0.34)
+      expect(navMotionDurationSec(kind)).toBeLessThan(0.52)
     }
   })
 })

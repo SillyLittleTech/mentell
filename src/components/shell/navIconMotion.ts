@@ -76,68 +76,68 @@ export function navMotionPlan(kind: NavAnimationKind): NavMotionPlan {
     case 'envelope':
       return {
         kind,
-        durationSec: 0.38,
+        durationSec: 0.46,
         letter: {
           initial: { y: 0, opacity: 1 },
-          animate: { y: 9, opacity: 0 },
-          transition: { ...quickEase, duration: 0.18 },
+          animate: { y: 10, opacity: 0 },
+          transition: { ...quickEase, duration: 0.22 },
         },
         primary: {
-          initial: { y: -11, opacity: 0 },
+          initial: { y: -12, opacity: 0 },
           animate: { y: 0, opacity: 1 },
-          transition: { ...quickEase, duration: 0.2, delay: 0.12 },
+          transition: { ...quickEase, duration: 0.24, delay: 0.18 },
         },
       }
     case 'projector':
       return {
         kind,
-        durationSec: 0.4,
+        durationSec: 0.48,
         swapAtRatio: 0.48,
         book: {
-          initial: { scale: 0.75, opacity: 1 },
-          animate: { scale: 1.1, opacity: 0 },
-          transition: { ...quickEase, duration: 0.19 },
+          initial: { scale: 0.72, opacity: 1 },
+          animate: { scale: 1.12, opacity: 0 },
+          transition: { ...quickEase, duration: 0.23 },
         },
         primary: {
-          initial: { scale: 0.75, opacity: 0 },
+          initial: { scale: 0.72, opacity: 0 },
           animate: { scale: 1, opacity: 1 },
-          transition: { ...quickEase, duration: 0.21, delay: 0.14 },
+          transition: { ...quickEase, duration: 0.25, delay: 0.2 },
         },
       }
     case 'notepad':
       return {
         kind,
-        durationSec: 0.34,
+        durationSec: 0.4,
         single: {
-          initial: { y: 13, opacity: 0.45 },
+          initial: { y: 14, opacity: 0.4 },
           animate: { y: 0, opacity: 1 },
-          transition: { ...quickEase, duration: 0.32 },
+          transition: { ...quickEase, duration: 0.38 },
         },
       }
     case 'shoppe':
       return {
         kind,
-        durationSec: 0.36,
+        durationSec: 0.44,
         single: {
-          initial: { x: -16, skewX: -13, scale: 0.84, opacity: 0.88 },
+          initial: { x: -18, skewX: -14, scale: 0.82, opacity: 0.85 },
           animate: { x: 0, skewX: 0, scale: 1, opacity: 1 },
-          transition: { ...quickEase, duration: 0.34 },
+          transition: { ...quickEase, duration: 0.42 },
         },
       }
     case 'settings':
       return {
         kind,
-        durationSec: 0.34,
+        durationSec: 0.42,
         single: {
-          initial: { rotate: -140, scale: 0.9 },
+          initial: { rotate: -160, scale: 0.88 },
           animate: { rotate: 0, scale: 1 },
-          transition: { ...quickEase, duration: 0.32 },
+          transition: { ...quickEase, duration: 0.4 },
         },
       }
     case 'character':
       return {
         kind,
-        durationSec: 0.3,
+        durationSec: 0.36,
         shake: { x: [0, -3, 3, -2.5, 2.5, -1, 1, 0] },
       }
     default: {
