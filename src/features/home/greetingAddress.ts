@@ -2,7 +2,7 @@ export const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 
 export type GreetingAddresseeKind = 'name' | 'nickname' | 'anon'
 
-export type GreetingTimeOfDay = 'morning' | 'afternoon' | 'evening'
+export type GreetingTimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night'
 
 export type GreetingTemplate = {
   id: string
@@ -35,7 +35,8 @@ export function timeOfDayAt(date: Date): GreetingTimeOfDay {
   const hour = date.getHours()
   if (hour >= 5 && hour < 12) return 'morning'
   if (hour >= 12 && hour < 17) return 'afternoon'
-  return 'evening'
+  if (hour >= 17 && hour < 21) return 'evening'
+  return 'night'
 }
 
 export function eligibleGreetings(

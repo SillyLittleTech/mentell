@@ -1,11 +1,11 @@
 import { z } from 'zod'
-import greetingsRaw from '../../../greetings.json?raw'
+import greetingsRaw from '../../../dynamics/greetings.json?raw'
 import type { GreetingTemplate } from './greetingAddress'
 
 const GreetingSchema = z.object({
   id: z.string().min(1),
   text: z.string().min(1),
-  timeOfDay: z.enum(['morning', 'afternoon', 'evening']).optional(),
+  timeOfDay: z.enum(['morning', 'afternoon', 'evening', 'night']).optional(),
   context: z.string().optional(),
 })
 

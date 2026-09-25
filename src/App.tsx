@@ -461,9 +461,9 @@ function HomePlaceholder({
     <PaperSection
       title={
         <>
-          <span className="hidden md:inline">Draft today’s letter</span>
+          <span className="hidden md:inline">Draft a letter</span>
           <span className="md:hidden">
-            <HomeGreeting variant="mobile" fallback="Draft today’s letter" />
+            <HomeGreeting variant="mobile" fallback="Draft a letter" />
           </span>
         </>
       }
