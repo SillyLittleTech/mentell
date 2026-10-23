@@ -32,8 +32,11 @@ export async function generateDuePackages(now: Date = new Date()) {
       const startKey = format(wStart, 'yyyy-MM-dd')
       const endKey = format(wEnd, 'yyyy-MM-dd')
 
-      const countNorm = await getDb().entries.where('dateKey').between(startKey, endKey, true, true).count()
-      const countBulk = await getDb().entries.where('dateKey').between('~' + startKey, '~' + endKey, true, true).count()
+      const [countNorm, countBulk] = await Promise.all([
+        getDb().entries.where('dateKey').between(startKey, endKey, true, true).count(),
+        getDb().entries.where('dateKey').between('~' + startKey, '~' + endKey, true, true).count()
+      ])
+
       const count = countNorm + countBulk
       if (count <= 0) continue
 
@@ -55,8 +58,11 @@ export async function generateDuePackages(now: Date = new Date()) {
       const startKey = format(mStart, 'yyyy-MM-dd')
       const endKey = format(mEnd, 'yyyy-MM-dd')
 
-      const countNorm = await getDb().entries.where('dateKey').between(startKey, endKey, true, true).count()
-      const countBulk = await getDb().entries.where('dateKey').between('~' + startKey, '~' + endKey, true, true).count()
+      const [countNorm, countBulk] = await Promise.all([
+        getDb().entries.where('dateKey').between(startKey, endKey, true, true).count(),
+        getDb().entries.where('dateKey').between('~' + startKey, '~' + endKey, true, true).count()
+      ])
+
       const count = countNorm + countBulk
       if (count <= 0) continue
 
@@ -79,8 +85,11 @@ export async function generateDuePackages(now: Date = new Date()) {
       const startKey = format(yStart, 'yyyy-MM-dd')
       const endKey = format(yEnd, 'yyyy-MM-dd')
 
-      const countNorm = await getDb().entries.where('dateKey').between(startKey, endKey, true, true).count()
-      const countBulk = await getDb().entries.where('dateKey').between('~' + startKey, '~' + endKey, true, true).count()
+      const [countNorm, countBulk] = await Promise.all([
+        getDb().entries.where('dateKey').between(startKey, endKey, true, true).count(),
+        getDb().entries.where('dateKey').between('~' + startKey, '~' + endKey, true, true).count()
+      ])
+
       const count = countNorm + countBulk
       if (count <= 0) continue
 
