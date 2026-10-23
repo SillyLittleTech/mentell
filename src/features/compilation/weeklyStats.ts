@@ -20,7 +20,7 @@ function toDateKey(d: Date) {
 
 export function weekKeyForDateKey(dateKey: string) {
   const d = parseISO(stripDateKey(dateKey));
-  const wk = format(d, "yyyy-'W'II");
+  const wk = format(d, "RRRR-'W'II");
   return wk;
 }
 
@@ -49,7 +49,7 @@ export function previousWeekKey(weekKey: string): string | null {
   const d = dateFromWeekKey(weekKey);
   if (!d) return null;
   const prev = subWeeks(d, 1);
-  return format(prev, "yyyy-'W'II");
+  return format(prev, "RRRR-'W'II");
 }
 
 export async function getWeeklyStatsForDateKey(
