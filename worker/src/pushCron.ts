@@ -11,6 +11,14 @@ import type { EmailSubscriberRecord } from './emailTypes'
 
 const SENT_TTL_SECONDS = 8 * 24 * 60 * 60
 
+const logger = {
+  error(message: string, err: unknown, context?: Record<string, unknown>) {
+    const errorDetail =
+      err instanceof Error ? { name: err.name, message: err.message, stack: err.stack } : err
+    console.error(JSON.stringify({ message, error: errorDetail, ...context }))
+  },
+}
+
 export async function runPushCron(env: PushEnv) {
   const now = new Date()
 
@@ -33,7 +41,7 @@ export async function runPushCron(env: PushEnv) {
         try {
           await maybeNotifySubscriber(env, sub, now, key.name, sentEndpoints)
         } catch (err) {
-          console.error('Failed to process push sub', key.name, err)
+          logger.error('Failed to process push sub', err, { key: key.name })
         }
       }
       pushCursor = list.list_complete ? undefined : list.cursor
@@ -51,7 +59,7 @@ export async function runPushCron(env: PushEnv) {
         const sub = JSON.parse(raw) as EmailSubscriberRecord
         await processEmailSubscriber(env, key.name, sub, now)
       } catch (err) {
-        console.error('Failed to process email sub', key.name, err)
+        logger.error('Failed to process email sub', err, { key: key.name })
       }
     }
     emailCursor = list.list_complete ? undefined : list.cursor
@@ -98,7 +106,7 @@ async function maybeNotifySubscriber(
       if (hasPackage) return
       body = `Your package for ${weekKey} is ready - tap to open your week.`
     } catch (err) {
-      console.error('Firestore check failed; sending generic push', kvKey, err)
+      logger.error('Firestore check failed; sending generic push', err, { kvKey })
     }
   }
 
@@ -115,7 +123,7 @@ async function maybeNotifySubscriber(
       await env.PUSH_KV.delete(kvKey)
       await env.PUSH_KV.delete(`ep:${await hashEndpoint(sub.endpoint)}`)
     } else {
-      console.error('Web push send failed', kvKey, err)
+      logger.error('Web push send failed', err, { kvKey })
     }
   }
 }
