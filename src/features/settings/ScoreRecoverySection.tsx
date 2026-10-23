@@ -16,16 +16,21 @@ export function ScoreRecoverySection() {
   const [message, setMessage] = useState<string | null>(null)
   const [localTotal, setLocalTotal] = useState(() => getScoreSnapshot().total)
 
+  const uid = auth?.user?.uid
+  const [prevUid, setPrevUid] = useState(uid)
+  if (uid !== prevUid) {
+    setPrevUid(uid)
+    setMeta(null)
+  }
+
   useEffect(() => {
-    if (!auth?.user?.uid) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMeta(null)
+    if (!uid) {
       return
     }
-    void fetchCloudScoreMeta(auth.user.uid)
+    void fetchCloudScoreMeta(uid)
       .then(setMeta)
       .catch(() => setMeta(null))
-  }, [auth?.user?.uid])
+  }, [uid])
 
   useEffect(() => {
     const refresh = () => setLocalTotal(getScoreSnapshot().total)
