@@ -41,7 +41,7 @@ const DEFAULT_PROFILE: AiProfile = {
 
 function stripControlChars(s: string) {
   return s // eslint-disable-next-line no-control-regex
-    .replace(/[\x00-\x1F\x7F]/g, "");
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
 }
 
 function sanitizeDisplayName(raw: string) {
@@ -61,7 +61,7 @@ function sanitizeAbout(raw: string) {
 
 function sanitizeAgeRange(raw: unknown): AiAgeRange {
   const parsed = AiAgeRangeSchema.safeParse(raw);
-  if (parsed.success && parsed.data) return parsed.data;
+  if (parsed.success && parsed.data !== undefined) return parsed.data;
   return "prefer-not";
 }
 
