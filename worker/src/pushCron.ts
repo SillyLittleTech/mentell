@@ -21,21 +21,23 @@ export async function runPushCron(env: PushEnv) {
     let pushCursor: string | undefined
     do {
       const list = await env.PUSH_KV.list({ prefix: 'sub:', cursor: pushCursor, limit: 100 })
-      for (const key of list.keys) {
-        const raw = await env.PUSH_KV.get(key.name)
-        if (!raw) continue
-        let sub: PushSubscriber
-        try {
-          sub = JSON.parse(raw) as PushSubscriber
-        } catch {
-          continue
-        }
-        try {
-          await maybeNotifySubscriber(env, sub, now, key.name, sentEndpoints)
-        } catch (err) {
-          console.error('Failed to process push sub', key.name, err)
-        }
-      }
+      await Promise.all(
+        list.keys.map(async (key) => {
+          const raw = await env.PUSH_KV.get(key.name)
+          if (!raw) return
+          let sub: PushSubscriber
+          try {
+            sub = JSON.parse(raw) as PushSubscriber
+          } catch {
+            return
+          }
+          try {
+            await maybeNotifySubscriber(env, sub, now, key.name, sentEndpoints)
+          } catch (err) {
+            console.error('Failed to process push sub', key.name, err)
+          }
+        })
+      )
       pushCursor = list.list_complete ? undefined : list.cursor
     } while (pushCursor)
   }
@@ -44,16 +46,18 @@ export async function runPushCron(env: PushEnv) {
   let emailCursor: string | undefined
   do {
     const list = await env.PUSH_KV.list({ prefix: 'email_sub:', cursor: emailCursor, limit: 100 })
-    for (const key of list.keys) {
-      const raw = await env.PUSH_KV.get(key.name)
-      if (!raw) continue
-      try {
-        const sub = JSON.parse(raw) as EmailSubscriberRecord
-        await processEmailSubscriber(env, key.name, sub, now)
-      } catch (err) {
-        console.error('Failed to process email sub', key.name, err)
-      }
-    }
+    await Promise.all(
+      list.keys.map(async (key) => {
+        const raw = await env.PUSH_KV.get(key.name)
+        if (!raw) return
+        try {
+          const sub = JSON.parse(raw) as EmailSubscriberRecord
+          await processEmailSubscriber(env, key.name, sub, now)
+        } catch (err) {
+          console.error('Failed to process email sub', key.name, err)
+        }
+      })
+    )
     emailCursor = list.list_complete ? undefined : list.cursor
   } while (emailCursor)
 }
