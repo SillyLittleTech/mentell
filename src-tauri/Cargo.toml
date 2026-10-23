@@ -22,10 +22,11 @@ cc = "1"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.11.3", features = [] }
+tauri = { version = "2.12.4", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-notification = "2"
-tauri-plugin-deep-link = "2"
-tauri-plugin-opener = "2"
-tauri-plugin-updater = "2.12"
-tauri-plugin-process = "2.3.1"
+# 2.6.2 fails on Linux with rust-ini 0.21.3 (ParseOption fields); see tauri-apps/plugins-workspace#3710
+tauri-plugin-deep-link = "=2.6.1"
+tauri-plugin-opener = "2.7.2"
+tauri-plugin-updater = "2.14.0"
+tauri-plugin-process = "2.4.0"
