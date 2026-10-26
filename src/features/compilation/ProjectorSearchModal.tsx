@@ -433,14 +433,14 @@ function ProjectorSearchModalInner({
         <AnimatePresence>
           {selected ? (
             <motion.div
-              className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 p-4 sm:p-6"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4 sm:p-6"
               initial={shouldReduceMotion() ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={shouldReduceMotion() ? undefined : { opacity: 0 }}
               onClick={() => setSelected(null)}
             >
               <motion.div
-                className="paper my-auto flex max-h-[min(90dvh,42rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl"
+                className="paper flex max-h-[min(90dvh,42rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl"
                 initial={shouldReduceMotion() ? false : { scale: 0.96, y: 18 }}
                 animate={{ scale: 1, y: 0 }}
                 onClick={(e) => e.stopPropagation()}
