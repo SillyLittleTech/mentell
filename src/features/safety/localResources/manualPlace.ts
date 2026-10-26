@@ -21,11 +21,17 @@ export const COMMON_COUNTRY_OPTIONS: { code: string; label: string }[] = [
   { code: 'OTHER', label: 'Other (enter code below)' },
 ]
 
-async function forwardGeocode(query: string): Promise<GeoPlace | null> {
+function countryLabelForGeocode(countryCode: string) {
+  const match = COMMON_COUNTRY_OPTIONS.find((option) => option.code === countryCode)
+  return match?.label ?? countryCode
+}
+
+async function forwardGeocode(query: string, countryCode: string): Promise<GeoPlace | null> {
   const url = new URL('https://nominatim.openstreetmap.org/search')
   url.searchParams.set('q', query)
   url.searchParams.set('format', 'json')
   url.searchParams.set('limit', '1')
+  url.searchParams.set('countrycodes', countryCode.toLowerCase())
 
   const res = await fetch(url.toString(), {
     headers: { 'User-Agent': `Mentell/${appVersion} (local resources; contact@slt.ong)` },
@@ -39,14 +45,14 @@ async function forwardGeocode(query: string): Promise<GeoPlace | null> {
   }[]
   const hit = rows[0]
   if (!hit?.lat || !hit?.lon) return null
-  const countryCode = (hit.address?.country_code ?? '').toUpperCase()
+  const geocodedCountry = (hit.address?.country_code ?? '').toUpperCase()
   const isoRegion = hit.address?.['ISO3166-2-lvl4']
   const regionFromIso =
     isoRegion && isoRegion.includes('-') ? isoRegion.split('-')[1]?.toUpperCase() : undefined
   return {
     latitude: Number(hit.lat),
     longitude: Number(hit.lon),
-    countryCode: countryCode || 'US',
+    countryCode: geocodedCountry || countryCode,
     regionCode: regionFromIso,
     city: hit.address?.city ?? hit.address?.town ?? hit.address?.village,
     county: hit.address?.county,
@@ -61,15 +67,21 @@ export async function placeFromManual(fields: ManualLocationFields): Promise<Geo
     throw new Error('Enter a two-letter country code (for example US, CA, GB).')
   }
 
-  const parts = [fields.placeLabel, fields.regionCode, fields.zip, countryCode].filter(Boolean)
+  const parts = [
+    fields.placeLabel,
+    fields.regionCode,
+    fields.zip,
+    countryLabelForGeocode(countryCode),
+  ].filter(Boolean)
   const query = parts.join(', ')
-  const geocoded = query ? await forwardGeocode(query) : null
+  const geocoded = query ? await forwardGeocode(query, countryCode) : null
   if (geocoded) {
     return {
       ...geocoded,
-      countryCode: geocoded.countryCode || countryCode,
+      countryCode,
       regionCode: fields.regionCode?.trim().toUpperCase() || geocoded.regionCode,
       zip: fields.zip?.trim() || geocoded.zip,
+      city: fields.placeLabel?.trim() || geocoded.city,
       displayName: geocoded.displayName ?? query,
     }
   }

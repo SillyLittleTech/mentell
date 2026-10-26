@@ -5,6 +5,7 @@ import type {
   LocalResourceFetchResult,
   ResourceTopic,
 } from './types'
+import { filterByLocalArea } from './geoFilter'
 import { countyStem, mergeHelplineRows, type HelplineRow } from './rankHelplines'
 
 type HelplineContact = {
@@ -169,7 +170,15 @@ async function fetchFoodResources(place: GeoPlace): Promise<LocalResourceFetchRe
     return { topic, resources: [], error: 'Could not load nearby food resources.' }
   }
   const data = await parseJsonResponse<{ resources?: FeedamResource[] }>(res)
-  const resources = (data?.resources ?? []).slice(0, 6).map((row) => {
+  const rows = filterByLocalArea(
+    data?.resources ?? [],
+    place,
+    (row) => [row.name, row.city, row.state, row.address].filter(Boolean).join(' '),
+    { maxDistanceMiles: 30, getDistance: (row) => row.distance ?? undefined },
+  )
+    .sort((a, b) => (a.distance ?? 999) - (b.distance ?? 999))
+    .slice(0, 6)
+  const resources = rows.map((row) => {
     const addressParts = [row.address, row.city, row.state, row.zip].filter(Boolean)
     return {
       id: `feedam-${row.id}`,
@@ -204,30 +213,34 @@ async function fetchShelterResources(place: GeoPlace): Promise<LocalResourceFetc
     return { topic, resources: [], error: 'HUD housing counseling search is available in the US only.' }
   }
 
-  let res: Response
-  if ((place.latitude !== 0 || place.longitude !== 0) && Number.isFinite(place.latitude)) {
-    const url = new URL('https://data.hud.gov/Housing_Counselor/searchByLocation')
-    url.searchParams.set('Lat', String(place.latitude))
-    url.searchParams.set('Long', String(place.longitude))
-    url.searchParams.set('Distance', '25')
-    res = await fetch(url.toString())
-  } else if (place.regionCode) {
-    const url = new URL('https://data.hud.gov/Housing_Counselor/search')
-    url.searchParams.set('State', place.regionCode)
-    res = await fetch(url.toString())
-  } else {
+  const hasCoords =
+    Number.isFinite(place.latitude) &&
+    Number.isFinite(place.longitude) &&
+    !(place.latitude === 0 && place.longitude === 0)
+  if (!hasCoords) {
     return {
       topic,
       resources: [],
-      error: 'Add a US state or allow location to search HUD housing counselors.',
+      error: 'Allow location or add a city/ZIP to search nearby HUD housing counselors.',
     }
   }
+
+  const url = new URL('https://data.hud.gov/Housing_Counselor/searchByLocation')
+  url.searchParams.set('Lat', String(place.latitude))
+  url.searchParams.set('Long', String(place.longitude))
+  url.searchParams.set('Distance', '20')
+  const res = await fetch(url.toString())
 
   if (!res.ok) {
     return { topic, resources: [], error: 'Could not load HUD housing counselors.' }
   }
   const rows = await parseJsonResponse<HudAgency[] | unknown>(res)
-  const resources = (Array.isArray(rows) ? rows : []).slice(0, 6).map((row) => {
+  const filtered = filterByLocalArea(
+    Array.isArray(rows) ? rows : [],
+    place,
+    (row) => [row.nme, row.city, row.statecd, row.adr1].filter(Boolean).join(' '),
+  ).slice(0, 6)
+  const resources = filtered.map((row) => {
     const addressParts = [row.adr1, row.city, row.statecd, row.zipcd].filter(Boolean)
     const web = row.weburl && row.weburl !== 'N/A' ? row.weburl : undefined
     return {

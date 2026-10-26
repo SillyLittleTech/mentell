@@ -1,3 +1,4 @@
+import { referencesForeignCounty } from './geoFilter'
 import type { GeoPlace, LocalResource } from './types'
 
 export type HelplineRow = {
@@ -51,9 +52,15 @@ export function mergeHelplineRows(rows: HelplineRow[], place: GeoPlace, limit = 
     if (!row.id) continue
     byId.set(row.id, row)
   }
-  return [...byId.values()]
-    .sort((a, b) => scoreHelpline(b, place) - scoreHelpline(a, place))
-    .slice(0, limit)
+  const sorted = [...byId.values()].sort((a, b) => scoreHelpline(b, place) - scoreHelpline(a, place))
+  const strongLocal = sorted.filter((row) => scoreHelpline(row, place) >= 35)
+  const filtered = sorted.filter((row) => {
+    const text = `${row.name} ${row.description ?? ''}`
+    if (referencesForeignCounty(text, place)) return false
+    return true
+  })
+  const pool = strongLocal.length ? strongLocal : filtered
+  return pool.slice(0, limit)
 }
 
 export function splitHelplineResources(resources: LocalResource[], place: GeoPlace) {
@@ -64,13 +71,16 @@ export function splitHelplineResources(resources: LocalResource[], place: GeoPla
   const countyNorm = county ? normalizeToken(county) : ''
 
   for (const resource of resources) {
-    const blob = normalizeToken(`${resource.name} ${resource.description ?? ''}`)
+    const blob = normalizeToken(`${resource.name} ${resource.description ?? ''} ${resource.address ?? ''}`)
+    if (referencesForeignCounty(`${resource.name} ${resource.description ?? ''} ${resource.address ?? ''}`, place)) {
+      continue
+    }
     const isNational = blob.includes('nationwide')
     const isLocal =
       !isNational &&
       ((city && blob.includes(city)) ||
         (countyNorm && blob.includes(countyNorm)) ||
-        blob.includes('regional ·'))
+        (countyNorm && blob.includes(`${countyNorm} county`)))
     if (isLocal) {
       local.push(resource)
     } else {

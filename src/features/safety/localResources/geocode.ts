@@ -87,7 +87,8 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<GeoP
   const isoRegion = data.address?.['ISO3166-2-lvl4']
   const regionFromIso =
     isoRegion && isoRegion.includes('-') ? isoRegion.split('-')[1]?.toUpperCase() : undefined
-  const regionCode = regionFromIso ?? usStateToCode(data.address?.state)
+  const regionCode =
+    countryCode === 'US' ? regionFromIso ?? usStateToCode(data.address?.state) : regionFromIso
   return {
     latitude,
     longitude,
@@ -100,12 +101,25 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<GeoP
   }
 }
 
-export function resolveCoordinates(): Promise<GeoPlace> {
-  const override = isDebugMode() ? loadDebugLocationOverride() : null
-  if (override) {
-    return Promise.resolve(debugOverrideToGeoPlace(override))
+async function enrichPlace(base: GeoPlace): Promise<GeoPlace> {
+  if (!Number.isFinite(base.latitude) || !Number.isFinite(base.longitude)) return base
+  if (base.latitude === 0 && base.longitude === 0) return base
+  try {
+    const enriched = await reverseGeocode(base.latitude, base.longitude)
+    return {
+      ...enriched,
+      countryCode: base.countryCode || enriched.countryCode,
+      regionCode: base.regionCode || enriched.regionCode,
+      city: base.city || enriched.city,
+      county: base.county || enriched.county,
+      zip: base.zip || enriched.zip,
+    }
+  } catch {
+    return base
   }
+}
 
+function resolveFromDevice(): Promise<GeoPlace> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Location is unavailable in this browser.'))
@@ -135,4 +149,16 @@ export function resolveCoordinates(): Promise<GeoPlace> {
       { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 12000 },
     )
   })
+}
+
+export async function resolveCoordinates(): Promise<GeoPlace> {
+  try {
+    return await resolveFromDevice()
+  } catch (deviceError) {
+    const override = isDebugMode() ? loadDebugLocationOverride() : null
+    if (override) {
+      return enrichPlace(debugOverrideToGeoPlace(override))
+    }
+    throw deviceError
+  }
 }

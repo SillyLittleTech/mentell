@@ -3,13 +3,9 @@ import { splitHelplineResources } from './localResources/rankHelplines'
 import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import type { RiskAssessment } from './riskAssessment'
 import { fetchResourcesForTopics } from './localResources/fetchResources'
-import { filterStaticNotInResults } from './localResources/dedupeResources'
+import { referencesForeignCounty } from './localResources/geoFilter'
 import { formatPublicPlaceLabel } from './localResources/formatPlace'
-import {
-  emergencyBannerCopy,
-  nationalResourcesHeading,
-  staticNationalResources,
-} from './localResources/nationalResources'
+import { emergencyBannerCopy } from './localResources/nationalResources'
 import { partitionHospitalHelplines } from './localResources/hospitalHelplines'
 import {
   ALL_RESOURCE_TOPICS,
@@ -117,18 +113,18 @@ function HelplineResourceGroups({
 
   return (
     <>
-      {hospital.length ? (
-        <div className="grid gap-2">
-          <p className="text-xs font-semibold">Hospital &amp; emergency crisis lines</p>
-          {hospital.map((resource) => (
-            <ResourceCard key={resource.id} resource={resource} />
-          ))}
-        </div>
-      ) : null}
       {local.length ? (
         <div className="grid gap-2">
           <p className="text-xs font-semibold">Closer to you</p>
           {local.map((resource) => (
+            <ResourceCard key={resource.id} resource={resource} />
+          ))}
+        </div>
+      ) : null}
+      {hospital.length ? (
+        <div className="grid gap-2">
+          <p className="text-xs font-semibold">Hospital &amp; emergency crisis lines</p>
+          {hospital.map((resource) => (
             <ResourceCard key={resource.id} resource={resource} />
           ))}
         </div>
@@ -142,7 +138,7 @@ function HelplineResourceGroups({
         </div>
       ) : null}
       {!hospital.length && !local.length && !broader.length ? (
-        <p className="ink-muted text-sm">No matches in this area. Try the national lines below.</p>
+        <p className="ink-muted text-sm">No matches in this area. Try Find A Helpline below.</p>
       ) : null}
       {!hospital.length ? (
         <p className="ink-muted text-[11px]">
@@ -171,6 +167,20 @@ function ResultSection({
       {result.error ? <p className="ink-muted text-sm">{result.error}</p> : null}
       {isHelplineTopic && place && result.resources.length ? (
         <HelplineResourceGroups resources={result.resources} place={place} />
+      ) : result.resources.length && place ? (
+        <div className="grid gap-2">
+          {result.resources
+            .filter(
+              (resource) =>
+                !referencesForeignCounty(
+                  `${resource.name} ${resource.description ?? ''} ${resource.address ?? ''}`,
+                  place,
+                ),
+            )
+            .map((resource) => (
+              <ResourceCard key={resource.id} resource={resource} />
+            ))}
+        </div>
       ) : result.resources.length ? (
         <div className="grid gap-2">
           {result.resources.map((resource) => (
@@ -178,7 +188,7 @@ function ResultSection({
           ))}
         </div>
       ) : !result.error ? (
-        <p className="ink-muted text-sm">No matches in this area. Try the national lines below.</p>
+        <p className="ink-muted text-sm">No matches in this area. Try Find A Helpline below.</p>
       ) : null}
     </section>
   )
@@ -208,7 +218,6 @@ export function CrisisResourcePanel({
   )
 
   const actionsHeadingId = useId()
-  const nationalHeadingId = useId()
   const flowAnchorRef = useRef<HTMLDivElement>(null)
 
   const [phase, setPhase] = useState<PanelPhase>('idle')
@@ -341,11 +350,6 @@ export function CrisisResourcePanel({
     )
   }
 
-  const allStatic = staticNationalResources(audienceCountry)
-  const staticResources =
-    phase === 'results'
-      ? filterStaticNotInResults(allStatic, results)
-      : allStatic
   const publicPlaceLabel = formatPublicPlaceLabel(place)
   const emergency = emergencyBannerCopy(audienceCountry)
 
@@ -554,13 +558,13 @@ export function CrisisResourcePanel({
               <p className="font-semibold" style={{ color: 'var(--danger)' }}>
                 {errorMessage}
               </p>
-              <p className="ink-muted">
-                You can still use the national lines below or{' '}
-                <a className="underline" href="https://findahelpline.com/" target="_blank" rel="noreferrer">
-                  Find A Helpline
-                </a>{' '}
-                worldwide.
-              </p>
+          <p className="ink-muted">
+            You can still use{' '}
+            <a className="underline" href="https://findahelpline.com/" target="_blank" rel="noreferrer">
+              Find A Helpline
+            </a>{' '}
+            worldwide.
+          </p>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -605,22 +609,6 @@ export function CrisisResourcePanel({
             </section>
           ) : null}
         </div>
-      ) : null}
-
-      {staticResources.length ? (
-        <section
-          className="grid gap-2 rounded-2xl border border-[var(--paper-border)] p-3"
-          aria-labelledby={nationalHeadingId}
-        >
-          <h3 id={nationalHeadingId} className="text-sm font-semibold">
-            {nationalResourcesHeading(audienceCountry)}
-          </h3>
-          <div className="grid gap-2">
-            {staticResources.map((resource) => (
-              <ResourceCard key={resource.id} resource={resource} />
-            ))}
-          </div>
-        </section>
       ) : null}
 
       <div className="flex flex-wrap gap-3">
