@@ -85,6 +85,31 @@ async function queryHelplines(
   }
 }
 
+async function fetchCombinedHelplines(
+  place: GeoPlace,
+  includeSuicide: boolean,
+  includeMentalHealth: boolean,
+  contactMethod: ContactMethodPreference,
+): Promise<LocalResourceFetchResult> {
+  const topic: ResourceTopic = includeSuicide ? 'suicide' : 'mental_health'
+  const tasks: Promise<LocalResourceFetchResult>[] = []
+  if (includeSuicide) tasks.push(fetchHelplines(place, 'suicide', contactMethod))
+  if (includeMentalHealth) tasks.push(fetchHelplines(place, 'mental_health', contactMethod))
+  if (!tasks.length) tasks.push(fetchHelplines(place, 'mental_health', contactMethod))
+
+  const rows = await Promise.all(tasks)
+  const byId = new Map<string, LocalResource>()
+  for (const row of rows) {
+    for (const resource of row.resources) byId.set(resource.id, resource)
+  }
+  const error = rows.map((row) => row.error).find(Boolean)
+  return {
+    topic,
+    resources: [...byId.values()],
+    error: byId.size ? undefined : error,
+  }
+}
+
 async function fetchHelplines(
   place: GeoPlace,
   topic: 'suicide' | 'mental_health',
@@ -245,13 +270,16 @@ export async function fetchResourcesForTopics(input: {
   const topics = topicsForCountry(place.countryCode, input.topics)
   const tasks: Promise<LocalResourceFetchResult>[] = []
 
-  if (topics.includes('suicide')) {
-    tasks.push(fetchHelplines(place, 'suicide', contactMethod))
-  }
-  if (topics.includes('mental_health') && !topics.includes('suicide')) {
-    tasks.push(fetchHelplines(place, 'mental_health', contactMethod))
-  } else if (topics.includes('mental_health') && topics.includes('suicide')) {
-    tasks.push(fetchHelplines(place, 'mental_health', contactMethod))
+  const wantsHelplines = topics.includes('suicide') || topics.includes('mental_health')
+  if (wantsHelplines) {
+    tasks.push(
+      fetchCombinedHelplines(
+        place,
+        topics.includes('suicide'),
+        topics.includes('mental_health'),
+        contactMethod,
+      ),
+    )
   }
   if (topics.includes('food')) {
     tasks.push(fetchFoodResources(place))

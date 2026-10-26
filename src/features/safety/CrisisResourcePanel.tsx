@@ -3,13 +3,14 @@ import { splitHelplineResources } from './localResources/rankHelplines'
 import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import type { RiskAssessment } from './riskAssessment'
 import { fetchResourcesForTopics } from './localResources/fetchResources'
+import { filterStaticNotInResults } from './localResources/dedupeResources'
 import { formatPublicPlaceLabel } from './localResources/formatPlace'
 import {
   emergencyBannerCopy,
   nationalResourcesHeading,
   staticNationalResources,
 } from './localResources/nationalResources'
-import { isHospitalHelpline, partitionHospitalHelplines } from './localResources/hospitalHelplines'
+import { partitionHospitalHelplines } from './localResources/hospitalHelplines'
 import {
   ALL_RESOURCE_TOPICS,
   inferResourceTopics,
@@ -29,22 +30,13 @@ import {
   type ManualLocationFields,
 } from './localResources/manualPlace'
 
-type PanelPhase =
-  | 'idle'
-  | 'pickContact'
-  | 'internationalSetup'
-  | 'manualAdjust'
-  | 'loading'
-  | 'results'
-  | 'error'
+type PanelPhase = 'idle' | 'loading' | 'adjust' | 'results' | 'error'
 
-type SearchFlow = 'local' | 'international' | 'manual'
-
-const CONTACT_OPTIONS: { id: ContactMethodPreference; label: string; hint: string }[] = [
-  { id: 'any', label: 'Any way to reach them', hint: 'Phone, text, chat, or web' },
-  { id: 'phone', label: 'Phone call', hint: 'Voice lines only' },
-  { id: 'sms', label: 'Text message', hint: 'SMS or text-in lines' },
-  { id: 'chat', label: 'Online chat', hint: 'Web chat when available' },
+const CONTACT_OPTIONS: { id: ContactMethodPreference; label: string }[] = [
+  { id: 'any', label: 'Any (phone, text, chat, or web)' },
+  { id: 'phone', label: 'Phone call' },
+  { id: 'sms', label: 'Text message' },
+  { id: 'chat', label: 'Online chat' },
 ]
 
 function telHref(value: string) {
@@ -118,13 +110,10 @@ function HelplineResourceGroups({
   resources: LocalResource[]
   place: GeoPlace
 }) {
-  const grouped = splitHelplineResources(resources, place)
-  const { hospital, other: hospitalOther } = partitionHospitalHelplines([
-    ...grouped.local,
-    ...grouped.broader,
-  ])
-  const local = grouped.local.filter((r) => !isHospitalHelpline(r))
-  const broader = [...grouped.broader.filter((r) => !isHospitalHelpline(r)), ...hospitalOther]
+  const { hospital, other } = partitionHospitalHelplines(resources)
+  const grouped = splitHelplineResources(other, place)
+  const local = grouped.local
+  const broader = grouped.broader
 
   return (
     <>
@@ -173,10 +162,12 @@ function ResultSection({
   place: GeoPlace | null
 }) {
   const isHelplineTopic = result.topic === 'suicide' || result.topic === 'mental_health'
+  const heading =
+    result.topic === 'suicide' ? 'Crisis & mental health lines' : topicLabel(result.topic)
 
   return (
-    <section className="grid gap-2" aria-label={topicLabel(result.topic)}>
-      <h4 className="text-sm font-semibold">{topicLabel(result.topic)}</h4>
+    <section className="grid gap-2" aria-label={heading}>
+      <h4 className="text-sm font-semibold">{heading}</h4>
       {result.error ? <p className="ink-muted text-sm">{result.error}</p> : null}
       {isHelplineTopic && place && result.resources.length ? (
         <HelplineResourceGroups resources={result.resources} place={place} />
@@ -221,7 +212,6 @@ export function CrisisResourcePanel({
   const flowAnchorRef = useRef<HTMLDivElement>(null)
 
   const [phase, setPhase] = useState<PanelPhase>('idle')
-  const [searchFlow, setSearchFlow] = useState<SearchFlow>('local')
   const [activeTopics, setActiveTopics] = useState<ResourceTopic[]>(inferredTopics)
   const [contactMethod, setContactMethod] = useState<ContactMethodPreference>('any')
   const [place, setPlace] = useState<GeoPlace | null>(null)
@@ -254,6 +244,20 @@ export function CrisisResourcePanel({
     }
   }
 
+  function syncAdjustFormFromPlace(resolved: GeoPlace) {
+    const code = resolved.countryCode.toUpperCase()
+    const known = COMMON_COUNTRY_OPTIONS.some((option) => option.code === code)
+    setCountryPick(known ? code : 'OTHER')
+    setCountryOther(known ? '' : code)
+    setRegionCode(resolved.regionCode ?? '')
+    setZip(resolved.zip ?? '')
+    setPlaceLabel(resolved.city ?? '')
+  }
+
+  function topicsForSearch() {
+    return activeTopics.length ? activeTopics : inferredTopics
+  }
+
   async function runFetch(
     resolvedPlace: GeoPlace,
     method: ContactMethodPreference,
@@ -261,9 +265,11 @@ export function CrisisResourcePanel({
   ) {
     setContactMethod(method)
     setPhase('loading')
+    setLocating(false)
     setErrorMessage(null)
     setResults([])
     setPlace(resolvedPlace)
+    setHomeCountry(resolvedPlace.countryCode)
     try {
       const fetched = await fetchResourcesForTopics({
         place: resolvedPlace,
@@ -271,7 +277,6 @@ export function CrisisResourcePanel({
         contactMethod: method,
       })
       setResults(fetched)
-      setHomeCountry(resolvedPlace.countryCode)
       setPhase('results')
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Something went wrong.')
@@ -279,39 +284,25 @@ export function CrisisResourcePanel({
     }
   }
 
-  async function loadWithManual(method: ContactMethodPreference, topics: ResourceTopic[]) {
-    try {
-      const resolvedPlace = place ?? (await placeFromManual(manualFields()))
-      setPlace(resolvedPlace)
-      setHomeCountry(resolvedPlace.countryCode)
-      await runFetch(resolvedPlace, method, topics)
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Could not use that location.')
-      setPhase('error')
-    }
+  function openAdjust(hint?: string) {
+    setLocationHint(hint ?? null)
+    setActiveTopics((prev) => (prev.length ? prev : inferredTopics))
+    if (place) syncAdjustFormFromPlace(place)
+    setPhase('adjust')
   }
 
-  async function continueInternational() {
-    try {
-      setActiveTopics(['mental_health', 'suicide'])
-      const resolvedPlace = await placeFromManual(manualFields())
-      setPlace(resolvedPlace)
-      setHomeCountry(resolvedPlace.countryCode)
-      setSearchFlow('international')
-      setPhase('pickContact')
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Could not use that location.')
-      setPhase('error')
-    }
-  }
-
-  async function prepareManualSearch() {
+  async function submitAdjust() {
     try {
       const resolvedPlace = await placeFromManual(manualFields())
       setPlace(resolvedPlace)
-      setHomeCountry(resolvedPlace.countryCode)
-      setSearchFlow('manual')
-      setPhase('pickContact')
+      const topics =
+        resolvedPlace.countryCode === 'US'
+          ? topicsForSearch()
+          : topicsForSearch().filter((t) => t === 'suicide' || t === 'mental_health')
+      if (resolvedPlace.countryCode !== 'US' && !topics.length) {
+        setActiveTopics(['mental_health', 'suicide'])
+      }
+      await runFetch(resolvedPlace, contactMethod, topics.length ? topics : ['mental_health'])
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Could not use that location.')
       setPhase('error')
@@ -320,7 +311,6 @@ export function CrisisResourcePanel({
 
   function beginLocalSearch() {
     void (async () => {
-      setSearchFlow('local')
       setActiveTopics(inferredTopics)
       setPhase('loading')
       setLocating(true)
@@ -329,44 +319,20 @@ export function CrisisResourcePanel({
       try {
         const resolvedPlace = await resolveCoordinates()
         setPlace(resolvedPlace)
-        setHomeCountry(resolvedPlace.countryCode)
-        if (resolvedPlace.countryCode !== 'US') {
-          setSearchFlow('international')
-          setActiveTopics(['mental_health', 'suicide'])
-        }
-        setPhase('pickContact')
+        syncAdjustFormFromPlace(resolvedPlace)
+        const topics =
+          resolvedPlace.countryCode === 'US'
+            ? inferredTopics
+            : ['mental_health', 'suicide'] as ResourceTopic[]
+        await runFetch(resolvedPlace, 'any', topics)
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Could not read your location.'
         setErrorMessage(message)
-        setLocationHint(message)
-        setPhase('manualAdjust')
+        openAdjust(message)
       } finally {
         setLocating(false)
       }
     })()
-  }
-
-  function beginInternational() {
-    setSearchFlow('international')
-    setCountryPick('CA')
-    setCountryOther('')
-    setRegionCode('')
-    setPlaceLabel('')
-    setActiveTopics(['mental_health', 'suicide'])
-    setPhase('internationalSetup')
-  }
-
-  function beginManualAdjust() {
-    setSearchFlow('manual')
-    setActiveTopics((prev) => (prev.length ? prev : inferredTopics))
-    if (place) {
-      setCountryPick(place.countryCode === 'US' ? 'US' : 'OTHER')
-      setCountryOther(place.countryCode === 'US' ? '' : place.countryCode)
-      setRegionCode(place.regionCode ?? '')
-      setZip(place.zip ?? '')
-      setPlaceLabel(place.city ?? place.displayName ?? '')
-    }
-    setPhase('manualAdjust')
   }
 
   function toggleTopic(topic: ResourceTopic) {
@@ -375,15 +341,13 @@ export function CrisisResourcePanel({
     )
   }
 
-  const staticResources = staticNationalResources(audienceCountry)
+  const allStatic = staticNationalResources(audienceCountry)
+  const staticResources =
+    phase === 'results'
+      ? filterStaticNotInResults(allStatic, results)
+      : allStatic
   const publicPlaceLabel = formatPublicPlaceLabel(place)
   const emergency = emergencyBannerCopy(audienceCountry)
-  const topicsForSearch =
-    activeTopics.length > 0
-      ? activeTopics
-      : searchFlow === 'international'
-        ? (['mental_health'] as ResourceTopic[])
-        : inferredTopics
 
   const showFlowPanel = phase !== 'idle'
 
@@ -417,378 +381,247 @@ export function CrisisResourcePanel({
         <h3 id={actionsHeadingId} className="text-sm font-semibold">
           Find help near you
         </h3>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={actionButtonClass(compact)}
-            aria-label="Find local and regional resources using your location"
-            disabled={loading}
-            onClick={beginLocalSearch}
-          >
-            Find local &amp; regional resources
-          </button>
-          <button
-            type="button"
-            className={`${actionButtonClass(compact)} ink-muted`}
-            aria-label="Adjust region or topics manually"
-            disabled={loading}
-            onClick={beginManualAdjust}
-          >
-            Something not right?
-          </button>
-        </div>
+        <button
+          type="button"
+          className={`${actionButtonClass(compact)} w-fit`}
+          aria-label="Find local and regional resources using your location"
+          disabled={loading}
+          onClick={beginLocalSearch}
+        >
+          Find local &amp; regional resources
+        </button>
+        <button
+          type="button"
+          className="focus-ring ink-muted w-fit text-xs underline"
+          aria-label="Adjust country, region, topics, or contact preferences"
+          disabled={loading}
+          onClick={() => openAdjust()}
+        >
+          Something not right?
+        </button>
       </section>
 
       {showFlowPanel ? (
-      <div id="local-resources-flow" ref={flowAnchorRef} className="grid gap-3">
-      {phase === 'pickContact' ? (
-        <section
-          className="grid gap-2 rounded-2xl border border-[var(--paper-border)] p-3"
-          aria-label="Choose how to connect"
-        >
-          <h4 className="text-sm font-semibold">How do you want to connect?</h4>
-          <p className="ink-muted text-xs">
-            {searchFlow === 'international'
-              ? `Loading helplines for ${publicPlaceLabel ?? 'your country'}.`
-              : publicPlaceLabel
-                ? `Using ${publicPlaceLabel} for ${topicsForSearch.map(topicLabel).join(', ')}.`
-                : `Choose how to connect for ${topicsForSearch.map(topicLabel).join(', ')}.`}
-          </p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {CONTACT_OPTIONS.map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                className="focus-ring rounded-xl border border-[var(--paper-border)] px-3 py-2 text-left"
-                aria-label={`Connect via ${option.label}`}
-                onClick={() => {
-                  if (searchFlow === 'manual') {
-                    void loadWithManual(option.id, topicsForSearch)
-                    return
-                  }
-                  if (searchFlow === 'international' || searchFlow === 'local') {
-                    if (!place) {
-                      setErrorMessage('Location is missing. Adjust your area and try again.')
-                      setPhase('manualAdjust')
-                      return
-                    }
-                    void runFetch(place, option.id, topicsForSearch)
-                    return
-                  }
-                }}
-              >
-                <span className="block font-semibold">{option.label}</span>
-                <span className="ink-muted block text-xs">{option.hint}</span>
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            className="focus-ring ink-muted w-fit text-xs underline"
-            onClick={() => setPhase('idle')}
-          >
-            Close
-          </button>
-        </section>
-      ) : null}
-
-      {phase === 'internationalSetup' ? (
-        <section
-          className="grid gap-2 rounded-2xl border border-[var(--paper-border)] p-3"
-          aria-label="Resources outside the United States"
-        >
-          <h4 className="text-sm font-semibold">Resources outside the US</h4>
-          <p className="ink-muted text-xs">
-            Pick your country, optionally add a region or city, then choose how you want to connect.
-            Mentell uses Global Helplines for national and regional crisis lines worldwide.
-          </p>
-          <label className="grid gap-1 text-xs">
-            Country
-            <select
-              className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
-              value={countryPick}
-              onChange={(e) => setCountryPick(e.target.value)}
+        <div id="local-resources-flow" ref={flowAnchorRef} className="grid gap-3">
+          {phase === 'adjust' ? (
+            <section
+              className="grid gap-2 rounded-2xl border border-[var(--paper-border)] p-3"
+              aria-label="Adjust search settings"
             >
-              {COMMON_COUNTRY_OPTIONS.filter((c) => c.code !== 'US').map((option) => (
-                <option key={option.code} value={option.code}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          {countryPick === 'OTHER' ? (
-            <label className="grid gap-1 text-xs">
-              Country code (two letters)
-              <input
-                className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
-                value={countryOther}
-                onChange={(e) => setCountryOther(e.target.value)}
-                placeholder="GB"
-                maxLength={2}
-              />
-            </label>
-          ) : null}
-          <label className="grid gap-1 text-xs">
-            Region / province (optional)
-            <input
-              className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
-              value={regionCode}
-              onChange={(e) => setRegionCode(e.target.value)}
-              placeholder="ON, ENG, NSW…"
-            />
-          </label>
-          <label className="grid gap-1 text-xs">
-            City or area (optional)
-            <input
-              className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
-              value={placeLabel}
-              onChange={(e) => setPlaceLabel(e.target.value)}
-              placeholder="Toronto, London…"
-            />
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={actionButtonClass(compact)}
-              aria-label="Use device location for country and region"
-              onClick={() => {
-                setActiveTopics(['mental_health', 'suicide'])
-                void (async () => {
-                  try {
-                    const resolved = await resolveCoordinates()
-                    setPlace(resolved)
-                    setHomeCountry(resolved.countryCode)
-                    setCountryPick(resolved.countryCode === 'US' ? 'OTHER' : resolved.countryCode)
-                    setCountryOther(resolved.countryCode === 'US' ? '' : resolved.countryCode)
-                    setRegionCode(resolved.regionCode ?? '')
-                    setPlaceLabel(resolved.city ?? '')
-                    setSearchFlow('international')
-                    setPhase('pickContact')
-                  } catch {
-                    setPhase('pickContact')
-                  }
-                })()
-              }}
-            >
-              Use my location
-            </button>
-            <button
-              type="button"
-              className={actionButtonClass(compact)}
-              aria-label="Continue to contact preferences"
-              onClick={() => void continueInternational()}
-            >
-              Continue
-            </button>
-          </div>
-        </section>
-      ) : null}
-
-      {phase === 'manualAdjust' ? (
-        <section
-          className="grid gap-2 rounded-2xl border border-[var(--paper-border)] p-3"
-          aria-label="Adjust location and topics"
-        >
-          <h4 className="text-sm font-semibold">Adjust location &amp; topics</h4>
-          {locationHint ? (
-            <p className="text-sm" style={{ color: 'var(--danger)' }}>
-              {locationHint} Enter your area below instead.
-            </p>
-          ) : (
-            <p className="ink-muted text-xs">
-              Choose what to search for and where. US entries can include food pantries and HUD housing help.
-            </p>
-          )}
-          <fieldset className="grid gap-2">
-            <legend className="text-xs font-semibold">Topics</legend>
-            {ALL_RESOURCE_TOPICS.map((topic) => (
-              <label key={topic} className="flex items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  checked={activeTopics.includes(topic)}
-                  onChange={() => toggleTopic(topic)}
-                />
-                {topicLabel(topic)}
+              <h4 className="text-sm font-semibold">Adjust your search</h4>
+              {locationHint ? (
+                <p className="text-sm" style={{ color: 'var(--danger)' }}>
+                  {locationHint}
+                </p>
+              ) : (
+                <p className="ink-muted text-xs">
+                  Update your country, area, topics, or how you prefer to connect. US searches can include food
+                  pantries and housing counseling.
+                </p>
+              )}
+              <fieldset className="grid gap-2">
+                <legend className="text-xs font-semibold">Topics</legend>
+                {ALL_RESOURCE_TOPICS.map((topic) => (
+                  <label key={topic} className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={activeTopics.includes(topic)}
+                      onChange={() => toggleTopic(topic)}
+                    />
+                    {topicLabel(topic)}
+                  </label>
+                ))}
+              </fieldset>
+              <label className="grid gap-1 text-xs">
+                Country
+                <select
+                  className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
+                  value={countryPick}
+                  onChange={(e) => setCountryPick(e.target.value)}
+                >
+                  {COMMON_COUNTRY_OPTIONS.map((option) => (
+                    <option key={option.code} value={option.code}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
               </label>
-            ))}
-          </fieldset>
-          <label className="grid gap-1 text-xs">
-            Country
-            <select
-              className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
-              value={countryPick}
-              onChange={(e) => setCountryPick(e.target.value)}
-            >
-              {COMMON_COUNTRY_OPTIONS.map((option) => (
-                <option key={option.code} value={option.code}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          {countryPick === 'OTHER' ? (
-            <label className="grid gap-1 text-xs">
-              Country code
-              <input
-                className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
-                value={countryOther}
-                onChange={(e) => setCountryOther(e.target.value)}
-                maxLength={2}
-              />
-            </label>
+              {countryPick === 'OTHER' ? (
+                <label className="grid gap-1 text-xs">
+                  Country code (two letters)
+                  <input
+                    className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
+                    value={countryOther}
+                    onChange={(e) => setCountryOther(e.target.value)}
+                    maxLength={2}
+                  />
+                </label>
+              ) : null}
+              <label className="grid gap-1 text-xs">
+                State / province / region
+                <input
+                  className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
+                  value={regionCode}
+                  onChange={(e) => setRegionCode(e.target.value)}
+                  placeholder="PA, BC, ON…"
+                />
+              </label>
+              <label className="grid gap-1 text-xs">
+                City or neighborhood
+                <input
+                  className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
+                  value={placeLabel}
+                  onChange={(e) => setPlaceLabel(e.target.value)}
+                />
+              </label>
+              <label className="grid gap-1 text-xs">
+                ZIP / postal code (helps US food search)
+                <input
+                  className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
+                  value={zip}
+                  onChange={(e) => setZip(e.target.value)}
+                />
+              </label>
+              <label className="grid gap-1 text-xs">
+                Preferred contact method
+                <select
+                  className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
+                  value={contactMethod}
+                  onChange={(e) => setContactMethod(e.target.value as ContactMethodPreference)}
+                >
+                  {CONTACT_OPTIONS.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className={actionButtonClass(compact)}
+                  aria-label="Search with these settings"
+                  onClick={() => void submitAdjust()}
+                >
+                  Search with these settings
+                </button>
+                <button
+                  type="button"
+                  className="focus-ring ink-muted text-xs underline"
+                  onClick={() => {
+                    void (async () => {
+                      try {
+                        const resolved = await resolveCoordinates()
+                        setPlace(resolved)
+                        syncAdjustFormFromPlace(resolved)
+                        setHomeCountry(resolved.countryCode)
+                      } catch (err) {
+                        setLocationHint(
+                          err instanceof Error ? err.message : 'Could not read your location.',
+                        )
+                      }
+                    })()
+                  }}
+                >
+                  Use my location
+                </button>
+                <button
+                  type="button"
+                  className="focus-ring ink-muted text-xs underline"
+                  onClick={() => setPhase(results.length ? 'results' : 'idle')}
+                >
+                  Cancel
+                </button>
+              </div>
+            </section>
           ) : null}
-          <label className="grid gap-1 text-xs">
-            State / region
-            <input
-              className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
-              value={regionCode}
-              onChange={(e) => setRegionCode(e.target.value)}
-              placeholder="PA, CA, ON…"
-            />
-          </label>
-          <label className="grid gap-1 text-xs">
-            ZIP / postal code (US food search)
-            <input
-              className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
-              value={zip}
-              onChange={(e) => setZip(e.target.value)}
-            />
-          </label>
-          <label className="grid gap-1 text-xs">
-            City or neighborhood (optional)
-            <input
-              className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
-              value={placeLabel}
-              onChange={(e) => setPlaceLabel(e.target.value)}
-            />
-          </label>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={actionButtonClass(compact)}
-              aria-label="Search with manual location"
-              onClick={() => void prepareManualSearch()}
-            >
-              Choose contact method
-            </button>
-            <button
-              type="button"
-              className="focus-ring ink-muted text-xs underline"
-              onClick={() => setPhase('idle')}
-            >
-              Cancel
-            </button>
-          </div>
-        </section>
-      ) : null}
 
-      {phase === 'loading' ? (
-        <div className="rounded-2xl border border-[var(--paper-border)] p-3" role="status" aria-live="polite">
-          <p className="font-semibold">
-            {locating ? 'Getting your location…' : 'Loading resources near you…'}
-          </p>
-          <p className="ink-muted mt-1">
-            {locating
-              ? 'Mentell uses your location to find nearby crisis and community resources.'
-              : `Contacting regional directories (${contactMethod === 'any' ? 'all contact types' : contactMethod}).`}
-          </p>
+          {phase === 'loading' ? (
+            <div className="rounded-2xl border border-[var(--paper-border)] p-3" role="status" aria-live="polite">
+              <p className="font-semibold">
+                {locating ? 'Getting your location…' : 'Loading resources near you…'}
+              </p>
+              <p className="ink-muted mt-1">
+                {locating
+                  ? 'Mentell uses your location to find nearby crisis and community resources.'
+                  : 'Contacting regional directories.'}
+              </p>
+            </div>
+          ) : null}
+
+          {phase === 'error' ? (
+            <div className="grid gap-2 rounded-2xl border border-[var(--danger)]/40 p-3">
+              <p className="font-semibold" style={{ color: 'var(--danger)' }}>
+                {errorMessage}
+              </p>
+              <p className="ink-muted">
+                You can still use the national lines below or{' '}
+                <a className="underline" href="https://findahelpline.com/" target="_blank" rel="noreferrer">
+                  Find A Helpline
+                </a>{' '}
+                worldwide.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={actionButtonClass(compact)}
+                  aria-label="Try finding resources again"
+                  onClick={beginLocalSearch}
+                >
+                  Try again
+                </button>
+                <button
+                  type="button"
+                  className="focus-ring ink-muted text-xs underline"
+                  aria-label="Adjust search settings"
+                  onClick={() => openAdjust()}
+                >
+                  Something not right?
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {phase === 'results' ? (
+            <section
+              className="grid gap-3 rounded-2xl border border-[var(--paper-border)] p-3"
+              aria-label="Resources near you"
+            >
+              <div>
+                <h4 className="text-sm font-semibold">Resources near you</h4>
+                {publicPlaceLabel ? <p className="ink-muted mt-1 text-xs">{publicPlaceLabel}</p> : null}
+              </div>
+              {results.map((result, index) => (
+                <ResultSection key={`${result.topic}-${index}`} result={result} place={place} />
+              ))}
+              <button
+                type="button"
+                className="focus-ring ink-muted w-fit text-xs underline"
+                aria-label="Adjust search settings"
+                onClick={() => openAdjust()}
+              >
+                Something not right?
+              </button>
+            </section>
+          ) : null}
         </div>
       ) : null}
 
-      {phase === 'error' ? (
-        <div className="grid gap-2 rounded-2xl border border-[var(--danger)]/40 p-3">
-          <p className="font-semibold" style={{ color: 'var(--danger)' }}>
-            {errorMessage}
-          </p>
-          <p className="ink-muted">
-            You can still use 988, NAMI, or{' '}
-            <a className="underline" href="https://findahelpline.com/" target="_blank" rel="noreferrer">
-              Find A Helpline
-            </a>{' '}
-            worldwide.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={actionButtonClass(compact)}
-              aria-label="Try finding resources again"
-              onClick={beginLocalSearch}
-            >
-              Try again
-            </button>
-            <button
-              type="button"
-              className={actionButtonClass(compact)}
-              aria-label="Enter location manually"
-              onClick={beginManualAdjust}
-            >
-              Enter location manually
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {phase === 'results' ? (
+      {staticResources.length ? (
         <section
-          className="grid gap-3 rounded-2xl border border-[var(--paper-border)] p-3"
-          aria-label="Resources near you"
+          className="grid gap-2 rounded-2xl border border-[var(--paper-border)] p-3"
+          aria-labelledby={nationalHeadingId}
         >
-          <div>
-            <h4 className="text-sm font-semibold">Resources near you</h4>
-            {publicPlaceLabel ? <p className="ink-muted mt-1 text-xs">{publicPlaceLabel}</p> : null}
-          </div>
-          {results.map((result, index) => (
-            <ResultSection key={`${result.topic}-${index}`} result={result} place={place} />
-          ))}
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={actionButtonClass(compact)}
-              aria-label="Change contact preference"
-              onClick={() => setPhase('pickContact')}
-            >
-              Change contact preference
-            </button>
-            <button
-              type="button"
-              className={`${actionButtonClass(compact)} ink-muted`}
-              aria-label="Adjust region or topics"
-              onClick={beginManualAdjust}
-            >
-              Something not right?
-            </button>
-          </div>
-        </section>
-      ) : null}
-      </div>
-      ) : null}
-
-      <section
-        className="grid gap-2 rounded-2xl border border-[var(--paper-border)] p-3"
-        aria-labelledby={nationalHeadingId}
-      >
-        <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 id={nationalHeadingId} className="text-sm font-semibold">
             {nationalResourcesHeading(audienceCountry)}
           </h3>
-          {audienceCountry === 'US' ? (
-            <button
-              type="button"
-              className={`${actionButtonClass(compact)} ink-muted`}
-              aria-label="I am not in the United States"
-              disabled={loading}
-              onClick={beginInternational}
-            >
-              Not in the US?
-            </button>
-          ) : null}
-        </div>
-        <div className="grid gap-2">
-          {staticResources.map((resource) => (
-            <ResourceCard key={resource.id} resource={resource} />
-          ))}
-        </div>
-      </section>
+          <div className="grid gap-2">
+            {staticResources.map((resource) => (
+              <ResourceCard key={resource.id} resource={resource} />
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <div className="flex flex-wrap gap-3">
         <a className="underline" href="https://findahelpline.com/" target="_blank" rel="noreferrer">
