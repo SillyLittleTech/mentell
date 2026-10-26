@@ -3,6 +3,7 @@ import { splitHelplineResources } from './localResources/rankHelplines'
 import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import type { RiskAssessment } from './riskAssessment'
 import { fetchResourcesForTopics } from './localResources/fetchResources'
+import { appendPooledScrapeResources } from './localResources/pooledScrape'
 import { referencesForeignCounty } from './localResources/geoFilter'
 import { formatPublicPlaceLabel } from './localResources/formatPlace'
 import { emergencyBannerCopy } from './localResources/nationalResources'
@@ -99,6 +100,16 @@ function ResourceCard({ resource }: { resource: LocalResource }) {
   )
 }
 
+function partitionPooled(resources: LocalResource[]) {
+  const pooled: LocalResource[] = []
+  const rest: LocalResource[] = []
+  for (const resource of resources) {
+    if (resource.kind === 'pooled') pooled.push(resource)
+    else rest.push(resource)
+  }
+  return { pooled, rest }
+}
+
 function HelplineResourceGroups({
   resources,
   place,
@@ -106,7 +117,8 @@ function HelplineResourceGroups({
   resources: LocalResource[]
   place: GeoPlace
 }) {
-  const { hospital, other } = partitionHospitalHelplines(resources)
+  const { pooled, rest } = partitionPooled(resources)
+  const { hospital, other } = partitionHospitalHelplines(rest)
   const grouped = splitHelplineResources(other, place)
   const local = grouped.local
   const broader = grouped.broader
@@ -137,7 +149,19 @@ function HelplineResourceGroups({
           ))}
         </div>
       ) : null}
-      {!hospital.length && !local.length && !broader.length ? (
+      {pooled.length ? (
+        <div className="grid gap-2">
+          <p className="text-xs font-semibold">Additional local suggestions (AI)</p>
+          <p className="ink-muted text-[11px]">
+            From the same AI service as crisis notes, using your area (ZIP/county). Verify phone numbers and
+            hours before you rely on them.
+          </p>
+          {pooled.map((resource) => (
+            <ResourceCard key={resource.id} resource={resource} />
+          ))}
+        </div>
+      ) : null}
+      {!hospital.length && !local.length && !broader.length && !pooled.length ? (
         <p className="ink-muted text-sm">No matches in this area. Try Find A Helpline below.</p>
       ) : null}
       {!hospital.length ? (
@@ -285,7 +309,8 @@ export function CrisisResourcePanel({
         topics,
         contactMethod: method,
       })
-      setResults(fetched)
+      const withPooled = await appendPooledScrapeResources(fetched, resolvedPlace, topics)
+      setResults(withPooled)
       setPhase('results')
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Something went wrong.')

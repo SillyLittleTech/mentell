@@ -10,6 +10,7 @@ import {
 } from './pushHandlers'
 import { runPushCron } from './pushCron'
 import { handleProjectorSearch } from './projectorSearch'
+import { handlePooledCrisisResources } from './pooledCrisisResources'
 import { handleRiskAssessment } from './riskAssessment'
 import { handleWeeklySummary } from './weeklySummary'
 import { handleEmailSubscribe, handleEmailVerify, handleEmailUnverify, handleEmailUnsubscribe } from './emailHandlers'
@@ -39,6 +40,8 @@ export default {
         return handleProjectorSearch(request, env)
       case '/risk-assessment':
         return handleRiskAssessment(request, env)
+      case '/pooled-crisis-resources':
+        return handlePooledCrisisResources(request, env)
       case '/push/subscribe':
         return handlePushSubscribe(request, env)
       case '/push/unsubscribe':

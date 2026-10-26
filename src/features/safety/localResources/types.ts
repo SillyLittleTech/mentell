@@ -13,7 +13,7 @@ export type GeoPlace = {
   displayName?: string
 }
 
-export type LocalResourceKind = 'helpline' | 'food' | 'housing' | 'static'
+export type LocalResourceKind = 'helpline' | 'food' | 'housing' | 'static' | 'pooled'
 
 export type LocalResource = {
   id: string

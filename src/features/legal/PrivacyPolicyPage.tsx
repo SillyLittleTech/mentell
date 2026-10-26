@@ -165,6 +165,14 @@ export function PrivacyPolicyPage() {
             Do not include information in summaries you would not want processed by an AI service.
             See Cloudflare’s privacy documentation for how they handle inference requests.
           </p>
+          <p className="ink-muted mt-3 text-sm leading-relaxed">
+            The same optional Worker and Workers AI model may suggest extra local crisis resources when
+            you use <strong>Find local &amp; regional resources</strong> after a crisis or support
+            prompt. That request sends only coarse location fields (for example ZIP, county, city, and
+            state), names and phone numbers already shown from public directories, and topic tags — not
+            your journal text. Suggestions are labeled as pooled AI output; verify details before calling.
+            Turn off <strong>Disable AI summaries</strong> in Settings to skip this step.
+          </p>
         </section>
       ) : (
         <section className="paper rounded-3xl p-6">
