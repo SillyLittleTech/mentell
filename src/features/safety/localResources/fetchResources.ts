@@ -12,6 +12,7 @@ import {
   helplinesFromApiNotes,
   supplementalHelplinesForPlace,
 } from './supplementalHelplines'
+import { readHelplineCache, writeHelplineCache } from './helplineQueryCache'
 
 type HelplineContact = {
   phone?: string | null
@@ -54,23 +55,20 @@ function mapHelpline(row: HelplineResult): LocalResource {
 }
 
 function helplineKeywords(place: GeoPlace): string[] {
-  const keys = new Set<string>()
-  if (place.city?.trim()) keys.add(place.city.trim())
+  const keys: string[] = []
+  const city = place.city?.trim()
   const county = countyStem(place.county)
-  if (county) keys.add(county)
-  if (place.countryCode === 'US') {
-    keys.add('hospital')
-    keys.add('emergency')
-  }
-  return [...keys]
+  if (city) keys.push(city)
+  if (county && county.toLowerCase() !== city?.toLowerCase()) keys.push(county)
+  return keys
 }
 
-async function queryHelplines(
+function helplineQueryUrl(
   place: GeoPlace,
   topic: 'suicide' | 'mental_health',
   contactMethod: ContactMethodPreference,
   keyword?: string,
-): Promise<HelplineResult[]> {
+) {
   const country = place.countryCode?.trim().toUpperCase() || 'US'
   const url = new URL('https://globalhelplines.org/v1/helplines')
   url.searchParams.set('country', country)
@@ -80,64 +78,64 @@ async function queryHelplines(
   if (keyword) url.searchParams.set('keyword', keyword)
   const method = helplineContactMethodParam(contactMethod)
   if (method) url.searchParams.set('contact_method', method)
+  return url.toString()
+}
 
-  const res = await fetch(url.toString())
-  if (!res.ok) return []
+async function queryHelplines(
+  place: GeoPlace,
+  topic: 'suicide' | 'mental_health',
+  contactMethod: ContactMethodPreference,
+  keyword?: string,
+  signal?: AbortSignal,
+): Promise<HelplineResult[]> {
+  const url = helplineQueryUrl(place, topic, contactMethod, keyword)
+  const cached = readHelplineCache<HelplineResult>(url)
+  if (cached) return cached
+
   try {
+    const res = await fetch(url, { signal })
+    if (!res.ok) {
+      writeHelplineCache(url, [], false)
+      return []
+    }
     const data = (await res.json()) as { results?: HelplineResult[] }
-    return data.results ?? []
-  } catch {
+    const results = data.results ?? []
+    writeHelplineCache(url, results, true)
+    return results
+  } catch (err) {
+    if (signal?.aborted) throw err
+    writeHelplineCache(url, [], false)
     return []
   }
 }
 
-async function fetchCombinedHelplines(
+async function runConsolidatedHelplineQueries(
   place: GeoPlace,
-  includeSuicide: boolean,
-  includeMentalHealth: boolean,
+  topics: ('suicide' | 'mental_health')[],
   contactMethod: ContactMethodPreference,
-): Promise<LocalResourceFetchResult> {
-  const topic: ResourceTopic = includeSuicide ? 'suicide' : 'mental_health'
-  const tasks: Promise<LocalResourceFetchResult>[] = []
-  if (includeSuicide) tasks.push(fetchHelplines(place, 'suicide', contactMethod))
-  if (includeMentalHealth) tasks.push(fetchHelplines(place, 'mental_health', contactMethod))
-  if (!tasks.length) tasks.push(fetchHelplines(place, 'mental_health', contactMethod))
+  signal?: AbortSignal,
+): Promise<HelplineResult[]> {
+  const activeTopics: ('suicide' | 'mental_health')[] = topics.length
+    ? [...topics]
+    : ['mental_health']
+  const keywords = helplineKeywords(place)
+  const keywordTopic: 'suicide' | 'mental_health' = activeTopics.includes('suicide')
+    ? 'suicide'
+    : (activeTopics[0] ?? 'mental_health')
 
-  const rows = await Promise.all(tasks)
-  const byId = new Map<string, LocalResource>()
-  for (const row of rows) {
-    for (const resource of row.resources) byId.set(resource.id, resource)
+  const jobs: Promise<HelplineResult[]>[] = []
+  for (const topic of activeTopics) {
+    jobs.push(queryHelplines(place, topic, contactMethod, undefined, signal))
   }
-  for (const core of coreCrisisResources(place.countryCode)) {
-    const key = core.id
-    if (!byId.has(key)) byId.set(key, { ...core, kind: 'helpline' })
+  for (const keyword of keywords) {
+    jobs.push(queryHelplines(place, keywordTopic, contactMethod, keyword, signal))
   }
-  for (const extra of supplementalHelplinesForPlace(place)) {
-    if (!byId.has(extra.id)) byId.set(extra.id, extra)
-  }
-  const error = rows.map((row) => row.error).find(Boolean)
-  return {
-    topic,
-    resources: [...byId.values()],
-    error: byId.size ? undefined : error,
-  }
+
+  const batches = await Promise.all(jobs)
+  return batches.flat()
 }
 
-async function fetchHelplines(
-  place: GeoPlace,
-  topic: 'suicide' | 'mental_health',
-  contactMethod: ContactMethodPreference,
-): Promise<LocalResourceFetchResult> {
-  const keywords = helplineKeywords(place)
-  const queries: Promise<HelplineResult[]>[] = [queryHelplines(place, topic, contactMethod)]
-  for (const keyword of keywords) {
-    queries.push(queryHelplines(place, topic, contactMethod, keyword))
-  }
-
-  const batches = await Promise.all(queries)
-  const flat = batches.flat()
-  const merged = mergeHelplineRows(flat, place, 12)
-  const resources = merged.map(mapHelpline)
+function appendHelplineSupplements(flat: HelplineResult[], place: GeoPlace, resources: LocalResource[]) {
   const hasUpmcAltoonaCrisis = (list: LocalResource[]) =>
     list.some((r) => /upmc altoona crisis/i.test(r.name))
   for (const extra of helplinesFromApiNotes(flat)) {
@@ -148,6 +146,53 @@ async function fetchHelplines(
     if (hasUpmcAltoonaCrisis(resources)) continue
     if (!resources.some((r) => r.id === extra.id)) resources.push(extra)
   }
+}
+
+async function fetchCombinedHelplines(
+  place: GeoPlace,
+  includeSuicide: boolean,
+  includeMentalHealth: boolean,
+  contactMethod: ContactMethodPreference,
+  signal?: AbortSignal,
+): Promise<LocalResourceFetchResult> {
+  const topic: ResourceTopic = includeSuicide ? 'suicide' : 'mental_health'
+  const helplineTopics: ('suicide' | 'mental_health')[] = []
+  if (includeSuicide) helplineTopics.push('suicide')
+  if (includeMentalHealth) helplineTopics.push('mental_health')
+  if (!helplineTopics.length) helplineTopics.push('mental_health')
+
+  const flat = await runConsolidatedHelplineQueries(place, helplineTopics, contactMethod, signal)
+  const merged = mergeHelplineRows(flat, place, 12)
+  const resources = merged.map(mapHelpline)
+  appendHelplineSupplements(flat, place, resources)
+
+  for (const core of coreCrisisResources(place.countryCode)) {
+    if (!resources.some((r) => r.id === core.id)) {
+      resources.push({ ...core, kind: 'helpline' })
+    }
+  }
+
+  const apiReturnedRows = flat.length > 0
+  if (!resources.length) {
+    return { topic, resources: [], error: 'Could not load helplines right now.' }
+  }
+  return {
+    topic,
+    resources,
+    error: apiReturnedRows ? undefined : 'Directory search returned no matches; showing core crisis lines.',
+  }
+}
+
+async function fetchHelplines(
+  place: GeoPlace,
+  topic: 'suicide' | 'mental_health',
+  contactMethod: ContactMethodPreference,
+  signal?: AbortSignal,
+): Promise<LocalResourceFetchResult> {
+  const flat = await runConsolidatedHelplineQueries(place, [topic], contactMethod, signal)
+  const merged = mergeHelplineRows(flat, place, 12)
+  const resources = merged.map(mapHelpline)
+  appendHelplineSupplements(flat, place, resources)
   if (!resources.length) {
     return { topic, resources: [], error: 'Could not load helplines right now.' }
   }
@@ -301,8 +346,9 @@ export async function fetchResourcesForTopics(input: {
   place: GeoPlace
   topics: ResourceTopic[]
   contactMethod: ContactMethodPreference
+  signal?: AbortSignal
 }): Promise<LocalResourceFetchResult[]> {
-  const { place, contactMethod } = input
+  const { place, contactMethod, signal } = input
   const topics = topicsForCountry(place.countryCode, input.topics)
   const tasks: Promise<LocalResourceFetchResult>[] = []
 
@@ -314,6 +360,7 @@ export async function fetchResourcesForTopics(input: {
         topics.includes('suicide'),
         topics.includes('mental_health'),
         contactMethod,
+        signal,
       ),
     )
   }
@@ -325,7 +372,7 @@ export async function fetchResourcesForTopics(input: {
   }
 
   if (tasks.length === 0) {
-    tasks.push(fetchHelplines(place, 'mental_health', contactMethod))
+    tasks.push(fetchHelplines(place, 'mental_health', contactMethod, signal))
   }
 
   return Promise.all(tasks)

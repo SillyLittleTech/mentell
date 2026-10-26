@@ -68,6 +68,10 @@ export async function handlePooledCrisisResources(request: Request, env: Env): P
   }
 
   try {
+    if (env.POOLED_DEV_FIXTURE === '1') {
+      const resources = devFixtureResources(location)
+      return corsJson({ resources }, 200, env, origin)
+    }
     const resources = await suggestResourcesWithAi(env, location, body.existing ?? [], body.topics ?? [])
     return corsJson({ resources }, 200, env, origin)
   } catch (error) {
@@ -229,6 +233,31 @@ function cleanPhone(value: unknown) {
   const digits = trimmed.replace(/[^\d+]/g, '')
   if (digits.replace(/\D/g, '').length < 3) return undefined
   return trimmed.slice(0, 32)
+}
+
+function devFixtureResources(location: LocationInput): PooledResourceRow[] {
+  const county = (location.county ?? '').toLowerCase()
+  const city = (location.city ?? '').toLowerCase()
+  if (city.includes('altoona') || county.includes('blair')) {
+    return [
+      {
+        name: 'Blair County Mobile Crisis (fixture)',
+        descriptor: 'Dev fixture row for visual testing of pooled AI suggestions.',
+        hours: '24/7',
+        phone: '814-555-0199',
+        source: 'Local mental health network (dev fixture)',
+      },
+    ]
+  }
+  return [
+    {
+      name: 'Regional crisis line (fixture)',
+      descriptor: 'Dev fixture when POOLED_DEV_FIXTURE=1 is set on the Worker.',
+      hours: '24/7',
+      phone: '800-555-0100',
+      source: 'Worker dev fixture',
+    },
+  ]
 }
 
 function cleanUrl(value: unknown) {

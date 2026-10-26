@@ -4,6 +4,7 @@ import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import type { RiskAssessment } from './riskAssessment'
 import { fetchResourcesForTopics } from './localResources/fetchResources'
 import { appendPooledScrapeResources } from './localResources/pooledScrape'
+import { isDebugMode } from '../../shared/debug/debugFlags'
 import { referencesForeignCounty } from './localResources/geoFilter'
 import { formatPublicPlaceLabel } from './localResources/formatPlace'
 import { emergencyBannerCopy } from './localResources/nationalResources'
@@ -251,6 +252,8 @@ export function CrisisResourcePanel({
   const [results, setResults] = useState<LocalResourceFetchResult[]>([])
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [locationHint, setLocationHint] = useState<string | null>(null)
+  const [pooledMeta, setPooledMeta] = useState<string | null>(null)
+  const fetchAbortRef = useRef<AbortController | null>(null)
 
   const [countryPick, setCountryPick] = useState('US')
   const [countryOther, setCountryOther] = useState('')
@@ -297,9 +300,14 @@ export function CrisisResourcePanel({
     topics: ResourceTopic[],
   ) {
     setContactMethod(method)
+    fetchAbortRef.current?.abort()
+    const controller = new AbortController()
+    fetchAbortRef.current = controller
+
     setPhase('loading')
     setLocating(false)
     setErrorMessage(null)
+    setPooledMeta(null)
     setResults([])
     setPlace(resolvedPlace)
     setHomeCountry(resolvedPlace.countryCode)
@@ -308,11 +316,25 @@ export function CrisisResourcePanel({
         place: resolvedPlace,
         topics,
         contactMethod: method,
+        signal: controller.signal,
       })
-      const withPooled = await appendPooledScrapeResources(fetched, resolvedPlace, topics)
+      if (controller.signal.aborted) return
+      const { results: withPooled, meta } = await appendPooledScrapeResources(
+        fetched,
+        resolvedPlace,
+        topics,
+        controller.signal,
+      )
+      if (controller.signal.aborted) return
+      if (isDebugMode() && meta.status !== 'ok' && meta.status !== 'skipped_ai_off') {
+        setPooledMeta(
+          meta.detail ? `AI suggestions: ${meta.status} (${meta.detail})` : `AI suggestions: ${meta.status}`,
+        )
+      }
       setResults(withPooled)
       setPhase('results')
     } catch (err) {
+      if (controller.signal.aborted) return
       setErrorMessage(err instanceof Error ? err.message : 'Something went wrong.')
       setPhase('error')
     }
@@ -616,6 +638,7 @@ export function CrisisResourcePanel({
               className="grid gap-3 rounded-2xl border border-[var(--paper-border)] p-3"
               aria-label="Resources near you"
             >
+              {pooledMeta ? <p className="font-mono text-[10px] opacity-70">{pooledMeta}</p> : null}
               <div>
                 <h4 className="text-sm font-semibold">Resources near you</h4>
                 {publicPlaceLabel ? <p className="ink-muted mt-1 text-xs">{publicPlaceLabel}</p> : null}

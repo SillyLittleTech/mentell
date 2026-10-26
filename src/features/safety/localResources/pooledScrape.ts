@@ -1,8 +1,22 @@
+import { isDebugMode } from '../../../shared/debug/debugFlags'
 import { isAiEnabledLocally } from '../../../shared/settings/appSettings'
 import type { GeoPlace, LocalResource, LocalResourceFetchResult, ResourceTopic } from './types'
 import { dedupePooledAgainstExisting, formatPooledSourceLabel } from './dedupeResources'
+import { normalizeEnvToken, resolveWorkerRoute } from './workerRoute'
 
-const POOLED_SUFFIX = ' (Pooled Scrape, check important details)'
+export type PooledScrapeStatus =
+  | 'skipped_disabled'
+  | 'skipped_not_configured'
+  | 'skipped_ai_off'
+  | 'error_http'
+  | 'error_network'
+  | 'empty'
+  | 'ok'
+
+export type PooledScrapeMeta = {
+  status: PooledScrapeStatus
+  detail?: string
+}
 
 type WorkerPooledRow = {
   name: string
@@ -14,31 +28,18 @@ type WorkerPooledRow = {
   source: string
 }
 
-function normalizeEnvToken(raw: string | undefined) {
-  if (!raw) return ''
-  const t = raw.trim()
-  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
-    return t.slice(1, -1)
-  }
-  return t
-}
-
-function normalizeEndpointUrl(endpoint: string) {
-  return endpoint.replace(/\/+$/, '')
-}
-
 export function pooledCrisisResourcesEndpoint() {
-  const weeklyEndpoint = import.meta.env.VITE_WEEKLY_AI_ENDPOINT
-  if (typeof weeklyEndpoint !== 'string' || !weeklyEndpoint.trim()) return null
-  return normalizeEndpointUrl(weeklyEndpoint).replace(/\/weekly-summary\/?$/, '/pooled-crisis-resources')
+  return resolveWorkerRoute('/pooled-crisis-resources')
 }
 
 export function isPooledScrapeConfigured() {
-  return (
-    import.meta.env.VITE_ENABLE_WEEKLY_AI_SUMMARY === '1' &&
-    Boolean(pooledCrisisResourcesEndpoint()) &&
-    Boolean(normalizeEnvToken(import.meta.env.VITE_WEEKLY_AI_TOKEN))
-  )
+  const token = normalizeEnvToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
+  const endpoint = pooledCrisisResourcesEndpoint()
+  if (!endpoint || !token) return false
+  const explicit = import.meta.env.VITE_ENABLE_POOLED_CRISIS
+  if (explicit === '0') return false
+  if (explicit === '1') return true
+  return import.meta.env.VITE_ENABLE_WEEKLY_AI_SUMMARY === '1'
 }
 
 function mapPooledRow(row: WorkerPooledRow, index: number): LocalResource {
@@ -59,25 +60,77 @@ function helplineResults(results: LocalResourceFetchResult[]) {
   return results.filter((row) => row.topic === 'suicide' || row.topic === 'mental_health')
 }
 
+function mergePooledIntoResults(
+  results: LocalResourceFetchResult[],
+  pooled: LocalResource[],
+): LocalResourceFetchResult[] {
+  const topic: ResourceTopic = results.some((r) => r.topic === 'suicide') ? 'suicide' : 'mental_health'
+  const target = helplineResults(results)[0]
+  if (target) {
+    return results.map((row) =>
+      row === target ? { ...row, resources: [...row.resources, ...pooled] } : row,
+    )
+  }
+  return [...results, { topic, resources: pooled }]
+}
+
 export async function appendPooledScrapeResources(
   results: LocalResourceFetchResult[],
   place: GeoPlace,
   topics: ResourceTopic[],
-): Promise<LocalResourceFetchResult[]> {
+  signal?: AbortSignal,
+): Promise<{ results: LocalResourceFetchResult[]; meta: PooledScrapeMeta }> {
   const wantsHelplines = topics.includes('suicide') || topics.includes('mental_health')
-  if (!wantsHelplines || !isPooledScrapeConfigured() || !isAiEnabledLocally()) {
-    return results
+  if (!wantsHelplines) {
+    return { results, meta: { status: 'skipped_not_configured', detail: 'No helpline topics' } }
+  }
+  if (!isAiEnabledLocally()) {
+    return { results, meta: { status: 'skipped_ai_off' } }
+  }
+  if (!isPooledScrapeConfigured()) {
+    return { results, meta: { status: 'skipped_not_configured' } }
+  }
+
+  if (import.meta.env.DEV && import.meta.env.VITE_POOLED_DEV_FIXTURE === '1') {
+    const helplineRows = helplineResults(results)
+    const existing = helplineRows.flatMap((row) => row.resources)
+    const fixture: LocalResource[] = dedupePooledAgainstExisting(
+      [
+        {
+          id: 'pooled-dev-fixture-blair',
+          kind: 'pooled',
+          name: 'Blair County Mobile Crisis (dev fixture)',
+          description: 'Local dev fixture for visual testing of pooled AI suggestions.',
+          phone: '814-555-0199',
+          hours: '24/7',
+          sourceLabel: formatPooledSourceLabel('Worker dev fixture'),
+        },
+      ],
+      existing,
+    )
+    if (fixture.length) {
+      return {
+        results: mergePooledIntoResults(results, fixture),
+        meta: { status: 'ok', detail: 'dev fixture' },
+      }
+    }
+    return { results, meta: { status: 'empty', detail: 'dev fixture deduped' } }
   }
 
   const endpoint = pooledCrisisResourcesEndpoint()
   const token = normalizeEnvToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
-  if (!endpoint || !token) return results
+  if (!endpoint || !token) {
+    return { results, meta: { status: 'skipped_not_configured' } }
+  }
 
   const helplineRows = helplineResults(results)
   const existing = helplineRows.flatMap((row) => row.resources)
 
   const controller = new AbortController()
-  const timeout = window.setTimeout(() => controller.abort(), 18000)
+  const timeout = window.setTimeout(() => controller.abort(), 22000)
+  const onAbort = () => controller.abort()
+  signal?.addEventListener('abort', onAbort)
+
   try {
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -101,28 +154,44 @@ export async function appendPooledScrapeResources(
       }),
       signal: controller.signal,
     })
-    if (!response.ok) return results
-    const data = (await response.json()) as { resources?: WorkerPooledRow[] }
+    if (!response.ok) {
+      const detail = isDebugMode() ? `${response.status} ${response.statusText}` : undefined
+      if (isDebugMode()) {
+        console.warn('[pooled-crisis-resources]', detail, await response.text().catch(() => ''))
+      }
+      return {
+        results,
+        meta: { status: 'error_http', detail: detail ?? String(response.status) },
+      }
+    }
+    const data = (await response.json()) as { resources?: WorkerPooledRow[]; error?: string }
     const rows = Array.isArray(data.resources) ? data.resources : []
     const pooled = dedupePooledAgainstExisting(
       rows.map((row, index) => mapPooledRow(row, index)),
       existing,
     )
-    if (!pooled.length) return results
-
-    const topic: ResourceTopic = topics.includes('suicide') ? 'suicide' : 'mental_health'
-    const target = helplineRows[0]
-    if (target) {
-      return results.map((row) =>
-        row === target ? { ...row, resources: [...row.resources, ...pooled] } : row,
-      )
+    if (!pooled.length) {
+      return {
+        results,
+        meta: {
+          status: 'empty',
+          detail: isDebugMode() ? (data.error ?? 'No unique rows after dedupe') : undefined,
+        },
+      }
     }
-    return [...results, { topic, resources: pooled }]
-  } catch {
-    return results
+    return {
+      results: mergePooledIntoResults(results, pooled),
+      meta: { status: 'ok', detail: isDebugMode() ? `${pooled.length} suggestion(s)` : undefined },
+    }
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err)
+    if (isDebugMode()) console.warn('[pooled-crisis-resources]', detail)
+    return {
+      results,
+      meta: { status: 'error_network', detail: isDebugMode() ? detail : undefined },
+    }
   } finally {
     window.clearTimeout(timeout)
+    signal?.removeEventListener('abort', onAbort)
   }
 }
-
-export { POOLED_SUFFIX }
