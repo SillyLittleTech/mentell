@@ -204,6 +204,19 @@ export function PrivacyPolicyPage() {
       ) : null}
 
       <section className="paper rounded-3xl p-6">
+        <h2 className="font-paper text-xl">Local crisis &amp; community resources (optional)</h2>
+        <p className="ink-muted mt-3 text-sm leading-relaxed">
+          When you choose to find local or regional help after a heavy journal entry, Mentell may ask
+          for device location (or use a debug-only test location in developer builds). Coordinates are
+          sent to public directories to list nearby options:{' '}
+          <strong>Global Helplines</strong>, <strong>Feed America (feedam.org)</strong>,{' '}
+          <strong>HUD Housing Counseling</strong>, and OpenStreetMap reverse geocoding for state/ZIP.
+          Mentell does not store your location in the journal database; requests go directly from your
+          browser to those services.
+        </p>
+      </section>
+
+      <section className="paper rounded-3xl p-6">
         <h2 className="font-paper text-xl">Hosting</h2>
         <p className="ink-muted mt-3 text-sm leading-relaxed">
           The static app is served from GitHub Pages. Optional Firebase Hosting may serve a small

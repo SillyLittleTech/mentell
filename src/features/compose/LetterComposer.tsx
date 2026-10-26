@@ -754,7 +754,9 @@ function RiskNotice({ risk }: { risk: RiskAssessment }) {
       {isDebugMode() && risk.reasons.length ? (
         <div>Signals: {risk.reasons.join(", ")}</div>
       ) : null}
-      {crisis ? <CrisisResourcePanel compact /> : null}
+      {crisis || risk.responseKind === "support" ? (
+        <CrisisResourcePanel compact risk={risk} />
+      ) : null}
     </div>
   );
 }
