@@ -1,4 +1,5 @@
 import { appVersion } from '../../../shared/version'
+import { isDebugMode } from '../../../shared/debug/debugFlags'
 import { loadDebugLocationOverride, debugOverrideToGeoPlace } from './debugLocation'
 import type { GeoPlace } from './types'
 
@@ -100,7 +101,7 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<GeoP
 }
 
 export function resolveCoordinates(): Promise<GeoPlace> {
-  const override = loadDebugLocationOverride()
+  const override = isDebugMode() ? loadDebugLocationOverride() : null
   if (override) {
     return Promise.resolve(debugOverrideToGeoPlace(override))
   }

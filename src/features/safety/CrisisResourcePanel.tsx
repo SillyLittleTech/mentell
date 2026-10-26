@@ -2,7 +2,14 @@ import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { splitHelplineResources } from './localResources/rankHelplines'
 import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import type { RiskAssessment } from './riskAssessment'
-import { fetchResourcesForTopics, staticUsResources } from './localResources/fetchResources'
+import { fetchResourcesForTopics } from './localResources/fetchResources'
+import { formatPublicPlaceLabel } from './localResources/formatPlace'
+import {
+  emergencyBannerCopy,
+  nationalResourcesHeading,
+  staticNationalResources,
+} from './localResources/nationalResources'
+import { isHospitalHelpline, partitionHospitalHelplines } from './localResources/hospitalHelplines'
 import {
   ALL_RESOURCE_TOPICS,
   inferResourceTopics,
@@ -16,8 +23,6 @@ import type {
   LocalResourceFetchResult,
   ResourceTopic,
 } from './localResources/types'
-import { loadDebugLocationOverride } from './localResources/debugLocation'
-import { isDebugMode } from '../../shared/debug/debugFlags'
 import {
   COMMON_COUNTRY_OPTIONS,
   placeFromManual,
@@ -106,6 +111,60 @@ function ResourceCard({ resource }: { resource: LocalResource }) {
   )
 }
 
+function HelplineResourceGroups({
+  resources,
+  place,
+}: {
+  resources: LocalResource[]
+  place: GeoPlace
+}) {
+  const grouped = splitHelplineResources(resources, place)
+  const { hospital, other: hospitalOther } = partitionHospitalHelplines([
+    ...grouped.local,
+    ...grouped.broader,
+  ])
+  const local = grouped.local.filter((r) => !isHospitalHelpline(r))
+  const broader = [...grouped.broader.filter((r) => !isHospitalHelpline(r)), ...hospitalOther]
+
+  return (
+    <>
+      {hospital.length ? (
+        <div className="grid gap-2">
+          <p className="text-xs font-semibold">Hospital &amp; emergency crisis lines</p>
+          {hospital.map((resource) => (
+            <ResourceCard key={resource.id} resource={resource} />
+          ))}
+        </div>
+      ) : null}
+      {local.length ? (
+        <div className="grid gap-2">
+          <p className="text-xs font-semibold">Closer to you</p>
+          {local.map((resource) => (
+            <ResourceCard key={resource.id} resource={resource} />
+          ))}
+        </div>
+      ) : null}
+      {broader.length ? (
+        <div className="grid gap-2">
+          <p className="ink-muted text-xs font-semibold">Statewide &amp; national</p>
+          {broader.map((resource) => (
+            <ResourceCard key={resource.id} resource={resource} />
+          ))}
+        </div>
+      ) : null}
+      {!hospital.length && !local.length && !broader.length ? (
+        <p className="ink-muted text-sm">No matches in this area. Try the national lines below.</p>
+      ) : null}
+      {!hospital.length ? (
+        <p className="ink-muted text-[11px]">
+          Some hospital crisis lines are not in public directories. If you need immediate help, call your local
+          emergency number or go to the nearest emergency department.
+        </p>
+      ) : null}
+    </>
+  )
+}
+
 function ResultSection({
   result,
   place,
@@ -114,41 +173,13 @@ function ResultSection({
   place: GeoPlace | null
 }) {
   const isHelplineTopic = result.topic === 'suicide' || result.topic === 'mental_health'
-  const grouped =
-    isHelplineTopic && place && result.resources.length
-      ? splitHelplineResources(result.resources, place)
-      : null
 
   return (
     <section className="grid gap-2" aria-label={topicLabel(result.topic)}>
       <h4 className="text-sm font-semibold">{topicLabel(result.topic)}</h4>
       {result.error ? <p className="ink-muted text-sm">{result.error}</p> : null}
-      {grouped ? (
-        <>
-          {grouped.local.length ? (
-            <div className="grid gap-2">
-              <p className="text-xs font-semibold">Closer to you</p>
-              {grouped.local.map((resource) => (
-                <ResourceCard key={resource.id} resource={resource} />
-              ))}
-            </div>
-          ) : null}
-          {grouped.broader.length ? (
-            <div className="grid gap-2">
-              <p className="ink-muted text-xs font-semibold">Statewide &amp; national</p>
-              {grouped.broader.map((resource) => (
-                <ResourceCard key={resource.id} resource={resource} />
-              ))}
-            </div>
-          ) : null}
-          {!grouped.local.length && !grouped.broader.length ? (
-            <p className="ink-muted text-sm">No matches in this area. Try 211 or the national lines below.</p>
-          ) : null}
-          <p className="ink-muted text-[11px]">
-            Hospital-specific crisis lines (for example UPMC) may not appear in public directories. Call 988 or
-            your nearest emergency department if you need immediate help.
-          </p>
-        </>
+      {isHelplineTopic && place && result.resources.length ? (
+        <HelplineResourceGroups resources={result.resources} place={place} />
       ) : result.resources.length ? (
         <div className="grid gap-2">
           {result.resources.map((resource) => (
@@ -156,7 +187,7 @@ function ResultSection({
           ))}
         </div>
       ) : !result.error ? (
-        <p className="ink-muted text-sm">No matches in this area. Try 211 or the national lines below.</p>
+        <p className="ink-muted text-sm">No matches in this area. Try the national lines below.</p>
       ) : null}
     </section>
   )
@@ -203,9 +234,11 @@ export function CrisisResourcePanel({
   const [regionCode, setRegionCode] = useState('')
   const [zip, setZip] = useState('')
   const [placeLabel, setPlaceLabel] = useState('')
+  const [homeCountry, setHomeCountry] = useState<string | null>(null)
+  const [locating, setLocating] = useState(false)
 
-  const debugOverride = isDebugMode() ? loadDebugLocationOverride() : null
   const loading = phase === 'loading'
+  const audienceCountry = (homeCountry ?? place?.countryCode ?? 'US').toUpperCase()
 
   function resolvedCountryCode() {
     if (countryPick === 'OTHER') return countryOther.trim().toUpperCase()
@@ -238,6 +271,7 @@ export function CrisisResourcePanel({
         contactMethod: method,
       })
       setResults(fetched)
+      setHomeCountry(resolvedPlace.countryCode)
       setPhase('results')
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Something went wrong.')
@@ -245,24 +279,11 @@ export function CrisisResourcePanel({
     }
   }
 
-  async function loadWithGeolocation(method: ContactMethodPreference, topics: ResourceTopic[]) {
-    setPhase('loading')
-    setErrorMessage(null)
-    setLocationHint(null)
-    try {
-      const resolvedPlace = await resolveCoordinates()
-      await runFetch(resolvedPlace, method, topics)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Could not read your location.'
-      setErrorMessage(message)
-      setLocationHint(message)
-      setPhase('manualAdjust')
-    }
-  }
-
   async function loadWithManual(method: ContactMethodPreference, topics: ResourceTopic[]) {
     try {
-      const resolvedPlace = await placeFromManual(manualFields())
+      const resolvedPlace = place ?? (await placeFromManual(manualFields()))
+      setPlace(resolvedPlace)
+      setHomeCountry(resolvedPlace.countryCode)
       await runFetch(resolvedPlace, method, topics)
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Could not use that location.')
@@ -270,16 +291,68 @@ export function CrisisResourcePanel({
     }
   }
 
+  async function continueInternational() {
+    try {
+      setActiveTopics(['mental_health', 'suicide'])
+      const resolvedPlace = await placeFromManual(manualFields())
+      setPlace(resolvedPlace)
+      setHomeCountry(resolvedPlace.countryCode)
+      setSearchFlow('international')
+      setPhase('pickContact')
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Could not use that location.')
+      setPhase('error')
+    }
+  }
+
+  async function prepareManualSearch() {
+    try {
+      const resolvedPlace = await placeFromManual(manualFields())
+      setPlace(resolvedPlace)
+      setHomeCountry(resolvedPlace.countryCode)
+      setSearchFlow('manual')
+      setPhase('pickContact')
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : 'Could not use that location.')
+      setPhase('error')
+    }
+  }
+
   function beginLocalSearch() {
-    setSearchFlow('local')
-    setActiveTopics(inferredTopics)
-    setPhase('pickContact')
+    void (async () => {
+      setSearchFlow('local')
+      setActiveTopics(inferredTopics)
+      setPhase('loading')
+      setLocating(true)
+      setErrorMessage(null)
+      setLocationHint(null)
+      try {
+        const resolvedPlace = await resolveCoordinates()
+        setPlace(resolvedPlace)
+        setHomeCountry(resolvedPlace.countryCode)
+        if (resolvedPlace.countryCode !== 'US') {
+          setSearchFlow('international')
+          setActiveTopics(['mental_health', 'suicide'])
+        }
+        setPhase('pickContact')
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Could not read your location.'
+        setErrorMessage(message)
+        setLocationHint(message)
+        setPhase('manualAdjust')
+      } finally {
+        setLocating(false)
+      }
+    })()
   }
 
   function beginInternational() {
     setSearchFlow('international')
     setCountryPick('CA')
     setCountryOther('')
+    setRegionCode('')
+    setPlaceLabel('')
+    setActiveTopics(['mental_health', 'suicide'])
     setPhase('internationalSetup')
   }
 
@@ -302,9 +375,9 @@ export function CrisisResourcePanel({
     )
   }
 
-  const staticResources = staticUsResources()
-  const regionHint =
-    place?.regionCode ?? debugOverride?.regionCode ?? (place?.countryCode === 'US' ? 'US' : place?.countryCode)
+  const staticResources = staticNationalResources(audienceCountry)
+  const publicPlaceLabel = formatPublicPlaceLabel(place)
+  const emergency = emergencyBannerCopy(audienceCountry)
   const topicsForSearch =
     activeTopics.length > 0
       ? activeTopics
@@ -325,10 +398,17 @@ export function CrisisResourcePanel({
   return (
     <div className={`grid gap-3 ${compact ? 'text-xs' : 'text-sm'}`}>
       <p>
-        If you might be in immediate danger, call emergency services now. In the United States, call or text{' '}
-        <strong>988</strong>, or chat at{' '}
-        <a className="underline" href="https://988lifeline.org/chat/" target="_blank" rel="noreferrer">
-          988lifeline.org
+        {emergency.lead}
+        {emergency.hotline ? (
+          <>
+            {' '}
+            <strong>{emergency.hotline}</strong>, or chat at{' '}
+          </>
+        ) : (
+          ' '
+        )}
+        <a className="underline" href={emergency.href} target="_blank" rel="noreferrer">
+          {emergency.linkLabel}
         </a>
         .
       </p>
@@ -369,8 +449,10 @@ export function CrisisResourcePanel({
           <h4 className="text-sm font-semibold">How do you want to connect?</h4>
           <p className="ink-muted text-xs">
             {searchFlow === 'international'
-              ? 'Loading helplines for your country'
-              : `Mentell will use your location${debugOverride ? ' (debug override on)' : ''} for ${topicsForSearch.map(topicLabel).join(', ')}.`}
+              ? `Loading helplines for ${publicPlaceLabel ?? 'your country'}.`
+              : publicPlaceLabel
+                ? `Using ${publicPlaceLabel} for ${topicsForSearch.map(topicLabel).join(', ')}.`
+                : `Choose how to connect for ${topicsForSearch.map(topicLabel).join(', ')}.`}
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
             {CONTACT_OPTIONS.map((option) => (
@@ -384,19 +466,15 @@ export function CrisisResourcePanel({
                     void loadWithManual(option.id, topicsForSearch)
                     return
                   }
-                  if (searchFlow === 'international') {
-                    void (async () => {
-                      try {
-                        const resolvedPlace = await placeFromManual(manualFields())
-                        await runFetch(resolvedPlace, option.id, topicsForSearch)
-                      } catch (err) {
-                        setErrorMessage(err instanceof Error ? err.message : 'Invalid country.')
-                        setPhase('error')
-                      }
-                    })()
+                  if (searchFlow === 'international' || searchFlow === 'local') {
+                    if (!place) {
+                      setErrorMessage('Location is missing. Adjust your area and try again.')
+                      setPhase('manualAdjust')
+                      return
+                    }
+                    void runFetch(place, option.id, topicsForSearch)
                     return
                   }
-                  void loadWithGeolocation(option.id, topicsForSearch)
                 }}
               >
                 <span className="block font-semibold">{option.label}</span>
@@ -478,10 +556,12 @@ export function CrisisResourcePanel({
                 void (async () => {
                   try {
                     const resolved = await resolveCoordinates()
+                    setPlace(resolved)
+                    setHomeCountry(resolved.countryCode)
                     setCountryPick(resolved.countryCode === 'US' ? 'OTHER' : resolved.countryCode)
-                    setCountryOther(resolved.countryCode)
+                    setCountryOther(resolved.countryCode === 'US' ? '' : resolved.countryCode)
                     setRegionCode(resolved.regionCode ?? '')
-                    setPlaceLabel(resolved.displayName ?? '')
+                    setPlaceLabel(resolved.city ?? '')
                     setSearchFlow('international')
                     setPhase('pickContact')
                   } catch {
@@ -496,10 +576,7 @@ export function CrisisResourcePanel({
               type="button"
               className={actionButtonClass(compact)}
               aria-label="Continue to contact preferences"
-              onClick={() => {
-                setActiveTopics(['mental_health', 'suicide'])
-                setPhase('pickContact')
-              }}
+              onClick={() => void continueInternational()}
             >
               Continue
             </button>
@@ -590,10 +667,7 @@ export function CrisisResourcePanel({
               type="button"
               className={actionButtonClass(compact)}
               aria-label="Search with manual location"
-              onClick={() => {
-                setSearchFlow('manual')
-                setPhase('pickContact')
-              }}
+              onClick={() => void prepareManualSearch()}
             >
               Choose contact method
             </button>
@@ -610,9 +684,13 @@ export function CrisisResourcePanel({
 
       {phase === 'loading' ? (
         <div className="rounded-2xl border border-[var(--paper-border)] p-3" role="status" aria-live="polite">
-          <p className="font-semibold">Loading resources near you…</p>
+          <p className="font-semibold">
+            {locating ? 'Getting your location…' : 'Loading resources near you…'}
+          </p>
           <p className="ink-muted mt-1">
-            Contacting regional directories ({contactMethod === 'any' ? 'all contact types' : contactMethod}).
+            {locating
+              ? 'Mentell uses your location to find nearby crisis and community resources.'
+              : `Contacting regional directories (${contactMethod === 'any' ? 'all contact types' : contactMethod}).`}
           </p>
         </div>
       ) : null}
@@ -657,14 +735,10 @@ export function CrisisResourcePanel({
         >
           <div>
             <h4 className="text-sm font-semibold">Resources near you</h4>
-            {place?.displayName ? (
-              <p className="ink-muted mt-1 text-xs">{place.displayName}</p>
-            ) : regionHint ? (
-              <p className="ink-muted mt-1 text-xs">Region: {regionHint}</p>
-            ) : null}
+            {publicPlaceLabel ? <p className="ink-muted mt-1 text-xs">{publicPlaceLabel}</p> : null}
           </div>
-          {results.map((result) => (
-            <ResultSection key={result.topic} result={result} place={place} />
+          {results.map((result, index) => (
+            <ResultSection key={`${result.topic}-${index}`} result={result} place={place} />
           ))}
           <div className="flex flex-wrap gap-2">
             <button
@@ -695,17 +769,19 @@ export function CrisisResourcePanel({
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 id={nationalHeadingId} className="text-sm font-semibold">
-            National lines (United States)
+            {nationalResourcesHeading(audienceCountry)}
           </h3>
-          <button
-            type="button"
-            className={`${actionButtonClass(compact)} ink-muted`}
-            aria-label="I am not in the United States"
-            disabled={loading}
-            onClick={beginInternational}
-          >
-            Not in the US?
-          </button>
+          {audienceCountry === 'US' ? (
+            <button
+              type="button"
+              className={`${actionButtonClass(compact)} ink-muted`}
+              aria-label="I am not in the United States"
+              disabled={loading}
+              onClick={beginInternational}
+            >
+              Not in the US?
+            </button>
+          ) : null}
         </div>
         <div className="grid gap-2">
           {staticResources.map((resource) => (
@@ -718,9 +794,11 @@ export function CrisisResourcePanel({
         <a className="underline" href="https://findahelpline.com/" target="_blank" rel="noreferrer">
           Find A Helpline (worldwide)
         </a>
-        <a className="underline" href="https://www.usa.gov/mental-health" target="_blank" rel="noreferrer">
-          USAGov mental health
-        </a>
+        {audienceCountry === 'US' ? (
+          <a className="underline" href="https://www.usa.gov/mental-health" target="_blank" rel="noreferrer">
+            USAGov mental health
+          </a>
+        ) : null}
       </div>
     </div>
   )

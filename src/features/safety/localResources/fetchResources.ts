@@ -52,6 +52,10 @@ function helplineKeywords(place: GeoPlace): string[] {
   if (place.city?.trim()) keys.add(place.city.trim())
   const county = countyStem(place.county)
   if (county) keys.add(county)
+  if (place.countryCode === 'US') {
+    keys.add('hospital')
+    keys.add('emergency')
+  }
   return [...keys]
 }
 
@@ -73,8 +77,12 @@ async function queryHelplines(
 
   const res = await fetch(url.toString())
   if (!res.ok) return []
-  const data = (await res.json()) as { results?: HelplineResult[] }
-  return data.results ?? []
+  try {
+    const data = (await res.json()) as { results?: HelplineResult[] }
+    return data.results ?? []
+  } catch {
+    return []
+  }
 }
 
 async function fetchHelplines(
@@ -135,8 +143,8 @@ async function fetchFoodResources(place: GeoPlace): Promise<LocalResourceFetchRe
   if (!res.ok) {
     return { topic, resources: [], error: 'Could not load nearby food resources.' }
   }
-  const data = (await res.json()) as { resources?: FeedamResource[] }
-  const resources = (data.resources ?? []).slice(0, 6).map((row) => {
+  const data = await parseJsonResponse<{ resources?: FeedamResource[] }>(res)
+  const resources = (data?.resources ?? []).slice(0, 6).map((row) => {
     const addressParts = [row.address, row.city, row.state, row.zip].filter(Boolean)
     return {
       id: `feedam-${row.id}`,
@@ -193,7 +201,7 @@ async function fetchShelterResources(place: GeoPlace): Promise<LocalResourceFetc
   if (!res.ok) {
     return { topic, resources: [], error: 'Could not load HUD housing counselors.' }
   }
-  const rows = (await res.json()) as HudAgency[]
+  const rows = await parseJsonResponse<HudAgency[] | unknown>(res)
   const resources = (Array.isArray(rows) ? rows : []).slice(0, 6).map((row) => {
     const addressParts = [row.adr1, row.city, row.statecd, row.zipcd].filter(Boolean)
     const web = row.weburl && row.weburl !== 'N/A' ? row.weburl : undefined
@@ -211,40 +219,21 @@ async function fetchShelterResources(place: GeoPlace): Promise<LocalResourceFetc
   return { topic, resources }
 }
 
-export function staticUsResources(): LocalResource[] {
-  return [
-    {
-      id: 'static-988',
-      kind: 'static',
-      name: '988 Suicide & Crisis Lifeline',
-      description: 'Free, confidential support 24/7 in the US.',
-      phone: '988',
-      sms: '988',
-      chatUrl: 'https://988lifeline.org/chat/',
-      website: 'https://988lifeline.org/',
-      hours: '24/7',
-      sourceLabel: 'US 988 Lifeline',
-    },
-    {
-      id: 'static-nami',
-      kind: 'static',
-      name: 'NAMI HelpLine',
-      description: 'Information, resource referrals, and support for mental health.',
-      phone: '1-800-950-6264',
-      website: 'https://www.nami.org/help',
-      hours: 'Mon–Fri, 10am–10pm ET',
-      sourceLabel: 'NAMI',
-    },
-    {
-      id: 'static-211',
-      kind: 'static',
-      name: '211 (local services)',
-      description: 'Dial 211 for food, housing, utilities, and other community help in many US areas.',
-      phone: '211',
-      website: 'https://www.211.org/',
-      sourceLabel: 'United Way 211',
-    },
-  ]
+export function topicsForCountry(countryCode: string, topics: ResourceTopic[]): ResourceTopic[] {
+  const code = countryCode.trim().toUpperCase()
+  const helplineTopics = topics.filter((topic) => topic === 'suicide' || topic === 'mental_health')
+  if (code === 'US') {
+    return topics.length ? topics : ['mental_health']
+  }
+  return helplineTopics.length ? helplineTopics : ['mental_health']
+}
+
+async function parseJsonResponse<T>(res: Response): Promise<T | null> {
+  try {
+    return (await res.json()) as T
+  } catch {
+    return null
+  }
 }
 
 export async function fetchResourcesForTopics(input: {
@@ -252,7 +241,8 @@ export async function fetchResourcesForTopics(input: {
   topics: ResourceTopic[]
   contactMethod: ContactMethodPreference
 }): Promise<LocalResourceFetchResult[]> {
-  const { place, topics, contactMethod } = input
+  const { place, contactMethod } = input
+  const topics = topicsForCountry(place.countryCode, input.topics)
   const tasks: Promise<LocalResourceFetchResult>[] = []
 
   if (topics.includes('suicide')) {
