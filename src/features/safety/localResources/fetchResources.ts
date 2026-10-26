@@ -5,6 +5,7 @@ import type {
   LocalResourceFetchResult,
   ResourceTopic,
 } from './types'
+import { countyStem, mergeHelplineRows, type HelplineRow } from './rankHelplines'
 
 type HelplineContact = {
   phone?: string | null
@@ -13,13 +14,8 @@ type HelplineContact = {
   email?: string | null
 }
 
-type HelplineResult = {
-  id: string
-  name: string
-  description?: string
+type HelplineResult = HelplineRow & {
   contact?: HelplineContact
-  hours?: string
-  website?: string
 }
 
 function helplineContactMethodParam(pref: ContactMethodPreference) {
@@ -30,11 +26,18 @@ function helplineContactMethodParam(pref: ContactMethodPreference) {
 }
 
 function mapHelpline(row: HelplineResult): LocalResource {
+  const coverageNote =
+    row.coverage && row.coverage !== 'national'
+      ? row.coverage.replace(/^regional:/i, 'Regional · ')
+      : row.coverage === 'national'
+        ? 'Nationwide'
+        : undefined
+  const description = [coverageNote, row.description].filter(Boolean).join(' — ')
   return {
     id: `gh-${row.id}`,
     kind: 'helpline',
     name: row.name,
-    description: row.description,
+    description: description || undefined,
     phone: row.contact?.phone ?? undefined,
     sms: row.contact?.sms ?? undefined,
     chatUrl: row.contact?.chat_url ?? undefined,
@@ -44,31 +47,53 @@ function mapHelpline(row: HelplineResult): LocalResource {
   }
 }
 
+function helplineKeywords(place: GeoPlace): string[] {
+  const keys = new Set<string>()
+  if (place.city?.trim()) keys.add(place.city.trim())
+  const county = countyStem(place.county)
+  if (county) keys.add(county)
+  return [...keys]
+}
+
+async function queryHelplines(
+  place: GeoPlace,
+  topic: 'suicide' | 'mental_health',
+  contactMethod: ContactMethodPreference,
+  keyword?: string,
+): Promise<HelplineResult[]> {
+  const country = place.countryCode?.trim().toUpperCase() || 'US'
+  const url = new URL('https://globalhelplines.org/v1/helplines')
+  url.searchParams.set('country', country)
+  url.searchParams.set('topic', topic)
+  url.searchParams.set('page_size', '25')
+  if (place.regionCode) url.searchParams.set('region', place.regionCode)
+  if (keyword) url.searchParams.set('keyword', keyword)
+  const method = helplineContactMethodParam(contactMethod)
+  if (method) url.searchParams.set('contact_method', method)
+
+  const res = await fetch(url.toString())
+  if (!res.ok) return []
+  const data = (await res.json()) as { results?: HelplineResult[] }
+  return data.results ?? []
+}
+
 async function fetchHelplines(
   place: GeoPlace,
   topic: 'suicide' | 'mental_health',
   contactMethod: ContactMethodPreference,
 ): Promise<LocalResourceFetchResult> {
-  if (place.countryCode !== 'US') {
-    return {
-      topic,
-      resources: [],
-      error: 'Helpline directory is configured for US regions. Try Find A Helpline below.',
-    }
+  const keywords = helplineKeywords(place)
+  const queries: Promise<HelplineResult[]>[] = [queryHelplines(place, topic, contactMethod)]
+  for (const keyword of keywords) {
+    queries.push(queryHelplines(place, topic, contactMethod, keyword))
   }
-  const url = new URL('https://globalhelplines.org/v1/helplines')
-  url.searchParams.set('country', 'US')
-  url.searchParams.set('topic', topic)
-  if (place.regionCode) url.searchParams.set('region', place.regionCode)
-  const method = helplineContactMethodParam(contactMethod)
-  if (method) url.searchParams.set('contact_method', method)
 
-  const res = await fetch(url.toString())
-  if (!res.ok) {
+  const batches = await Promise.all(queries)
+  const merged = mergeHelplineRows(batches.flat(), place, 10)
+  const resources = merged.map(mapHelpline)
+  if (!resources.length) {
     return { topic, resources: [], error: 'Could not load helplines right now.' }
   }
-  const data = (await res.json()) as { results?: HelplineResult[] }
-  const resources = (data.results ?? []).slice(0, 8).map(mapHelpline)
   return { topic, resources }
 }
 
@@ -88,14 +113,20 @@ type FeedamResource = {
 async function fetchFoodResources(place: GeoPlace): Promise<LocalResourceFetchResult> {
   const topic: ResourceTopic = 'food'
   if (place.countryCode !== 'US') {
-    return { topic, resources: [], error: 'Food pantry search is US-only.' }
+    return { topic, resources: [], error: 'Food pantry search is available in the US only.' }
   }
   const url = new URL('https://feedam.org/api/resources/search')
   if (place.zip) {
     url.searchParams.set('zip', place.zip)
-  } else {
+  } else if (place.latitude !== 0 || place.longitude !== 0) {
     url.searchParams.set('lat', String(place.latitude))
     url.searchParams.set('lng', String(place.longitude))
+  } else {
+    return {
+      topic,
+      resources: [],
+      error: 'Add a ZIP code or choose a place on the map to search food pantries.',
+    }
   }
   url.searchParams.set('mode', 'free')
   url.searchParams.set('radius', '25')
@@ -137,14 +168,28 @@ type HudAgency = {
 async function fetchShelterResources(place: GeoPlace): Promise<LocalResourceFetchResult> {
   const topic: ResourceTopic = 'shelter'
   if (place.countryCode !== 'US') {
-    return { topic, resources: [], error: 'HUD housing counseling search is US-only.' }
+    return { topic, resources: [], error: 'HUD housing counseling search is available in the US only.' }
   }
-  const url = new URL('https://data.hud.gov/Housing_Counselor/searchByLocation')
-  url.searchParams.set('Lat', String(place.latitude))
-  url.searchParams.set('Long', String(place.longitude))
-  url.searchParams.set('Distance', '25')
 
-  const res = await fetch(url.toString())
+  let res: Response
+  if ((place.latitude !== 0 || place.longitude !== 0) && Number.isFinite(place.latitude)) {
+    const url = new URL('https://data.hud.gov/Housing_Counselor/searchByLocation')
+    url.searchParams.set('Lat', String(place.latitude))
+    url.searchParams.set('Long', String(place.longitude))
+    url.searchParams.set('Distance', '25')
+    res = await fetch(url.toString())
+  } else if (place.regionCode) {
+    const url = new URL('https://data.hud.gov/Housing_Counselor/search')
+    url.searchParams.set('State', place.regionCode)
+    res = await fetch(url.toString())
+  } else {
+    return {
+      topic,
+      resources: [],
+      error: 'Add a US state or allow location to search HUD housing counselors.',
+    }
+  }
+
   if (!res.ok) {
     return { topic, resources: [], error: 'Could not load HUD housing counselors.' }
   }

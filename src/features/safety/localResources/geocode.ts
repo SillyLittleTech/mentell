@@ -92,6 +92,8 @@ async function reverseGeocode(latitude: number, longitude: number): Promise<GeoP
     longitude,
     countryCode,
     regionCode,
+    city: data.address?.city ?? data.address?.town ?? data.address?.village,
+    county: data.address?.county,
     zip: data.address?.postcode,
     displayName: data.display_name,
   }

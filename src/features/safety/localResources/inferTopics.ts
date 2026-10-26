@@ -1,5 +1,12 @@
 import type { ResourceTopic } from './types'
 
+export const ALL_RESOURCE_TOPICS: ResourceTopic[] = [
+  'suicide',
+  'mental_health',
+  'food',
+  'shelter',
+]
+
 const FOOD_PATTERN =
   /\b(food|hungry|hunger|pantry|groceries|starving|can't afford food|cannot afford food|food bank|snap|ebt)\b/i
 const SHELTER_PATTERN =

@@ -7,6 +7,8 @@ export type GeoPlace = {
   longitude: number
   countryCode: string
   regionCode?: string
+  city?: string
+  county?: string
   zip?: string
   displayName?: string
 }

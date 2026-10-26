@@ -14,6 +14,8 @@ const PRESETS: { label: string; value: DebugLocationOverride }[] = [
       latitude: 40.5187,
       longitude: -78.3947,
       regionCode: 'PA',
+      city: 'Altoona',
+      county: 'Blair County',
       zip: '16602',
       label: 'Altoona, Pennsylvania',
     },
@@ -39,6 +41,8 @@ export function DebugLocalResourcesSection() {
   const [regionCode, setRegionCode] = useState(existing?.regionCode ?? 'PA')
   const [zip, setZip] = useState(existing?.zip ?? '16602')
   const [label, setLabel] = useState(existing?.label ?? 'Debug location')
+  const [city, setCity] = useState(existing?.city ?? 'Altoona')
+  const [county, setCounty] = useState(existing?.county ?? 'Blair County')
   const [status, setStatus] = useState<string | null>(null)
 
   function applyPreset(preset: DebugLocationOverride) {
@@ -48,6 +52,8 @@ export function DebugLocalResourcesSection() {
     setRegionCode(preset.regionCode ?? '')
     setZip(preset.zip ?? '')
     setLabel(preset.label ?? preset.regionCode ?? 'Debug location')
+    setCity(preset.city ?? '')
+    setCounty(preset.county ?? '')
   }
 
   function save() {
@@ -63,6 +69,8 @@ export function DebugLocalResourcesSection() {
         latitude: lat,
         longitude: lon,
         regionCode: regionCode.trim() || undefined,
+        city: city.trim() || undefined,
+        county: county.trim() || undefined,
         zip: zip.trim() || undefined,
         label: label.trim() || undefined,
       })

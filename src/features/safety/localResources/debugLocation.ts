@@ -8,6 +8,8 @@ export type DebugLocationOverride = {
   latitude: number
   longitude: number
   regionCode?: string
+  city?: string
+  county?: string
   zip?: string
   label?: string
 }
@@ -39,6 +41,8 @@ export function debugOverrideToGeoPlace(override: DebugLocationOverride): GeoPla
     longitude: override.longitude,
     countryCode: 'US',
     regionCode: override.regionCode?.toUpperCase(),
+    city: override.city,
+    county: override.county,
     zip: override.zip,
     displayName: override.label ?? 'Debug location',
   }
