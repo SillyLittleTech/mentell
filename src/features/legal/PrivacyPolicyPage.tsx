@@ -165,6 +165,14 @@ export function PrivacyPolicyPage() {
             Do not include information in summaries you would not want processed by an AI service.
             See Cloudflare’s privacy documentation for how they handle inference requests.
           </p>
+          <p className="ink-muted mt-3 text-sm leading-relaxed">
+            The same optional Worker and Workers AI model may suggest extra local crisis resources when
+            you use <strong>Find local &amp; regional resources</strong> after a crisis or support
+            prompt. That request sends only coarse location fields (for example ZIP, county, city, and
+            state), names and phone numbers already shown from public directories, and topic tags — not
+            your journal text. Suggestions are labeled as pooled AI output; verify details before calling.
+            Turn off <strong>Disable AI summaries</strong> in Settings to skip this step.
+          </p>
         </section>
       ) : (
         <section className="paper rounded-3xl p-6">
@@ -202,6 +210,19 @@ export function PrivacyPolicyPage() {
           </p>
         </section>
       ) : null}
+
+      <section className="paper rounded-3xl p-6">
+        <h2 className="font-paper text-xl">Local crisis &amp; community resources (optional)</h2>
+        <p className="ink-muted mt-3 text-sm leading-relaxed">
+          When you choose to find local or regional help after a heavy journal entry, Mentell may ask
+          for device location (or use a debug-only test location in developer builds). Coordinates are
+          sent to public directories to list nearby options:{' '}
+          <strong>Global Helplines</strong>, <strong>Feed America (feedam.org)</strong>,{' '}
+          <strong>HUD Housing Counseling</strong>, and OpenStreetMap reverse geocoding for state/ZIP.
+          Mentell does not store your location in the journal database; requests go directly from your
+          browser to those services.
+        </p>
+      </section>
 
       <section className="paper rounded-3xl p-6">
         <h2 className="font-paper text-xl">Hosting</h2>

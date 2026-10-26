@@ -51,6 +51,8 @@ The AI card on `/week` only appears when env flags are set **and** a weekly pack
 
 Worker POST body also accepts optional `mode` (`reflection` | `overview`) and `profile` (`displayName`, `ageRange`, `about`).
 
+**Crisis risk + pooled local resources:** Same Worker and token as weekly AI. `POST /risk-assessment` adjudicates crisis/support messages; `POST /pooled-crisis-resources` sends coarse location (ZIP, county, city, state) plus names/phones already loaded from public directories so Workers AI (Llama 4 Scout) can suggest extra crisis lines without journal text. Gated by `VITE_ENABLE_WEEKLY_AI_SUMMARY=1` and Settings → **Disable AI summaries** off.
+
 ### Projector AI Search (Cloudflare AI Search)
 
 Optional natural-language search over journal entries on the Projector (`/week`) tab. Uses the same Worker with a new route and an AI Search instance.

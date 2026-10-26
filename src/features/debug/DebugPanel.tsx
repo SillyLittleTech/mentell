@@ -59,6 +59,7 @@ import { dateKeyForLocalDay } from '../../shared/dates'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 import { isAuthDebugPanelEnabled } from '../../shared/features/featureFlags'
 import { DebugAuthSection } from './DebugAuthSection'
+import { DebugLocalResourcesSection } from './DebugLocalResourcesSection'
 
 const DEBUG_AI_TESTS = [
   {
@@ -611,6 +612,8 @@ export function DebugPanel() {
                 ))}
               </div>
             </div>
+
+            <DebugLocalResourcesSection />
 
             <div className="rounded-3xl border border-[var(--paper-border)] p-3">
               <div className="font-mono text-xs font-bold">risk workflow probe</div>

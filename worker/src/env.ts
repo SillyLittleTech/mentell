@@ -21,6 +21,8 @@ export interface PushEnv {
   RESEND_TEMPLATE_PACKAGE?: string
   /** Public app origin used in verification links, e.g. https://projects.slt.ong/mentell */
   MENTELL_PUBLIC_URL?: string
+  /** When "1", /pooled-crisis-resources returns deterministic fixture rows (local dev only). */
+  POOLED_DEV_FIXTURE?: string
 }
 
 export type Env = PushEnv
