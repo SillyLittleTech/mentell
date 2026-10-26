@@ -2,7 +2,16 @@ import { isDebugMode } from '../../../shared/debug/debugFlags'
 import { isAiEnabledLocally } from '../../../shared/settings/appSettings'
 import type { GeoPlace, LocalResource, LocalResourceFetchResult, ResourceTopic } from './types'
 import { dedupePooledAgainstExisting, formatPooledSourceLabel } from './dedupeResources'
+<<<<<<< HEAD
+import {
+  diagnosePooledScrapeConfig,
+  isPooledScrapeConfigured,
+  pooledScrapeConfigHint,
+} from './pooledScrapeConfig'
+import { resolveWorkerRoute, workerAuthToken } from './workerRoute'
+=======
 import { normalizeEnvToken, resolveWorkerRoute } from './workerRoute'
+>>>>>>> origin/main
 
 export type PooledScrapeStatus =
   | 'skipped_disabled'
@@ -32,6 +41,9 @@ export function pooledCrisisResourcesEndpoint() {
   return resolveWorkerRoute('/pooled-crisis-resources')
 }
 
+<<<<<<< HEAD
+export { isPooledScrapeConfigured } from './pooledScrapeConfig'
+=======
 export function isPooledScrapeConfigured() {
   const token = normalizeEnvToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
   const endpoint = pooledCrisisResourcesEndpoint()
@@ -41,6 +53,7 @@ export function isPooledScrapeConfigured() {
   if (explicit === '1') return true
   return import.meta.env.VITE_ENABLE_WEEKLY_AI_SUMMARY === '1'
 }
+>>>>>>> origin/main
 
 function mapPooledRow(row: WorkerPooledRow, index: number): LocalResource {
   return {
@@ -88,7 +101,18 @@ export async function appendPooledScrapeResources(
     return { results, meta: { status: 'skipped_ai_off' } }
   }
   if (!isPooledScrapeConfigured()) {
+<<<<<<< HEAD
+    const { issues } = diagnosePooledScrapeConfig()
+    return {
+      results,
+      meta: {
+        status: 'skipped_not_configured',
+        detail: pooledScrapeConfigHint(issues),
+      },
+    }
+=======
     return { results, meta: { status: 'skipped_not_configured' } }
+>>>>>>> origin/main
   }
 
   if (import.meta.env.DEV && import.meta.env.VITE_POOLED_DEV_FIXTURE === '1') {
@@ -118,9 +142,22 @@ export async function appendPooledScrapeResources(
   }
 
   const endpoint = pooledCrisisResourcesEndpoint()
+<<<<<<< HEAD
+  const token = workerAuthToken()
+  if (!endpoint || !token) {
+    const { issues } = diagnosePooledScrapeConfig()
+    return {
+      results,
+      meta: {
+        status: 'skipped_not_configured',
+        detail: pooledScrapeConfigHint(issues),
+      },
+    }
+=======
   const token = normalizeEnvToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
   if (!endpoint || !token) {
     return { results, meta: { status: 'skipped_not_configured' } }
+>>>>>>> origin/main
   }
 
   const helplineRows = helplineResults(results)

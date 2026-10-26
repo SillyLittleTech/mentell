@@ -326,10 +326,21 @@ export function CrisisResourcePanel({
         controller.signal,
       )
       if (controller.signal.aborted) return
+<<<<<<< HEAD
+      if (meta.status !== 'ok' && meta.status !== 'skipped_ai_off') {
+        setPooledMeta(
+          meta.detail ? `AI suggestions: ${meta.status} — ${meta.detail}` : `AI suggestions: ${meta.status}`,
+        )
+      } else if (isDebugMode() && meta.status === 'ok' && meta.detail) {
+        setPooledMeta(`AI suggestions: ${meta.status} (${meta.detail})`)
+      } else {
+        setPooledMeta(null)
+=======
       if (isDebugMode() && meta.status !== 'ok' && meta.status !== 'skipped_ai_off') {
         setPooledMeta(
           meta.detail ? `AI suggestions: ${meta.status} (${meta.detail})` : `AI suggestions: ${meta.status}`,
         )
+>>>>>>> origin/main
       }
       setResults(withPooled)
       setPhase('results')
