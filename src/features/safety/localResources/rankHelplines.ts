@@ -88,6 +88,12 @@ export function mergeHelplineRows(rows: HelplineRow[], place: GeoPlace, limit = 
     picked.push(row)
   }
 
+  const city = effectiveCity(place)
+  if (city) {
+    for (const row of sorted) {
+      if (normalizeToken(row.name).includes(city)) add(row)
+    }
+  }
   for (const row of sorted) {
     if (scoreHelpline(row, place) >= 40) add(row)
   }

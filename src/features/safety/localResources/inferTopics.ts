@@ -32,6 +32,7 @@ export function inferResourceTopics(input: {
 
   if (input.responseKind === 'crisis' || CRISIS_PATTERN.test(blob)) {
     topics.add('suicide')
+    topics.add('mental_health')
   }
   if (FOOD_PATTERN.test(blob)) {
     topics.add('food')
