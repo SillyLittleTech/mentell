@@ -1,8 +1,11 @@
 import type { LocalResource } from './types'
 
 export function isHospitalHelpline(resource: LocalResource) {
-  const blob = `${resource.name} ${resource.description ?? ''}`.toLowerCase()
-  return /hospital|emergency department|\ber\b|psychiatric|crisis center|crisis services/i.test(blob)
+  const name = resource.name.toLowerCase()
+  const desc = (resource.description ?? '').toLowerCase()
+  if (/safe2say|school safety|tip line/i.test(name)) return false
+  if (/hospital|psychiatric|emergency department|\(upmc\)|crisis services/i.test(name)) return true
+  return /hospital|emergency department|\ber\b/i.test(desc)
 }
 
 export function partitionHospitalHelplines(resources: LocalResource[]) {

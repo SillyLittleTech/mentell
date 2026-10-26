@@ -6,7 +6,12 @@ import type {
   ResourceTopic,
 } from './types'
 import { filterByLocalArea } from './geoFilter'
+import { coreCrisisResources } from './nationalResources'
 import { countyStem, mergeHelplineRows, type HelplineRow } from './rankHelplines'
+import {
+  helplinesFromApiNotes,
+  supplementalHelplinesForPlace,
+} from './supplementalHelplines'
 
 type HelplineContact = {
   phone?: string | null
@@ -103,6 +108,13 @@ async function fetchCombinedHelplines(
   for (const row of rows) {
     for (const resource of row.resources) byId.set(resource.id, resource)
   }
+  for (const core of coreCrisisResources(place.countryCode)) {
+    const key = core.id
+    if (!byId.has(key)) byId.set(key, { ...core, kind: 'helpline' })
+  }
+  for (const extra of supplementalHelplinesForPlace(place)) {
+    if (!byId.has(extra.id)) byId.set(extra.id, extra)
+  }
   const error = rows.map((row) => row.error).find(Boolean)
   return {
     topic,
@@ -123,8 +135,19 @@ async function fetchHelplines(
   }
 
   const batches = await Promise.all(queries)
-  const merged = mergeHelplineRows(batches.flat(), place, 10)
+  const flat = batches.flat()
+  const merged = mergeHelplineRows(flat, place, 12)
   const resources = merged.map(mapHelpline)
+  const hasUpmcAltoonaCrisis = (list: LocalResource[]) =>
+    list.some((r) => /upmc altoona crisis/i.test(r.name))
+  for (const extra of helplinesFromApiNotes(flat)) {
+    if (hasUpmcAltoonaCrisis(resources)) continue
+    if (!resources.some((r) => r.id === extra.id)) resources.push(extra)
+  }
+  for (const extra of supplementalHelplinesForPlace(place)) {
+    if (hasUpmcAltoonaCrisis(resources)) continue
+    if (!resources.some((r) => r.id === extra.id)) resources.push(extra)
+  }
   if (!resources.length) {
     return { topic, resources: [], error: 'Could not load helplines right now.' }
   }

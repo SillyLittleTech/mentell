@@ -83,6 +83,28 @@ const BY_COUNTRY: Record<string, LocalResource[]> = {
   ],
 }
 
+export function coreCrisisResources(countryCode: string | undefined): LocalResource[] {
+  const code = (countryCode ?? 'US').trim().toUpperCase()
+  if (code === 'US') {
+    return US.filter(
+      (row) => row.id === 'static-988' || row.id === 'static-nami' || row.id === 'static-211',
+    )
+  }
+  if (code === 'CA') return BY_COUNTRY.CA.slice(0, 1)
+  if (code === 'GB') return BY_COUNTRY.GB.slice(0, 1)
+  if (code === 'AU') return BY_COUNTRY.AU.slice(0, 1)
+  return [
+    {
+      id: `static-${code.toLowerCase()}-fah`,
+      kind: 'static',
+      name: 'Find A Helpline',
+      description: 'Look up verified crisis lines for your country and language.',
+      website: 'https://findahelpline.com/',
+      sourceLabel: 'Find A Helpline',
+    },
+  ]
+}
+
 export function staticNationalResources(countryCode: string | undefined): LocalResource[] {
   const code = (countryCode ?? 'US').trim().toUpperCase()
   if (code === 'US') return US

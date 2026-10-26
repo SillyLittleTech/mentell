@@ -791,7 +791,7 @@ function RiskResultModal({
   useBodyScrollLock(true);
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 p-4"
+      className="fixed inset-0 z-50 touch-pan-y overflow-y-auto overscroll-y-contain bg-black/35 p-4 pb-10 sm:p-6 sm:pb-12"
       initial={reduced ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={reduced ? undefined : { opacity: 0 }}
@@ -801,7 +801,7 @@ function RiskResultModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="paper my-auto max-h-[min(90dvh,42rem)] w-full max-w-xl overflow-y-auto overscroll-contain rounded-3xl p-6 shadow-lg"
+        className="paper mx-auto my-6 w-full max-w-xl rounded-3xl p-6 shadow-lg sm:my-10"
         initial={reduced ? false : { scale: 0.96, y: 18 }}
         animate={{ scale: 1, y: 0 }}
         exit={reduced ? undefined : { scale: 0.98, y: 10 }}
