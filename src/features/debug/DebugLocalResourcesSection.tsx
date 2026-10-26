@@ -85,7 +85,7 @@ export function DebugLocalResourcesSection() {
     <div className="rounded-3xl border border-[var(--paper-border)] p-3">
       <div className="font-mono text-xs font-bold">local resources location</div>
       <div className="ink-muted mt-1 text-xs">
-        Spoofs geolocation for Find local & regional resources (skips browser prompt when enabled).
+        When enabled and saved, takes priority over device GPS for Find local & regional resources.
       </div>
       <label className="mt-3 flex items-center gap-2 text-sm">
         <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />

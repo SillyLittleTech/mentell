@@ -152,13 +152,13 @@ function resolveFromDevice(): Promise<GeoPlace> {
 }
 
 export async function resolveCoordinates(): Promise<GeoPlace> {
+  const override = isDebugMode() ? loadDebugLocationOverride() : null
+  if (override) {
+    return enrichPlace(debugOverrideToGeoPlace(override))
+  }
   try {
     return await resolveFromDevice()
   } catch (deviceError) {
-    const override = isDebugMode() ? loadDebugLocationOverride() : null
-    if (override) {
-      return enrichPlace(debugOverrideToGeoPlace(override))
-    }
     throw deviceError
   }
 }
