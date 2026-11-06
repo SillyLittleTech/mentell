@@ -1,11 +1,11 @@
-const fs = require('fs');
+const fs = require('fs')
 
-const sharedMatchPath = 'src/lib/localMatch.ts';
-const workerMatchPath = 'worker/src/localMatch.ts';
-const projectorSearchPath = 'src/features/compilation/projectorSearch.ts';
+const sharedMatchPath = 'src/lib/localMatch.ts'
+const workerMatchPath = 'worker/src/localMatch.ts'
+const projectorSearchPath = 'src/features/compilation/projectorSearch.ts'
 
 // 1. Write the shared file
-let sharedContent = `export type EntrySnapshot = {
+const sharedContent = `export type EntrySnapshot = {
   id: string;
   createdAt?: number;
   updatedAt?: number;
@@ -76,12 +76,12 @@ export function mergeEntrySnapshots(
   }
   return out;
 }
-`;
+`
 
-fs.writeFileSync(sharedMatchPath, sharedContent);
+fs.writeFileSync(sharedMatchPath, sharedContent)
 
 // 2. Write the worker file
-let workerContent = `import type { EntrySnapshot } from './entryMerge';
+const workerContent = `import type { EntrySnapshot } from './entryMerge';
 import { localMatchEntries as sharedMatch, mergeEntrySnapshots as sharedMerge } from '../../src/lib/localMatch';
 
 export function localMatchEntries(entries: EntrySnapshot[], query: string): EntrySnapshot[] {
@@ -91,18 +91,20 @@ export function localMatchEntries(entries: EntrySnapshot[], query: string): Entr
 export function mergeEntrySnapshots(primary: EntrySnapshot[], secondary: EntrySnapshot[], limit = 20): EntrySnapshot[] {
   return sharedMerge(primary as any, secondary as any, limit) as any;
 }
-`;
-fs.writeFileSync(workerMatchPath, workerContent);
+`
+fs.writeFileSync(workerMatchPath, workerContent)
 
 // 3. Update projectorSearch.ts
-let projectorContent = fs.readFileSync(projectorSearchPath, 'utf8');
+const projectorContent = fs.readFileSync(projectorSearchPath, 'utf8')
 
-const startIdx = projectorContent.indexOf('function localMatchEntries(');
-const endIdx = projectorContent.indexOf('export function getProjectorSearchEndpoint()');
+const startIdx = projectorContent.indexOf('function localMatchEntries(')
+const endIdx = projectorContent.indexOf(
+  'export function getProjectorSearchEndpoint()'
+)
 
 if (startIdx !== -1 && endIdx !== -1) {
-  const head = projectorContent.substring(0, startIdx);
-  const tail = projectorContent.substring(endIdx);
+  const head = projectorContent.substring(0, startIdx)
+  const tail = projectorContent.substring(endIdx)
 
   const replacement = `import { localMatchEntries as sharedMatch } from '../../lib/localMatch';
 
@@ -110,15 +112,24 @@ function localMatchEntries(entries: ProjectorSearchEntry[], query: string): Proj
   return sharedMatch(entries as any, query) as any;
 }
 
-`;
+`
 
-  let newProjectorContent = head + replacement + tail;
+  let newProjectorContent = head + replacement + tail
   // Also remove STOP_WORDS if it's there
-  newProjectorContent = newProjectorContent.replace(/import \{ STOP_WORDS \} from '\.\.\/\.\.\/lib\/stopWords';\n/g, '');
-  newProjectorContent = newProjectorContent.replace(/import \{ STOP_WORDS \} from '\.\.\/\.\.\/src\/lib\/stopWords';\n/g, '');
+  newProjectorContent = newProjectorContent.replace(
+    /import \{ STOP_WORDS \} from '\.\.\/\.\.\/lib\/stopWords';\n/g,
+    ''
+  )
+  newProjectorContent = newProjectorContent.replace(
+    /import \{ STOP_WORDS \} from '\.\.\/\.\.\/src\/lib\/stopWords';\n/g,
+    ''
+  )
 
   // also get rid of any stray imports of STOP_WORDS that might be in the head
-  newProjectorContent = newProjectorContent.replace(/^import \{ STOP_WORDS \}.*$/gm, '');
+  newProjectorContent = newProjectorContent.replace(
+    /^import \{ STOP_WORDS \}.*$/gm,
+    ''
+  )
 
-  fs.writeFileSync(projectorSearchPath, newProjectorContent);
+  fs.writeFileSync(projectorSearchPath, newProjectorContent)
 }

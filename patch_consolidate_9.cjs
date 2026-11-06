@@ -1,11 +1,11 @@
-const fs = require('fs');
+const fs = require('fs')
 
-const sharedMatchPath = 'src/lib/localMatch.ts';
-const workerMatchPath = 'worker/src/localMatch.ts';
-const projectorSearchPath = 'src/features/compilation/projectorSearch.ts';
+const sharedMatchPath = 'src/lib/localMatch.ts'
+const workerMatchPath = 'worker/src/localMatch.ts'
+const projectorSearchPath = 'src/features/compilation/projectorSearch.ts'
 
 // 1. Write the shared file
-let sharedContent = `export type EntrySnapshot = {
+const sharedContent = `export type EntrySnapshot = {
   id: string;
   createdAt?: number;
   updatedAt?: number;
@@ -76,12 +76,12 @@ export function mergeEntrySnapshots(
   }
   return out;
 }
-`;
+`
 
-fs.writeFileSync(sharedMatchPath, sharedContent);
+fs.writeFileSync(sharedMatchPath, sharedContent)
 
 // 2. Write the worker file
-let workerContent = `import type { EntrySnapshot } from './entryMerge';
+const workerContent = `import type { EntrySnapshot } from './entryMerge';
 import { localMatchEntries as sharedMatch, mergeEntrySnapshots as sharedMerge } from '../../src/lib/localMatch';
 
 export function localMatchEntries(entries: EntrySnapshot[], query: string): EntrySnapshot[] {
@@ -91,33 +91,43 @@ export function localMatchEntries(entries: EntrySnapshot[], query: string): Entr
 export function mergeEntrySnapshots(primary: EntrySnapshot[], secondary: EntrySnapshot[], limit = 20): EntrySnapshot[] {
   return sharedMerge(primary as any, secondary as any, limit) as any;
 }
-`;
-fs.writeFileSync(workerMatchPath, workerContent);
+`
+fs.writeFileSync(workerMatchPath, workerContent)
 
 // 3. Update projectorSearch.ts
-let projectorContent = fs.readFileSync(projectorSearchPath, 'utf8');
+const projectorContent = fs.readFileSync(projectorSearchPath, 'utf8')
 
 // Use a regex to match the exact `localMatchEntries` function, which might already have the old implementation
-const startIdx = projectorContent.indexOf('function localMatchEntries(');
+const startIdx = projectorContent.indexOf('function localMatchEntries(')
 // We need to just replace the function body of localMatchEntries, not anything else
-const head = projectorContent.substring(0, startIdx);
-let endLocalMatchEntries = projectorContent.indexOf('export function getProjectorSearchEndpoint()');
+const head = projectorContent.substring(0, startIdx)
+const endLocalMatchEntries = projectorContent.indexOf(
+  'export function getProjectorSearchEndpoint()'
+)
 
-let replacement = `function localMatchEntries(entries: ProjectorSearchEntry[], query: string): ProjectorSearchEntry[] {
+const replacement = `function localMatchEntries(entries: ProjectorSearchEntry[], query: string): ProjectorSearchEntry[] {
   return sharedMatch(entries as any, query) as any;
 }
 
-`;
+`
 
-let tail = projectorContent.substring(endLocalMatchEntries);
-let newProjectorContent = head + replacement + tail;
+const tail = projectorContent.substring(endLocalMatchEntries)
+let newProjectorContent = head + replacement + tail
 
 // Also remove STOP_WORDS if it's there
-newProjectorContent = newProjectorContent.replace(/^import \{ STOP_WORDS \}.*$/gm, '');
+newProjectorContent = newProjectorContent.replace(
+  /^import \{ STOP_WORDS \}.*$/gm,
+  ''
+)
 
 // Also remove stray sharedMatch imports
-newProjectorContent = newProjectorContent.replace(/^import \{ localMatchEntries as sharedMatch \}.*$/gm, '');
+newProjectorContent = newProjectorContent.replace(
+  /^import \{ localMatchEntries as sharedMatch \}.*$/gm,
+  ''
+)
 
-newProjectorContent = `import { localMatchEntries as sharedMatch } from '../../lib/localMatch';\n` + newProjectorContent;
+newProjectorContent =
+  "import { localMatchEntries as sharedMatch } from '../../lib/localMatch';\n" +
+  newProjectorContent
 
-fs.writeFileSync(projectorSearchPath, newProjectorContent);
+fs.writeFileSync(projectorSearchPath, newProjectorContent)
