@@ -71,8 +71,8 @@ export function ShopWeeklyProgressBar() {
         Weekly progress
       </div>
       <p className="ink-muted mt-1 text-sm">
-        See how the week felt — positive, negative, neutral, missed, or no data —
-        with soft blends between days.
+        See how the week felt — positive, negative, neutral, missed, or no data
+        — with soft blends between days.
       </p>
 
       <div className="relative mt-5 overflow-hidden rounded-2xl border border-[var(--paper-border)]">

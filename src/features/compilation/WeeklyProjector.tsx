@@ -367,10 +367,10 @@ export function WeeklyProjector() {
           </select>
         </div>
         <p className="ink-muted mt-1 text-sm">
-          Plot entries in order: difficult days in red, steady or mixed in yellow,
-          brighter days in green, quiet gaps in black, and empty days in white —
-          with soft blends between points. Quick logs shape the line but stay out
-          of journal search.
+          Plot entries in order: difficult days in red, steady or mixed in
+          yellow, brighter days in green, quiet gaps in black, and empty days in
+          white — with soft blends between points. Quick logs shape the line but
+          stay out of journal search.
         </p>
         <div className="mt-4">
           <FeelingsOverTimeChart
