@@ -1,3 +1,17 @@
+export function projectorSearchEnabled() {
+  const settings = loadAppSettings()
+  if (settings.aiProvider === 'custom') {
+    return isAiEnabledLocally() && settings.aiBaseUrl.trim().length > 0
+  }
+  return (
+    isAiEnabledLocally() &&
+    import.meta.env.VITE_ENABLE_PROJECTOR_AI_SEARCH === '1' &&
+    typeof import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT === 'string' &&
+    import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT.length > 0
+  )
+}
+
+import { localMatchEntries as sharedMatch } from "../../lib/localMatch";
 import type { EntryRow } from "../../db/schema";
 import { getDb } from "../../db/schema";
 import {
@@ -73,28 +87,17 @@ function normalizeEnvToken(raw: string | undefined) {
   return t;
 }
 
-import { localMatchEntries as sharedMatch } from "../../lib/localMatch";
-
-export function projectorSearchEnabled() {
-  const settings = loadAppSettings();
-  if (settings.aiProvider === "custom") {
-    return isAiEnabledLocally() && settings.aiBaseUrl.trim().length > 0;
-  }
-  return (
-    isAiEnabledLocally() &&
-    import.meta.env.VITE_ENABLE_PROJECTOR_AI_SEARCH === "1" &&
-    typeof import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT === "string" &&
-    import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT.length > 0
-  );
-}
-
-function localMatchEntries(entries: ProjectorSearchEntry[], query: string) {
+function localMatchEntries(
+  entries: ProjectorSearchEntry[],
+  query: string,
+): ProjectorSearchEntry[] {
   return sharedMatch(entries as any, query) as any;
 }
 
 export function getProjectorSearchEndpoint() {
   const raw = import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT as
-    string | undefined;
+    | string
+    | undefined;
   return raw ? normalizeEndpointUrl(raw) : "";
 }
 
@@ -251,7 +254,7 @@ export async function requestProjectorSearch(options: {
           );
           return {
             type: "entries",
-            entryIds: matched.map((e) => e.id),
+            entryIds: matched.map((e: any) => e.id),
             entries: matched,
             preamble,
             indexStatus: "skipped",
