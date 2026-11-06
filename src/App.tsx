@@ -154,9 +154,10 @@ function App() {
       setStreakOutcome(null);
       setStreakFocusActive(false);
     }, 1500);
-    return () => {
+    function clearStreakOutcomeTimeout() {
       window.clearTimeout(timeout);
-    };
+    }
+    return clearStreakOutcomeTimeout;
   }, [streakOutcome]);
 
   useEffect(() => {
@@ -383,6 +384,15 @@ function TopBar({
   const location = useLocation();
   const onHome = location.pathname === "/";
   const pageContext = location.pathname.split("/")[1] || "home";
+  const scoreTicker = (
+    <ScoreTicker
+      total={score.total}
+      streak={score.streak}
+      streakFreezes={score.streakFreezes}
+      hint={incomingHint}
+      streakOutcome={streakOutcome}
+    />
+  );
 
   return (
     <header
@@ -420,60 +430,66 @@ function TopBar({
         </div>
 
         <div className="flex items-start justify-between gap-3 md:justify-end md:justify-self-end">
-          <div className="grid flex-1 grid-cols-[1fr_auto] items-center gap-3 md:hidden">
-            {!settings.disablePoints ? (
-              <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
-                <ScoreTicker
-                  total={score.total}
-                  streak={score.streak}
-                  streakFreezes={score.streakFreezes}
-                  hint={incomingHint}
-                  streakOutcome={streakOutcome}
-                />
-                <MobileHeaderMascot />
-              </div>
-            ) : (
-              <div className="paper flex items-center rounded-2xl px-2 py-1">
-                <MobileHeaderMascot />
-              </div>
-            )}
-            <AccountButton />
-            <div className="flex min-h-[3rem] items-center justify-between gap-3">
-              <Link
-                to="/feedback"
-                className="paper focus-ring flex h-11 w-11 items-center justify-center rounded-full transition"
-                aria-label="Open feedback form"
-                title="Feedback form"
-              >
-                <SpeechBubbleIcon className="h-5 w-5" />
-              </Link>
-              <PackageAlert
-                onAward={onPackageAward}
-                placement="inline"
-                size="sm"
-              />
-            </div>
-            <ThemeToggleButton
-              mode={mode}
-              onToggle={toggle}
-              className="rounded-full"
-            />
-          </div>
+          <TopBarMobileControls
+            disablePoints={settings.disablePoints}
+            scoreTicker={scoreTicker}
+            onPackageAward={onPackageAward}
+            mode={mode}
+            onToggleTheme={toggle}
+          />
 
           <div className="hidden md:flex">
-            {!settings.disablePoints ? (
-              <ScoreTicker
-                total={score.total}
-                streak={score.streak}
-                streakFreezes={score.streakFreezes}
-                hint={incomingHint}
-                streakOutcome={streakOutcome}
-              />
-            ) : null}
+            {!settings.disablePoints ? scoreTicker : null}
           </div>
         </div>
       </div>
     </header>
+  );
+}
+
+function TopBarMobileControls({
+  disablePoints,
+  scoreTicker,
+  onPackageAward,
+  mode,
+  onToggleTheme,
+}: {
+  disablePoints: boolean;
+  scoreTicker: React.ReactNode;
+  onPackageAward: (delta: number, hint: string | null) => void;
+  mode: "light" | "dark";
+  onToggleTheme: () => void;
+}) {
+  return (
+    <div className="grid flex-1 grid-cols-[1fr_auto] items-center gap-3 md:hidden">
+      {!disablePoints ? (
+        <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
+          {scoreTicker}
+          <MobileHeaderMascot />
+        </div>
+      ) : (
+        <div className="paper flex items-center rounded-2xl px-2 py-1">
+          <MobileHeaderMascot />
+        </div>
+      )}
+      <AccountButton />
+      <div className="flex min-h-[3rem] items-center justify-between gap-3">
+        <Link
+          to="/feedback"
+          className="paper focus-ring flex h-11 w-11 items-center justify-center rounded-full transition"
+          aria-label="Open feedback form"
+          title="Feedback form"
+        >
+          <SpeechBubbleIcon className="h-5 w-5" />
+        </Link>
+        <PackageAlert onAward={onPackageAward} placement="inline" size="sm" />
+      </div>
+      <ThemeToggleButton
+        mode={mode}
+        onToggle={onToggleTheme}
+        className="rounded-full"
+      />
+    </div>
   );
 }
 
