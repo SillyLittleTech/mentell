@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { addDays } from "date-fns";
+import { addDays, format, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { getDb } from "../../db/schema";
 import {
@@ -84,6 +84,15 @@ import {
   recordClusterCelebration,
   recordComebackToast,
 } from "../celebrations/clusterCelebration";
+
+/** Current ISO week (Mon–Sun) as YYYY-MM-DD keys — seeded data lands in weekly bar + Feelings graph. */
+function seedWeekDateKeys(offsetWeeksFromNow = 0): string[] {
+  const ref = addDays(new Date(), offsetWeeksFromNow * 7);
+  const start = startOfWeek(ref, { weekStartsOn: 1 });
+  return Array.from({ length: 7 }, (_, i) =>
+    format(addDays(start, i), "yyyy-MM-dd"),
+  );
+}
 
 const DEBUG_AI_TESTS = [
   {
@@ -1113,7 +1122,7 @@ export function DebugPanel() {
 
                 <div className="rounded-3xl border border-[var(--paper-border)] p-3">
                   <div className="font-mono text-xs font-bold">
-                    score / HBCM
+                    score / consistency heat
                   </div>
                   <div className="mt-2 grid gap-2">
                     <label className="grid gap-1 text-xs">
@@ -1129,7 +1138,7 @@ export function DebugPanel() {
                     </label>
                     <label className="grid gap-1 text-xs">
                       <span className="ink-muted">
-                        HBCM raw (0–5, fractional)
+                        Consistency heat raw (0–5, fractional)
                       </span>
                       <input
                         type="text"
@@ -1173,7 +1182,7 @@ export function DebugPanel() {
                         }
                       }}
                     >
-                      Apply score &amp; HBCM
+                      Apply score &amp; heat
                       <div className="ink-muted text-xs">
                         Updates localStorage, top bar, and cloud sync.
                       </div>
@@ -1203,7 +1212,7 @@ export function DebugPanel() {
                       Simulate missed day
                       <div className="ink-muted text-xs">
                         Sets last score day to two days ago; next log applies
-                        HBCM gap penalty.
+                        consistency heat gap penalty.
                       </div>
                     </button>
                     <button
@@ -1291,7 +1300,7 @@ export function DebugPanel() {
                           <div>stickies: {inspector.stickies}</div>
                         </div>
                         <div className="mt-2">
-                          score: {inspector.scoreTotal ?? "0"} · HBCM raw:{" "}
+                          score: {inspector.scoreTotal ?? "0"} · heat raw:{" "}
                           {inspector.hbcmRaw ?? "—"} · display:{" "}
                           {inspector.hbcmDisplay ?? "—"}
                         </div>
@@ -1403,7 +1412,7 @@ export function DebugPanel() {
                 >
                   Reset local data
                   <div className="ink-muted text-xs">
-                    Clears IndexedDB + score + HBCM keys.
+                    Clears IndexedDB + score + consistency heat keys.
                   </div>
                 </button>
 
@@ -1435,7 +1444,7 @@ export function DebugPanel() {
                 >
                   Reset score only
                   <div className="ink-muted text-xs">
-                    Keeps IndexedDB, clears score and HBCM.
+                    Keeps IndexedDB, clears score and consistency heat.
                   </div>
                 </button>
 
@@ -1447,6 +1456,7 @@ export function DebugPanel() {
                     setBusy(true);
                     try {
                       const now = Date.now();
+                      const wk = seedWeekDateKeys(0);
                       const mk = (
                         dateKey: string,
                         sentiment: "+" | "-" | "=",
@@ -1474,9 +1484,9 @@ export function DebugPanel() {
                         streakAtSubmit: 1,
                       });
                       await getDb().entries.bulkPut([
-                        mk("2026-05-18", "+"),
-                        mk("2026-05-19", "="),
-                        mk("2026-05-20", "-"),
+                        mk(wk[1]!, "+"),
+                        mk(wk[3]!, "="),
+                        mk(wk[5]!, "-"),
                       ]);
                       await refreshInspector();
                     } finally {
@@ -1497,9 +1507,10 @@ export function DebugPanel() {
                     setBusy(true);
                     try {
                       const now = Date.now();
+                      const wk = seedWeekDateKeys(0);
                       const memories = [
                         {
-                          dateKey: "2026-05-24",
+                          dateKey: wk[0]!,
                           emotion: "calm" as const,
                           emotionNote: "calm after a hard interaction",
                           situation:
@@ -1508,7 +1519,7 @@ export function DebugPanel() {
                             "After a tense interaction at lunch, Maya walked with me to the blue bench by the library. We drank mint tea, watched the rain on the windows, and I remembered I could come back to myself.",
                         },
                         {
-                          dateKey: "2026-05-27",
+                          dateKey: wk[2]!,
                           emotion: "happy" as const,
                           emotionNote: "proud after a presentation",
                           situation:
@@ -1517,7 +1528,7 @@ export function DebugPanel() {
                             "I was nervous about the history presentation, but I used my green note cards, took one slow breath, and Ms. Rivera said my opening story made the whole room listen.",
                         },
                         {
-                          dateKey: "2026-05-30",
+                          dateKey: wk[4]!,
                           emotion: "calm" as const,
                           emotionNote: "steady during a deadline",
                           situation:
@@ -1526,7 +1537,7 @@ export function DebugPanel() {
                             "The project deadline stopped feeling overwhelming when I wrote three tiny tasks on a yellow sticky note, played the rain playlist, and finished the hardest paragraph before dinner.",
                         },
                         {
-                          dateKey: "2026-06-02",
+                          dateKey: wk[6]!,
                           emotion: "happy" as const,
                           emotionNote: "seen by friends",
                           situation:
@@ -1580,12 +1591,13 @@ export function DebugPanel() {
                     setBusy(true);
                     try {
                       const now = Date.now();
+                      const wk = seedWeekDateKeys(0);
                       await getDb().entries.put({
                         id: makeId("entry"),
                         createdAt: now,
                         updatedAt: now,
                         entryType: "entry",
-                        dateKey: "2026-05-21",
+                        dateKey: wk[2]!,
                         sentiment: "-" as const,
                         emotion: "sad" as const,
                         emotionNote: "",
@@ -1621,12 +1633,13 @@ export function DebugPanel() {
                     setBusy(true);
                     try {
                       const now = Date.now();
+                      const wk = seedWeekDateKeys(0);
                       await getDb().entries.put({
                         id: makeId("entry"),
                         createdAt: now,
                         updatedAt: now,
                         entryType: "entry",
-                        dateKey: "2026-05-22",
+                        dateKey: wk[4]!,
                         sentiment: "+" as const,
                         emotion: "happy" as const,
                         emotionNote: "",

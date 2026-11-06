@@ -152,8 +152,8 @@ function buildAwardHint(
   if (missedDaysApplied > 0) {
     parts.push(
       missedDaysApplied === 1
-        ? "One quiet day (HBCM −0.5)"
-        : `${missedDaysApplied} quiet days (HBCM adjusted)`,
+        ? "One quiet day (−0.5 consistency heat)"
+        : `${missedDaysApplied} quiet days (consistency heat adjusted)`,
     );
   }
 
@@ -173,7 +173,7 @@ function buildAwardHint(
         : `Consistency heat ×${hbcmDisplay} (+${bonus})`,
     );
   } else if (hbcmGained) {
-    parts.push("Day logged — HBCM +1");
+    parts.push("Day logged — consistency heat +1");
   }
 
   return parts.length ? parts.join(" · ") : null;

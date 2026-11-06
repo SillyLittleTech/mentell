@@ -333,7 +333,9 @@ function TopBar({
     <ScoreTicker
       total={score.total}
       hbcmDisplay={score.hbcmDisplay}
-      hbcmPulse={Boolean(incomingHint?.toLowerCase().includes("hbcm"))}
+      hbcmPulse={Boolean(
+        incomingHint?.toLowerCase().includes("consistency heat"),
+      )}
       hint={incomingHint}
     />
   );
