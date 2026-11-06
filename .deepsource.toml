@@ -1,0 +1,46 @@
+version = 1
+
+exclude_patterns = [
+  "dist/**",
+  "node_modules/**",
+  "src/features/character/charManifest.generated.ts",
+]
+
+[[analyzers]]
+name = "javascript"
+enabled = true
+
+  [analyzers.meta]
+  dialect = "typescript"
+  environment = ["nodejs", "browser"]
+  module_system = "es-modules"
+  plugins = ["react"]
+  cyclomatic_complexity_threshold = "critical"
+
+  [[analyzers.meta.issue_patterns]]
+  pattern = "JS-0002"
+  skip = true
+
+  [[analyzers.meta.issue_patterns]]
+  pattern = "JS-0045"
+  skip = true
+
+  [[analyzers.meta.issue_patterns]]
+  pattern = "JS-0073"
+  skip = true
+
+  [[analyzers.meta.issue_patterns]]
+  pattern = "JS-0098"
+  skip = true
+
+  [[analyzers.meta.issue_patterns]]
+  pattern = "JS-0119"
+  skip = true
+
+  [[analyzers.meta.issue_patterns]]
+  pattern = "JS-C1002"
+  skip = true
+
+  [[analyzers.meta.issue_patterns]]
+  pattern = "JS-R1005"
+  skip = true
