@@ -5,13 +5,11 @@ import { appVersion } from '../../shared/version'
 import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
 
-// Use the public GitHub repo raw URL for the VERSION file
 const VERSION_URL = 'https://raw.githubusercontent.com/SillyLittleTech/mentell/main/VERSION'
 const RELEASES_URL = 'https://github.com/SillyLittleTech/mentell/releases/latest'
-const CHECK_INTERVAL = 60 * 60 * 1000 // 1 hour in ms
+const CHECK_INTERVAL = 60 * 60 * 1000
 
 function parseVersion(versionString: string) {
-  // Returns [major, minor, patch] or null
   const match = versionString.trim().match(/^(\d+)\.(\d+)\.(\d+)/)
   if (!match) return null
   return [parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10)]
@@ -134,58 +132,60 @@ export function UpdateChecker() {
   const toastIdRef = useRef<string | undefined>(undefined)
 
   useEffect(() => {
-    async function checkForUpdates() {
+    async function checkTauriUpdater() {
+      try {
+        const update = await check()
+        if (!update) return false
+
+        if (toastIdRef.current) return true
+
+        const id = showToast({
+          message: (
+            <TauriUpdateUI
+              update={update}
+              onFail={() => {
+                updateToast(id, { message: <FallbackMessage /> })
+              }}
+            />
+          ),
+          isSticky: true,
+        })
+        toastIdRef.current = id
+        return true
+      } catch (e) {
+        console.error('Failed to check for Tauri updates:', e)
+        return false
+      }
+    }
+
+    async function checkWebVersion() {
       try {
         const response = await fetch(VERSION_URL, { cache: 'no-store' })
         if (!response.ok) return
 
         const latestVersion = await response.text()
+        if (!isNewer(latestVersion, appVersion)) return
+        if (toastIdRef.current) return
 
-        if (isNewer(latestVersion, appVersion)) {
-          if (toastIdRef.current) return
-
-          const local = isNativeShell()
-
-          if (local && isTauri()) {
-            try {
-              const update = await check()
-              if (update) {
-                const id = showToast({
-                  message: (
-                    <TauriUpdateUI
-                      update={update}
-                      onFail={() => {
-                        updateToast(id, { message: <FallbackMessage /> })
-                      }}
-                    />
-                  ),
-                  isSticky: true,
-                })
-                toastIdRef.current = id
-                return
-              }
-            } catch (e) {
-              console.error('Failed to check for Tauri updates:', e)
-              // Fall through to default fallback
-            }
-          }
-
-          const messageNode = local ? <FallbackMessage /> : <WebMessage />
-
-          toastIdRef.current = showToast({
-            message: messageNode,
-            isSticky: true,
-          })
-        }
+        toastIdRef.current = showToast({
+          message: isNativeShell() ? <FallbackMessage /> : <WebMessage />,
+          isSticky: true,
+        })
       } catch {
         // Ignore fetch errors (e.g. offline)
       }
     }
 
-    // Check immediately on mount
+    async function checkForUpdates() {
+      if (isTauri()) {
+        const handled = await checkTauriUpdater()
+        if (handled) return
+      }
+      await checkWebVersion()
+    }
+
     void checkForUpdates()
 
-    // And then every hour
     const interval = setInterval(() => {
       void checkForUpdates()
     }, CHECK_INTERVAL)

@@ -17,6 +17,11 @@ function isLocalDevHost(hostname: string) {
   return hostname === 'localhost' || hostname === '127.0.0.1'
 }
 
+/** Tauri 2 desktop WebView origin host (e.g. http://tauri.localhost). */
+function isTauriAppHost(hostname: string) {
+  return hostname === 'tauri.localhost' || hostname.endsWith('.tauri.localhost')
+}
+
 function hostMatchesSuffix(hostname: string, suffix: string) {
   const bare = suffix.startsWith('.') ? suffix.slice(1) : suffix
   return hostname === bare || hostname.endsWith(suffix)
@@ -32,6 +37,7 @@ function isAllowedRequestOrigin(origin: string, env: CorsEnv) {
 
   const host = parsed.hostname
   if (isLocalDevHost(host)) return true
+  if (isTauriAppHost(host)) return true
 
   const suffixes = [...DEFAULT_HOST_SUFFIXES, ...parseExtraSuffixes(env.ALLOWED_HOST_SUFFIXES)]
   return suffixes.some((suffix) => hostMatchesSuffix(host, suffix))
