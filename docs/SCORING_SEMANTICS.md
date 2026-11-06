@@ -15,13 +15,13 @@ Single source of truth for **HBCM** (Heat-Based Consistency Multiplier), **feeli
 
 Sentiment classes (full **Entry** uses pill sentiment; **Quick Log** uses the same `+` / `=` / `-`):
 
-| Class   | Meaning   | Color role                                      |
-|---------|-----------|-------------------------------------------------|
-| positive| `+`       | Green                                           |
-| neutral | `=`       | Yellow                                          |
-| negative| `-`       | Red                                             |
-| missed  | no log on a past day (after first use) | Black (stripe)                    |
-| no_data | future days or before first use        | Light grey                        |
+| Class    | Meaning                                | Color role     |
+| -------- | -------------------------------------- | -------------- |
+| positive | `+`                                    | Green          |
+| neutral  | `=`                                    | Yellow         |
+| negative | `-`                                    | Red            |
+| missed   | no log on a past day (after first use) | Black (stripe) |
+| no_data  | future days or before first use        | Light grey     |
 
 Segments use **gradient blends** between adjacent days. Quick Logs contribute the same classes; multiple logs per day use the **worst** sentiment (`-` &gt; `=` &gt; `+`) for that day’s display.
 

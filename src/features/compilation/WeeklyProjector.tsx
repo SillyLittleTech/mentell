@@ -1,268 +1,300 @@
-import { AnimatePresence, motion } from 'framer-motion'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { MaterialIcon } from '../../components/MaterialIcon'
-import { dateKeyForLocalDay } from '../../shared/dates'
+import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { MaterialIcon } from "../../components/MaterialIcon";
+import { dateKeyForLocalDay } from "../../shared/dates";
 import {
   getEntriesForWeeksBefore,
   getWeeklyStatsForDateKey,
   getWeeklyStatsForWeekKey,
   type WeekCursor,
   type WeeklyStats,
-} from './weeklyStats'
-import type { EntryRow } from '../../db/schema'
-import { getScoreSnapshot } from '../score/scoreService'
-import { HbcmDisplay } from '../score/HbcmDisplay'
-import { SCORE_CHANGED_EVENT } from '../score/scoreEvents'
-import { FeelingsOverTimeChart } from './FeelingsOverTimeChart'
-import { getFeelingsOverTimeSeries, type FeelingsRange } from './feelingsOverTimeData'
-import type { FeelingPoint } from './feelingsOverTimeData'
-import { useBodyScrollLock } from '../../shared/motion/useBodyScrollLock'
-import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
-import { getLatestDeliveredWeeklyPackage } from '../packages/packageService'
-import { useOnlineStatus } from '../../shared/offline/useOnlineStatus'
+} from "./weeklyStats";
+import type { EntryRow } from "../../db/schema";
+import { getScoreSnapshot } from "../score/scoreService";
+import { HbcmDisplay } from "../score/HbcmDisplay";
+import { SCORE_CHANGED_EVENT } from "../score/scoreEvents";
+import { FeelingsOverTimeChart } from "./FeelingsOverTimeChart";
+import {
+  getFeelingsOverTimeSeries,
+  type FeelingsRange,
+} from "./feelingsOverTimeData";
+import type { FeelingPoint } from "./feelingsOverTimeData";
+import { useBodyScrollLock } from "../../shared/motion/useBodyScrollLock";
+import {
+  motionDuration,
+  shouldReduceMotion,
+} from "../../shared/motion/useMotionPrefs";
+import { getLatestDeliveredWeeklyPackage } from "../packages/packageService";
+import { useOnlineStatus } from "../../shared/offline/useOnlineStatus";
 import {
   buildAiSummaryMarkdown,
   downloadTextFile,
   requestWeeklyAiSummary,
   weeklyAiSummaryEnabled,
   type AiSummaryMode,
-} from './weeklyAiSummary'
-import { loadAiProfile, profileFingerprint, type AiProfile } from './aiProfile'
-import { clearWeeklyAiCache, getCachedWeeklySummary } from './weeklyAiCache'
-import { OfflineDeviceSyncSection } from '../settings/OfflineDeviceSyncSection'
-import { LOCAL_DATA_CHANGED_EVENT } from '../../shared/sync/localDataEvents'
-import { WeeklyAiSettings, WeeklyAiSettingsButton } from './WeeklyAiSettings'
+} from "./weeklyAiSummary";
+import { loadAiProfile, profileFingerprint, type AiProfile } from "./aiProfile";
+import { clearWeeklyAiCache, getCachedWeeklySummary } from "./weeklyAiCache";
+import { OfflineDeviceSyncSection } from "../settings/OfflineDeviceSyncSection";
+import { LOCAL_DATA_CHANGED_EVENT } from "../../shared/sync/localDataEvents";
+import { WeeklyAiSettings, WeeklyAiSettingsButton } from "./WeeklyAiSettings";
 import {
   buildRawReportHtml,
   downloadRawReportHtml,
   fetchEntriesForRange,
   type RawReportRange,
-} from './weeklyReportExport'
-import { HomeGreeting } from '../home/HomeGreeting'
+} from "./weeklyReportExport";
+import { HomeGreeting } from "../home/HomeGreeting";
 import {
   ProjectorEntryDetail,
   ProjectorEntrySlide,
-} from './ProjectorEntrySlide'
-import { ProjectorSearchModal } from './ProjectorSearchModal'
-import { projectorSearchEnabled, type ProjectorSearchResult } from './projectorSearch'
+} from "./ProjectorEntrySlide";
+import { ProjectorSearchModal } from "./ProjectorSearchModal";
+import {
+  projectorSearchEnabled,
+  type ProjectorSearchResult,
+} from "./projectorSearch";
 import {
   PROJECTOR_DEBUG_EVENT,
   type ProjectorDebugDetail,
-} from '../debug/projectorDebug'
+} from "../debug/projectorDebug";
 
 function profileActiveHint(profile: AiProfile) {
   if (profile.about.trim()) {
-    const snippet = profile.about.trim().slice(0, 60)
-    return snippet.length < profile.about.trim().length ? `${snippet}…` : snippet
+    const snippet = profile.about.trim().slice(0, 60);
+    return snippet.length < profile.about.trim().length
+      ? `${snippet}…`
+      : snippet;
   }
-  if (profile.displayName.trim()) return `Name: ${profile.displayName}`
-  return null
+  if (profile.displayName.trim()) return `Name: ${profile.displayName}`;
+  return null;
 }
 
 export type OlderWeekBatch = {
-  weekKey: string
-  startDateKey: string
-  endDateKey: string
-  entries: EntryRow[]
-}
+  weekKey: string;
+  startDateKey: string;
+  endDateKey: string;
+  entries: EntryRow[];
+};
 
 export function WeeklyProjector() {
-  const todayKey = useMemo(() => dateKeyForLocalDay(new Date()), [])
-  const [stats, setStats] = useState<WeeklyStats | null>(null)
-  const [delivered, setDelivered] = useState<boolean | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [score, setScore] = useState(() => getScoreSnapshot())
-  const [summary, setSummary] = useState<string | null>(null)
-  const [summaryError, setSummaryError] = useState<string | null>(null)
-  const [summaryBusy, setSummaryBusy] = useState(false)
-  const [fromCache, setFromCache] = useState(false)
-  const [settingsOpen, setSettingsOpen] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [debugSearchSeed, setDebugSearchSeed] = useState<ProjectorSearchResult | null>(null)
-  const [profile, setProfile] = useState<AiProfile>(() => loadAiProfile())
-  const [mode, setMode] = useState<AiSummaryMode>('reflection')
-  const [rawRange, setRawRange] = useState<RawReportRange>('week')
-  const [rawBusy, setRawBusy] = useState(false)
-  const [settingsStale, setSettingsStale] = useState(false)
-  const [olderWeeks, setOlderWeeks] = useState<OlderWeekBatch[]>([])
-  const [olderAnchorWeek, setOlderAnchorWeek] = useState<string | null>(null)
-  const [paginationCursor, setPaginationCursor] = useState<WeekCursor>(null)
-  const [hasMoreWeeks, setHasMoreWeeks] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [feelingsRange, setFeelingsRange] = useState<FeelingsRange>('week')
-  const [feelingsPoints, setFeelingsPoints] = useState<FeelingPoint[]>([])
-  const feelingsTitleId = 'feelings-over-time-heading'
-  const aiEnabled = weeklyAiSummaryEnabled()
-  const searchEnabled = projectorSearchEnabled()
-  const isOnline = useOnlineStatus()
+  const todayKey = useMemo(() => dateKeyForLocalDay(new Date()), []);
+  const [stats, setStats] = useState<WeeklyStats | null>(null);
+  const [delivered, setDelivered] = useState<boolean | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [score, setScore] = useState(() => getScoreSnapshot());
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [summaryBusy, setSummaryBusy] = useState(false);
+  const [fromCache, setFromCache] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [debugSearchSeed, setDebugSearchSeed] =
+    useState<ProjectorSearchResult | null>(null);
+  const [profile, setProfile] = useState<AiProfile>(() => loadAiProfile());
+  const [mode, setMode] = useState<AiSummaryMode>("reflection");
+  const [rawRange, setRawRange] = useState<RawReportRange>("week");
+  const [rawBusy, setRawBusy] = useState(false);
+  const [settingsStale, setSettingsStale] = useState(false);
+  const [olderWeeks, setOlderWeeks] = useState<OlderWeekBatch[]>([]);
+  const [olderAnchorWeek, setOlderAnchorWeek] = useState<string | null>(null);
+  const [paginationCursor, setPaginationCursor] = useState<WeekCursor>(null);
+  const [hasMoreWeeks, setHasMoreWeeks] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [feelingsRange, setFeelingsRange] = useState<FeelingsRange>("week");
+  const [feelingsPoints, setFeelingsPoints] = useState<FeelingPoint[]>([]);
+  const feelingsTitleId = "feelings-over-time-heading";
+  const aiEnabled = weeklyAiSummaryEnabled();
+  const searchEnabled = projectorSearchEnabled();
+  const isOnline = useOnlineStatus();
 
   const visibleOlderWeeks = useMemo(
     () => (stats && olderAnchorWeek === stats.weekKey ? olderWeeks : []),
     [stats, olderAnchorWeek, olderWeeks],
-  )
+  );
 
   useEffect(() => {
     const onDebug = (event: Event) => {
-      const detail = (event as CustomEvent<ProjectorDebugDetail>).detail
-      if (!detail) return
-      if (detail.action === 'open-search') {
-        setDebugSearchSeed(detail.seed ?? null)
-        setSearchOpen(true)
-      } else if (detail.action === 'close-search') {
-        setSearchOpen(false)
-        setDebugSearchSeed(null)
+      const detail = (event as CustomEvent<ProjectorDebugDetail>).detail;
+      if (!detail) return;
+      if (detail.action === "open-search") {
+        setDebugSearchSeed(detail.seed ?? null);
+        setSearchOpen(true);
+      } else if (detail.action === "close-search") {
+        setSearchOpen(false);
+        setDebugSearchSeed(null);
       }
-    }
-    window.addEventListener(PROJECTOR_DEBUG_EVENT, onDebug)
-    return () => window.removeEventListener(PROJECTOR_DEBUG_EVENT, onDebug)
-  }, [])
+    };
+    window.addEventListener(PROJECTOR_DEBUG_EVENT, onDebug);
+    return () => window.removeEventListener(PROJECTOR_DEBUG_EVENT, onDebug);
+  }, []);
 
   const restoreCachedSummary = useCallback(
-    (nextStats: WeeklyStats, nextProfile: AiProfile, nextMode: AiSummaryMode) => {
+    (
+      nextStats: WeeklyStats,
+      nextProfile: AiProfile,
+      nextMode: AiSummaryMode,
+    ) => {
       const cached = getCachedWeeklySummary({
         weekKey: nextStats.weekKey,
         mode: nextMode,
         entries: nextStats.entries,
         profile: nextProfile,
-      })
+      });
       if (cached) {
-        setSummary(cached)
-        setFromCache(true)
-        setSettingsStale(false)
+        setSummary(cached);
+        setFromCache(true);
+        setSettingsStale(false);
       }
     },
     [],
-  )
+  );
 
   useEffect(() => {
-    let active = true
+    let active = true;
 
     const refresh = async () => {
       try {
-        const latestPackage = await getLatestDeliveredWeeklyPackage()
+        const latestPackage = await getLatestDeliveredWeeklyPackage();
         const nextStats = latestPackage
           ? await getWeeklyStatsForWeekKey(latestPackage.periodKey)
-          : await getWeeklyStatsForDateKey(todayKey)
-        if (!active) return
-        setStats(nextStats)
-        setDelivered(Boolean(latestPackage))
-        setScore(getScoreSnapshot())
+          : await getWeeklyStatsForDateKey(todayKey);
+        if (!active) return;
+        setStats(nextStats);
+        setDelivered(Boolean(latestPackage));
+        setScore(getScoreSnapshot());
         if (aiEnabled && latestPackage && nextStats.entries.length > 0) {
-          restoreCachedSummary(nextStats, profile, mode)
+          restoreCachedSummary(nextStats, profile, mode);
         }
       } catch (error) {
-        console.warn('[mentell] Weekly projector refresh failed', error)
-        const fallbackStats = await getWeeklyStatsForDateKey(todayKey)
-        if (!active) return
-        setStats(fallbackStats)
-        setDelivered(false)
-        setScore(getScoreSnapshot())
+        console.warn("[mentell] Weekly projector refresh failed", error);
+        const fallbackStats = await getWeeklyStatsForDateKey(todayKey);
+        if (!active) return;
+        setStats(fallbackStats);
+        setDelivered(false);
+        setScore(getScoreSnapshot());
       }
-    }
+    };
 
-    refresh()
-    const id = window.setInterval(refresh, 2000)
+    refresh();
+    const id = window.setInterval(refresh, 2000);
     return () => {
-      active = false
-      window.clearInterval(id)
-    }
-  }, [todayKey, aiEnabled, profile, mode, restoreCachedSummary])
+      active = false;
+      window.clearInterval(id);
+    };
+  }, [todayKey, aiEnabled, profile, mode, restoreCachedSummary]);
 
   useEffect(() => {
-    const onScore = () => setScore(getScoreSnapshot())
-    window.addEventListener(SCORE_CHANGED_EVENT, onScore)
-    return () => window.removeEventListener(SCORE_CHANGED_EVENT, onScore)
-  }, [])
+    const onScore = () => setScore(getScoreSnapshot());
+    window.addEventListener(SCORE_CHANGED_EVENT, onScore);
+    return () => window.removeEventListener(SCORE_CHANGED_EVENT, onScore);
+  }, []);
 
   useEffect(() => {
-    let cancelled = false
+    let cancelled = false;
     const refresh = async () => {
       try {
-        const { points } = await getFeelingsOverTimeSeries(feelingsRange)
-        if (!cancelled) setFeelingsPoints(points)
+        const { points } = await getFeelingsOverTimeSeries(feelingsRange);
+        if (!cancelled) setFeelingsPoints(points);
       } catch {
-        if (!cancelled) setFeelingsPoints([])
+        if (!cancelled) setFeelingsPoints([]);
       }
-    }
-    void refresh()
-    const onData = () => void refresh()
-    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, onData)
+    };
+    void refresh();
+    const onData = () => void refresh();
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, onData);
     return () => {
-      cancelled = true
-      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, onData)
-    }
-  }, [feelingsRange])
+      cancelled = true;
+      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, onData);
+    };
+  }, [feelingsRange]);
 
   // Reset older weeks when primary week changes
   // (handled via olderAnchorWeek mismatch — no effect needed)
 
   const allEntriesForPreview = useMemo(() => {
-    const map = new Map<string, EntryRow>()
-    for (const e of stats?.entries ?? []) map.set(e.id, e)
+    const map = new Map<string, EntryRow>();
+    for (const e of stats?.entries ?? []) map.set(e.id, e);
     for (const batch of visibleOlderWeeks) {
-      for (const e of batch.entries) map.set(e.id, e)
+      for (const e of batch.entries) map.set(e.id, e);
     }
-    return map
-  }, [stats, visibleOlderWeeks])
+    return map;
+  }, [stats, visibleOlderWeeks]);
 
-  const selected = selectedId ? allEntriesForPreview.get(selectedId) ?? null : null
-  useBodyScrollLock(Boolean(selected && delivered))
+  const selected = selectedId
+    ? (allEntriesForPreview.get(selectedId) ?? null)
+    : null;
+  useBodyScrollLock(Boolean(selected && delivered));
 
   async function handleGenerate() {
-    if (!stats) return
-    setSummaryBusy(true)
-    setSummaryError(null)
-    setFromCache(false)
+    if (!stats) return;
+    setSummaryBusy(true);
+    setSummaryError(null);
+    setFromCache(false);
     try {
       const res = await requestWeeklyAiSummary(stats.entries, {
         mode,
         profile,
         weekKey: stats.weekKey,
-      })
-      setSummary(res.summary)
-      setFromCache(res.fromCache)
-      setSettingsStale(false)
+      });
+      setSummary(res.summary);
+      setFromCache(res.fromCache);
+      setSettingsStale(false);
     } catch (error) {
-      setSummaryError(error instanceof Error ? error.message : 'Failed to generate summary.')
+      setSummaryError(
+        error instanceof Error ? error.message : "Failed to generate summary.",
+      );
     } finally {
-      setSummaryBusy(false)
+      setSummaryBusy(false);
     }
   }
 
   async function handleRawDownload() {
-    setRawBusy(true)
+    setRawBusy(true);
     try {
-      const anchorDateKey = delivered && stats?.startDateKey ? stats.startDateKey : todayKey
-      const entries = await fetchEntriesForRange(rawRange, anchorDateKey)
-      const html = buildRawReportHtml({ range: rawRange, anchorDateKey, entries })
+      const anchorDateKey =
+        delivered && stats?.startDateKey ? stats.startDateKey : todayKey;
+      const entries = await fetchEntriesForRange(rawRange, anchorDateKey);
+      const html = buildRawReportHtml({
+        range: rawRange,
+        anchorDateKey,
+        entries,
+      });
       const suffix =
-        rawRange === 'week' ? stats?.weekKey ?? 'week' : rawRange === 'last4' ? 'last4w' : 'all'
-      downloadRawReportHtml(html, `mentell-raw-${suffix}.html`)
+        rawRange === "week"
+          ? (stats?.weekKey ?? "week")
+          : rawRange === "last4"
+            ? "last4w"
+            : "all";
+      downloadRawReportHtml(html, `mentell-raw-${suffix}.html`);
     } finally {
-      setRawBusy(false)
+      setRawBusy(false);
     }
   }
 
   async function handleShowMore() {
-    if (!stats || loadingMore || !hasMoreWeeks) return
-    const cursorForWeek = olderAnchorWeek === stats.weekKey ? paginationCursor : null
-    setLoadingMore(true)
+    if (!stats || loadingMore || !hasMoreWeeks) return;
+    const cursorForWeek =
+      olderAnchorWeek === stats.weekKey ? paginationCursor : null;
+    setLoadingMore(true);
     try {
       const { batches, nextCursor } = await getEntriesForWeeksBefore(
         stats.weekKey,
         cursorForWeek,
         1,
-      )
+      );
       if (batches.length > 0) {
         setOlderWeeks((prev) =>
-          olderAnchorWeek === stats.weekKey ? [...prev, ...batches] : [...batches],
-        )
-        setOlderAnchorWeek(stats.weekKey)
+          olderAnchorWeek === stats.weekKey
+            ? [...prev, ...batches]
+            : [...batches],
+        );
+        setOlderAnchorWeek(stats.weekKey);
       }
-      setPaginationCursor(nextCursor)
-      setHasMoreWeeks(Boolean(nextCursor))
+      setPaginationCursor(nextCursor);
+      setHasMoreWeeks(Boolean(nextCursor));
     } finally {
-      setLoadingMore(false)
+      setLoadingMore(false);
     }
   }
 
@@ -270,9 +302,11 @@ export function WeeklyProjector() {
     return (
       <div className="paper rounded-3xl p-6">
         <div className="font-paper text-2xl">Projector warming up…</div>
-        <div className="ink-muted mt-2 text-sm">Loading your week and package status.</div>
+        <div className="ink-muted mt-2 text-sm">
+          Loading your week and package status.
+        </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -283,11 +317,16 @@ export function WeeklyProjector() {
             <div className="font-paper text-2xl">
               <span className="hidden md:inline">Weekly compilation</span>
               <span className="md:hidden">
-                <HomeGreeting variant="mobile" fallback="Weekly compilation" context="week" />
+                <HomeGreeting
+                  variant="mobile"
+                  fallback="Weekly compilation"
+                  context="week"
+                />
               </span>
             </div>
             <div className="ink-muted mt-1 text-sm">
-              {stats.weekKey} ({stats.startDateKey || '—'} → {stats.endDateKey || '—'})
+              {stats.weekKey} ({stats.startDateKey || "—"} →{" "}
+              {stats.endDateKey || "—"})
             </div>
           </div>
 
@@ -304,7 +343,9 @@ export function WeeklyProjector() {
           <ProjectorCard title="Warnings flagged" value={stats.warnings} />
           <ProjectorCard title="Current score" value={score.total} />
           <div className="paper flex flex-col justify-center rounded-2xl border border-[var(--paper-border)] px-4 py-3">
-            <div className="ink-muted text-[11px] font-semibold uppercase">HBCM</div>
+            <div className="ink-muted text-[11px] font-semibold uppercase">
+              HBCM
+            </div>
             <HbcmDisplay hbcmDisplay={score.hbcmDisplay} variant="inline" />
           </div>
         </div>
@@ -328,11 +369,14 @@ export function WeeklyProjector() {
           </select>
         </div>
         <p className="ink-muted mt-1 text-sm">
-          Chronological sentiment with gradient transitions. Quick logs count for color but stay out of AI search
-          index.
+          Chronological sentiment with gradient transitions. Quick logs count
+          for color but stay out of AI search index.
         </p>
         <div className="mt-4">
-          <FeelingsOverTimeChart points={feelingsPoints} titleId={feelingsTitleId} />
+          <FeelingsOverTimeChart
+            points={feelingsPoints}
+            titleId={feelingsTitleId}
+          />
         </div>
       </div>
 
@@ -340,7 +384,8 @@ export function WeeklyProjector() {
         <div className="paper rounded-3xl p-6">
           <div className="font-paper text-xl">Report locked</div>
           <div className="ink-muted mt-1 text-sm">
-            The weekly report appears only after the truck delivers a weekly package.
+            The weekly report appears only after the truck delivers a weekly
+            package.
           </div>
         </div>
       ) : null}
@@ -368,7 +413,7 @@ export function WeeklyProjector() {
               onClick={handleRawDownload}
             >
               <MaterialIcon name="table_chart" size={20} />
-              {rawBusy ? 'Building…' : 'Download RAW report'}
+              {rawBusy ? "Building…" : "Download RAW report"}
             </button>
           </div>
         </div>
@@ -378,12 +423,13 @@ export function WeeklyProjector() {
         <div className="paper rounded-3xl p-6">
           <div className="font-paper text-xl">AI summary</div>
           <div className="ink-muted mt-1 text-sm">
-            Generate a reflection or narrative overview using your configured Worker endpoint.
+            Generate a reflection or narrative overview using your configured
+            Worker endpoint.
           </div>
           {profileActiveHint(profile) ? (
             <div className="ink-muted mt-2 text-xs">
-              Preferences active: {profileActiveHint(profile)} — open settings (gear) then regenerate
-              after edits.
+              Preferences active: {profileActiveHint(profile)} — open settings
+              (gear) then regenerate after edits.
             </div>
           ) : null}
 
@@ -396,7 +442,7 @@ export function WeeklyProjector() {
                 className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => setSearchOpen(true)}
                 disabled={!isOnline}
-                title={!isOnline ? 'Internet connection required' : undefined}
+                title={!isOnline ? "Internet connection required" : undefined}
                 aria-disabled={!isOnline}
               >
                 <MaterialIcon name="search" size={20} />
@@ -411,11 +457,13 @@ export function WeeklyProjector() {
               className="btn-primary focus-ring inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
               disabled={summaryBusy || stats.entries.length === 0 || !isOnline}
               onClick={handleGenerate}
-              title={!isOnline ? 'Internet connection required' : undefined}
-              aria-disabled={!isOnline || summaryBusy || stats.entries.length === 0}
+              title={!isOnline ? "Internet connection required" : undefined}
+              aria-disabled={
+                !isOnline || summaryBusy || stats.entries.length === 0
+              }
             >
               <MaterialIcon name="auto_awesome" size={20} accent={false} />
-              {summaryBusy ? 'Generating…' : 'Generate weekly AI summary'}
+              {summaryBusy ? "Generating…" : "Generate weekly AI summary"}
             </button>
             {summary ? (
               <button
@@ -429,12 +477,12 @@ export function WeeklyProjector() {
                     mode,
                     profile,
                     summary,
-                  })
+                  });
                   downloadTextFile(
                     `mentell-ai-${stats.weekKey}-${mode}.md`,
                     md,
-                    'text/markdown;charset=utf-8',
-                  )
+                    "text/markdown;charset=utf-8",
+                  );
                 }}
               >
                 <MaterialIcon name="download" size={20} />
@@ -483,7 +531,7 @@ export function WeeklyProjector() {
             className="focus-ring inline-flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => setSearchOpen(true)}
             disabled={!isOnline}
-            title={!isOnline ? 'Internet connection required' : undefined}
+            title={!isOnline ? "Internet connection required" : undefined}
             aria-disabled={!isOnline}
           >
             <MaterialIcon name="search" size={20} />
@@ -501,14 +549,14 @@ export function WeeklyProjector() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
         onSaved={(saved) => {
-          const prevFp = profileFingerprint(profile)
-          const nextFp = profileFingerprint(saved)
-          setProfile(saved)
+          const prevFp = profileFingerprint(profile);
+          const nextFp = profileFingerprint(saved);
+          setProfile(saved);
           if (prevFp !== nextFp) {
-            clearWeeklyAiCache()
-            setSettingsStale(true)
-            setSummary(null)
-            setFromCache(false)
+            clearWeeklyAiCache();
+            setSettingsStale(true);
+            setSummary(null);
+            setFromCache(false);
           }
         }}
       />
@@ -516,8 +564,8 @@ export function WeeklyProjector() {
       <ProjectorSearchModal
         open={searchOpen}
         onClose={() => {
-          setSearchOpen(false)
-          setDebugSearchSeed(null)
+          setSearchOpen(false);
+          setDebugSearchSeed(null);
         }}
         debugSeed={debugSearchSeed}
       />
@@ -539,7 +587,11 @@ export function WeeklyProjector() {
             </div>
           ) : (
             stats.entries.map((e) => (
-              <ProjectorEntrySlide key={e.id} entry={e} onClick={() => setSelectedId(e.id)} />
+              <ProjectorEntrySlide
+                key={e.id}
+                entry={e}
+                onClick={() => setSelectedId(e.id)}
+              />
             ))
           )}
         </div>
@@ -549,7 +601,7 @@ export function WeeklyProjector() {
             {visibleOlderWeeks.map((batch) => (
               <div key={batch.weekKey}>
                 <div className="font-paper text-lg">
-                  {batch.weekKey}{' '}
+                  {batch.weekKey}{" "}
                   <span className="ink-muted text-sm font-sans">· older</span>
                 </div>
                 <div className="ink-muted mt-0.5 text-xs">
@@ -579,10 +631,12 @@ export function WeeklyProjector() {
                 onClick={handleShowMore}
               >
                 <MaterialIcon name="expand_more" size={22} />
-                {loadingMore ? 'Loading…' : 'Show more'}
+                {loadingMore ? "Loading…" : "Show more"}
               </button>
             ) : (
-              <div className="ink-muted text-center text-sm">No older weeks with entries.</div>
+              <div className="ink-muted text-center text-sm">
+                No older weeks with entries.
+              </div>
             )}
           </div>
         ) : null}
@@ -608,9 +662,12 @@ export function WeeklyProjector() {
               <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--paper-border)] p-6 pb-4">
                 <div>
                   <div className="font-paper text-2xl">
-                    Slide preview <span className="font-mono">[{selected.sentiment}]</span>
+                    Slide preview{" "}
+                    <span className="font-mono">[{selected.sentiment}]</span>
                   </div>
-                  <div className="ink-muted mt-1 text-sm">{selected.dateKey}</div>
+                  <div className="ink-muted mt-1 text-sm">
+                    {selected.dateKey}
+                  </div>
                 </div>
                 <button
                   type="button"
@@ -630,47 +687,53 @@ export function WeeklyProjector() {
 
       <OfflineDeviceSyncSection compact />
     </div>
-  )
+  );
 }
 
 function ModeToggle({
   mode,
   onChange,
 }: {
-  mode: AiSummaryMode
-  onChange: (m: AiSummaryMode) => void
+  mode: AiSummaryMode;
+  onChange: (m: AiSummaryMode) => void;
 }) {
   return (
     <div className="flex rounded-2xl border border-[var(--paper-border)] p-1">
       <button
         type="button"
         className={`focus-ring rounded-xl px-3 py-2 text-xs font-semibold ${
-          mode === 'reflection' ? 'btn-primary' : ''
+          mode === "reflection" ? "btn-primary" : ""
         }`}
-        onClick={() => onChange('reflection')}
+        onClick={() => onChange("reflection")}
       >
         Reflection
       </button>
       <button
         type="button"
         className={`focus-ring rounded-xl px-3 py-2 text-xs font-semibold ${
-          mode === 'overview' ? 'btn-primary' : ''
+          mode === "overview" ? "btn-primary" : ""
         }`}
-        onClick={() => onChange('overview')}
+        onClick={() => onChange("overview")}
       >
         Narrative overview
       </button>
     </div>
-  )
+  );
 }
 
-function StatChip({ label, children }: { label: string; children: React.ReactNode }) {
+function StatChip({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex min-w-[3.5rem] items-center gap-1.5 rounded-2xl border border-[var(--paper-border)] px-2 py-1.5 sm:px-3 sm:py-2">
       <div className="font-mono text-base sm:text-lg">{label}</div>
       <div className="text-xs font-medium sm:text-sm">{children}</div>
     </div>
-  )
+  );
 }
 
 function ProjectorCard({ title, value }: { title: string; value: number }) {
@@ -681,5 +744,5 @@ function ProjectorCard({ title, value }: { title: string; value: number }) {
         {value}
       </div>
     </div>
-  )
+  );
 }

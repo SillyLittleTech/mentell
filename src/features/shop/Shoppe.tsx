@@ -1,41 +1,41 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { format } from 'date-fns'
-import { getScoreSnapshot, spendScore } from '../score/scoreService'
+import { useEffect, useMemo, useRef, useState } from "react";
+import { format } from "date-fns";
+import { getScoreSnapshot, spendScore } from "../score/scoreService";
 import {
   addCollectedCat,
   loadCatCollection,
   type CollectedCat,
-} from './catCollection'
-import { ShopWeeklyProgressBar } from './ShopWeeklyProgressBar'
-import { MentellCharacter } from '../character/MentellCharacter'
-import { defaultCharacterAppearance } from '../character/characterAppearance'
-import { useAppSettings } from '../../shared/settings/useAppSettings'
-import { publicUrl } from '../../shared/publicUrl'
-import { pushLocalChangesNow } from '../../shared/sync/syncService'
-import { HomeGreeting } from '../home/HomeGreeting'
-import { SCORE_CHANGED_EVENT } from '../score/scoreEvents'
+} from "./catCollection";
+import { ShopWeeklyProgressBar } from "./ShopWeeklyProgressBar";
+import { MentellCharacter } from "../character/MentellCharacter";
+import { defaultCharacterAppearance } from "../character/characterAppearance";
+import { useAppSettings } from "../../shared/settings/useAppSettings";
+import { publicUrl } from "../../shared/publicUrl";
+import { pushLocalChangesNow } from "../../shared/sync/syncService";
+import { HomeGreeting } from "../home/HomeGreeting";
+import { SCORE_CHANGED_EVENT } from "../score/scoreEvents";
 import {
   equipShopItem,
   loadShopInventory,
   subscribeShopInventory,
   unlockShopItem,
   type ShopInventory,
-} from './shopInventory'
+} from "./shopInventory";
 import {
   loadShopCatalog,
   type CharacterAccessoryItem,
   type CursorItem,
   type ShopCatalogItem,
   type ThemeItem,
-} from './shopCatalog'
-import { renderCursorCssValue } from './shopCursorAsset'
-import { renderStampPreviewForItem } from './shopStampAsset'
-import { Throbber } from '../../components/Throbber'
+} from "./shopCatalog";
+import { renderCursorCssValue } from "./shopCursorAsset";
+import { renderStampPreviewForItem } from "./shopStampAsset";
+import { Throbber } from "../../components/Throbber";
 
-const CAT_COST = 250
+const CAT_COST = 250;
 
-type CatApiRow = { id?: string; url?: string }
-type EquippableType = 'theme' | 'stamp' | 'cursor'
+type CatApiRow = { id?: string; url?: string };
+type EquippableType = "theme" | "stamp" | "cursor";
 
 function ThemePreview({ item }: { item: ThemeItem }) {
   return (
@@ -51,7 +51,7 @@ function ThemePreview({ item }: { item: ThemeItem }) {
           className="absolute inset-0"
           style={{
             background: item.theme.dark.deskBg,
-            clipPath: 'polygon(45% 0%, 100% 0%, 72% 100%, 18% 100%)',
+            clipPath: "polygon(45% 0%, 100% 0%, 72% 100%, 18% 100%)",
             opacity: 0.95,
           }}
         />
@@ -60,7 +60,7 @@ function ThemePreview({ item }: { item: ThemeItem }) {
         <div
           className="absolute right-[-14px] top-3 h-14 w-14 rounded-md border border-[var(--paper-border)] shadow-[0_18px_34px_rgba(0,0,0,0.18)]"
           style={{
-            transform: 'rotate(14deg)',
+            transform: "rotate(14deg)",
             background: item.theme.light.paperBg ?? item.theme.light.deskBg,
           }}
         />
@@ -78,24 +78,26 @@ function ThemePreview({ item }: { item: ThemeItem }) {
         />
       </div>
     </div>
-  )
+  );
 }
 
 function CursorHoverPreview({ item }: { item: CursorItem }) {
-  const defaultCursor = renderCursorCssValue(item, 'default')
-  const pointerCursor = renderCursorCssValue(item, 'pointer') ?? defaultCursor
-  const textCursor = renderCursorCssValue(item, 'text') ?? pointerCursor
+  const defaultCursor = renderCursorCssValue(item, "default");
+  const pointerCursor = renderCursorCssValue(item, "pointer") ?? defaultCursor;
+  const textCursor = renderCursorCssValue(item, "text") ?? pointerCursor;
   return (
     <div className="mt-3 rounded-xl border border-[var(--paper-border)] p-2">
       <div
         className="flex h-20 w-full items-center justify-between rounded-lg border border-[var(--paper-border)] bg-black/5 px-3 text-xs"
-        style={{ cursor: defaultCursor ?? 'auto' }}
+        style={{ cursor: defaultCursor ?? "auto" }}
       >
-        <span className="font-mono uppercase tracking-wide opacity-75">hover box</span>
+        <span className="font-mono uppercase tracking-wide opacity-75">
+          hover box
+        </span>
         <button
           type="button"
           className="rounded-lg border border-[var(--paper-border)] px-2 py-1 text-[11px] font-semibold"
-          style={{ cursor: pointerCursor ?? 'pointer' }}
+          style={{ cursor: pointerCursor ?? "pointer" }}
         >
           pointer
         </button>
@@ -105,62 +107,68 @@ function CursorHoverPreview({ item }: { item: CursorItem }) {
           value="text"
           aria-label={`${item.name} text cursor preview`}
           className="w-14 rounded border border-[var(--paper-border)] bg-transparent px-1.5 py-1 text-[11px]"
-          style={{ cursor: textCursor ?? 'text' }}
+          style={{ cursor: textCursor ?? "text" }}
         />
       </div>
     </div>
-  )
+  );
 }
 
-function previewAccessoryItem(item: CharacterAccessoryItem): CharacterAccessoryItem {
+function previewAccessoryItem(
+  item: CharacterAccessoryItem,
+): CharacterAccessoryItem {
   const choice =
     item.characterAccessory.choices?.find(
       (entry) => entry.id === item.characterAccessory.defaultChoiceId,
-    ) ?? item.characterAccessory.choices?.[0]
-  if (!choice) return item
+    ) ?? item.characterAccessory.choices?.[0];
+  if (!choice) return item;
   return {
     ...item,
     characterAccessory: {
       ...item.characterAccessory,
-      toggles: choice.toggles?.length ? choice.toggles : item.characterAccessory.toggles,
-      parts: choice.parts?.length ? choice.parts : item.characterAccessory.parts,
+      toggles: choice.toggles?.length
+        ? choice.toggles
+        : item.characterAccessory.toggles,
+      parts: choice.parts?.length
+        ? choice.parts
+        : item.characterAccessory.parts,
       anchoredIds: choice.anchoredIds ?? item.characterAccessory.anchoredIds,
     },
-  }
+  };
 }
 
 function useOnceVisible() {
-  const ref = useRef<HTMLDivElement>(null)
-  const [visible, setVisible] = useState(false)
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const el = ref.current
-    if (!el || visible) return
+    const el = ref.current;
+    if (!el || visible) return;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (!entry?.isIntersecting) return
-        setVisible(true)
-        observer.disconnect()
+        if (!entry?.isIntersecting) return;
+        setVisible(true);
+        observer.disconnect();
       },
-      { rootMargin: '180px 0px', threshold: 0.01 },
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [visible])
+      { rootMargin: "180px 0px", threshold: 0.01 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [visible]);
 
-  return { ref, visible }
+  return { ref, visible };
 }
 
 function CharacterAccessoryPreview({ item }: { item: CharacterAccessoryItem }) {
-  const previewItem = previewAccessoryItem(item)
-  const { ref, visible } = useOnceVisible()
-  const [mounted, setMounted] = useState(false)
+  const previewItem = previewAccessoryItem(item);
+  const { ref, visible } = useOnceVisible();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (!visible) return
-    const frame = window.requestAnimationFrame(() => setMounted(true))
-    return () => window.cancelAnimationFrame(frame)
-  }, [visible])
+    if (!visible) return;
+    const frame = window.requestAnimationFrame(() => setMounted(true));
+    return () => window.cancelAnimationFrame(frame);
+  }, [visible]);
 
   return (
     <div
@@ -181,14 +189,21 @@ function CharacterAccessoryPreview({ item }: { item: CharacterAccessoryItem }) {
         <div className="skeleton-block h-full w-full rounded-lg" aria-hidden />
       )}
     </div>
-  )
+  );
 }
 
-function ShopItemPreview({ item, preview }: { item: ShopCatalogItem; preview: string | null }) {
-  if (item.type === 'theme') return <ThemePreview item={item} />
-  if (item.type === 'cursor') return <CursorHoverPreview item={item} />
-  if (item.type === 'characterAccessory') return <CharacterAccessoryPreview item={item} />
-  if (!preview) return null
+function ShopItemPreview({
+  item,
+  preview,
+}: {
+  item: ShopCatalogItem;
+  preview: string | null;
+}) {
+  if (item.type === "theme") return <ThemePreview item={item} />;
+  if (item.type === "cursor") return <CursorHoverPreview item={item} />;
+  if (item.type === "characterAccessory")
+    return <CharacterAccessoryPreview item={item} />;
+  if (!preview) return null;
   return (
     <img
       src={preview}
@@ -196,198 +211,216 @@ function ShopItemPreview({ item, preview }: { item: ShopCatalogItem; preview: st
       className="mt-3 h-20 w-full rounded-xl border border-[var(--paper-border)] object-contain p-1"
       draggable={false}
     />
-  )
+  );
 }
 
 export function Shoppe({
   onScoreChange,
 }: {
-  onScoreChange: (delta: number, hint: string | null) => void
+  onScoreChange: (delta: number, hint: string | null) => void;
 }) {
-  const { settings } = useAppSettings()
-  const pointsOn = !settings.disablePoints
-  const [busy, setBusy] = useState(false)
-  const [busyItemId, setBusyItemId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [status, setStatus] = useState<string | null>(null)
-  const [catUrl, setCatUrl] = useState<string | null>(null)
-  const [catId, setCatId] = useState<string | null>(null)
-  const catalog = useMemo(() => loadShopCatalog(), [])
-  const [inventory, setInventory] = useState<ShopInventory>(() => loadShopInventory())
-  const [collection, setCollection] = useState<CollectedCat[]>(() => loadCatCollection())
-  const [selectedCat, setSelectedCat] = useState<CollectedCat | null>(null)
-  const [balance, setBalance] = useState(() => getScoreSnapshot().total)
-  const [shelvesWarm, setShelvesWarm] = useState(false)
+  const { settings } = useAppSettings();
+  const pointsOn = !settings.disablePoints;
+  const [busy, setBusy] = useState(false);
+  const [busyItemId, setBusyItemId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [catUrl, setCatUrl] = useState<string | null>(null);
+  const [catId, setCatId] = useState<string | null>(null);
+  const catalog = useMemo(() => loadShopCatalog(), []);
+  const [inventory, setInventory] = useState<ShopInventory>(() =>
+    loadShopInventory(),
+  );
+  const [collection, setCollection] = useState<CollectedCat[]>(() =>
+    loadCatCollection(),
+  );
+  const [selectedCat, setSelectedCat] = useState<CollectedCat | null>(null);
+  const [balance, setBalance] = useState(() => getScoreSnapshot().total);
+  const [shelvesWarm, setShelvesWarm] = useState(false);
 
   useEffect(() => {
-    return subscribeShopInventory((next) => setInventory(next))
-  }, [])
+    return subscribeShopInventory((next) => setInventory(next));
+  }, []);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setShelvesWarm(true), 420)
-    return () => window.clearTimeout(timer)
-  }, [])
+    const timer = window.setTimeout(() => setShelvesWarm(true), 420);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const refreshScore = () => {
-      const next = getScoreSnapshot()
-      setBalance(next.total)
-    }
-    window.addEventListener(SCORE_CHANGED_EVENT, refreshScore)
-    return () => window.removeEventListener(SCORE_CHANGED_EVENT, refreshScore)
-  }, [])
+      const next = getScoreSnapshot();
+      setBalance(next.total);
+    };
+    window.addEventListener(SCORE_CHANGED_EVENT, refreshScore);
+    return () => window.removeEventListener(SCORE_CHANGED_EVENT, refreshScore);
+  }, []);
 
   function itemPreview(item: ShopCatalogItem) {
-    if (item.type === 'stamp') return renderStampPreviewForItem(item)
-    if (item.type === 'theme' || item.type === 'cursor') return null
-    if (!item.preview) return null
-    if (item.preview.startsWith('/')) return publicUrl(item.preview)
-    return item.preview
+    if (item.type === "stamp") return renderStampPreviewForItem(item);
+    if (item.type === "theme" || item.type === "cursor") return null;
+    if (!item.preview) return null;
+    if (item.preview.startsWith("/")) return publicUrl(item.preview);
+    return item.preview;
   }
 
   function itemOwned(itemId: string) {
-    return inventory.ownedItemIds.includes(itemId)
+    return inventory.ownedItemIds.includes(itemId);
   }
 
   function equippedId(type: EquippableType) {
-    if (type === 'theme') return inventory.equipped.themeId
-    if (type === 'stamp') return inventory.equipped.stampId
-    return inventory.equipped.cursorId
+    if (type === "theme") return inventory.equipped.themeId;
+    if (type === "stamp") return inventory.equipped.stampId;
+    return inventory.equipped.cursorId;
   }
 
   function itemTypeLabel(item: ShopCatalogItem) {
-    if (item.type === 'theme') return 'Theme'
-    if (item.type === 'stamp') return 'Stamp'
-    if (item.type === 'cursor') return 'Cursor set'
-    if (item.type === 'characterAccessory') {
-      if (item.characterAccessory.scope === 'fullBody') return 'Full-body accessory'
-      if (item.characterAccessory.scope === 'hair') return 'Hair accessory'
-      if (item.characterAccessory.scope === 'wrist') return 'Wrist accessory'
-      if (item.characterAccessory.scope === 'shirt') return 'Shirt accessory'
-      if (item.characterAccessory.scope === 'shoes') return 'Shoe accessory'
-      if (item.characterAccessory.scope === 'pants') return 'Pants accessory'
-      if (item.characterAccessory.scope === 'face') return 'Face accessory'
-      if (item.characterAccessory.scope === 'hat') return 'Hat accessory'
-      return 'Pet accessory'
+    if (item.type === "theme") return "Theme";
+    if (item.type === "stamp") return "Stamp";
+    if (item.type === "cursor") return "Cursor set";
+    if (item.type === "characterAccessory") {
+      if (item.characterAccessory.scope === "fullBody")
+        return "Full-body accessory";
+      if (item.characterAccessory.scope === "hair") return "Hair accessory";
+      if (item.characterAccessory.scope === "wrist") return "Wrist accessory";
+      if (item.characterAccessory.scope === "shirt") return "Shirt accessory";
+      if (item.characterAccessory.scope === "shoes") return "Shoe accessory";
+      if (item.characterAccessory.scope === "pants") return "Pants accessory";
+      if (item.characterAccessory.scope === "face") return "Face accessory";
+      if (item.characterAccessory.scope === "hat") return "Hat accessory";
+      return "Pet accessory";
     }
-    return 'Image'
+    return "Image";
   }
 
   function catalogHint(item: ShopCatalogItem) {
-    if (item.type === 'theme') return 'Applies different desk/paper styling in light + dark mode.'
-    if (item.type === 'stamp') return 'Updates the default submit stamp artwork in the send animation.'
-    if (item.type === 'cursor') return 'Applies custom default, pointer, and text cursors.'
-    if (item.type === 'characterAccessory') {
-      return 'Unlocks an accessory for the Character lab.'
+    if (item.type === "theme")
+      return "Applies different desk/paper styling in light + dark mode.";
+    if (item.type === "stamp")
+      return "Updates the default submit stamp artwork in the send animation.";
+    if (item.type === "cursor")
+      return "Applies custom default, pointer, and text cursors.";
+    if (item.type === "characterAccessory") {
+      return "Unlocks an accessory for the Character lab.";
     }
-    return 'Collectible image item for future gallery drops.'
+    return "Collectible image item for future gallery drops.";
   }
 
-  function canEquip(item: ShopCatalogItem): item is Extract<ShopCatalogItem, { type: EquippableType }> {
-    return item.type === 'theme' || item.type === 'stamp' || item.type === 'cursor'
+  function canEquip(
+    item: ShopCatalogItem,
+  ): item is Extract<ShopCatalogItem, { type: EquippableType }> {
+    return (
+      item.type === "theme" || item.type === "stamp" || item.type === "cursor"
+    );
   }
 
   async function buyCatPhoto() {
-    if (busy || !pointsOn) return
-    setBusy(true)
-    setStatus(null)
-    setError(null)
+    if (busy || !pointsOn) return;
+    setBusy(true);
+    setStatus(null);
+    setError(null);
     try {
-      const current = getScoreSnapshot().total
+      const current = getScoreSnapshot().total;
       if (current < CAT_COST) {
-        setError(`You need ${CAT_COST - current} more points for this item.`)
-        return
+        setError(`You need ${CAT_COST - current} more points for this item.`);
+        return;
       }
 
       const response = await fetch(
-        'https://api.thecatapi.com/v1/images/search?limit=1&size=med&mime_types=jpg,png',
-      )
+        "https://api.thecatapi.com/v1/images/search?limit=1&size=med&mime_types=jpg,png",
+      );
       if (!response.ok) {
-        setError('Cat API is unavailable right now. Try again shortly.')
-        return
+        setError("Cat API is unavailable right now. Try again shortly.");
+        return;
       }
 
-      const rows = (await response.json()) as CatApiRow[]
-      const first = rows[0]
+      const rows = (await response.json()) as CatApiRow[];
+      const first = rows[0];
       if (!first?.url) {
-        setError('No cat photo returned this time. Please retry.')
-        return
+        setError("No cat photo returned this time. Please retry.");
+        return;
       }
 
-      const spend = spendScore(CAT_COST)
+      const spend = spendScore(CAT_COST);
       if (!spend.ok) {
         setError(
-          spend.reason === 'insufficient'
-            ? 'Not enough points to complete this purchase.'
-            : 'Cannot complete purchase due to invalid score state.',
-        )
-        return
+          spend.reason === "insufficient"
+            ? "Not enough points to complete this purchase."
+            : "Cannot complete purchase due to invalid score state.",
+        );
+        return;
       }
 
-      setCatUrl(first.url)
-      setCatId(first.id ?? null)
-      setCollection(addCollectedCat({ id: first.id, url: first.url }))
-      setBalance(getScoreSnapshot().total)
-      onScoreChange(-CAT_COST, 'Cat photo collected')
-      setStatus('Mystery cat collected.')
-      void pushLocalChangesNow()
+      setCatUrl(first.url);
+      setCatId(first.id ?? null);
+      setCollection(addCollectedCat({ id: first.id, url: first.url }));
+      setBalance(getScoreSnapshot().total);
+      onScoreChange(-CAT_COST, "Cat photo collected");
+      setStatus("Mystery cat collected.");
+      void pushLocalChangesNow();
     } catch {
-      setError('Failed to reach cat photo service.')
+      setError("Failed to reach cat photo service.");
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   async function buyShopItem(item: ShopCatalogItem) {
-    if (busy || busyItemId || !pointsOn) return
-    setError(null)
-    setStatus(null)
-    setBusyItemId(item.id)
+    if (busy || busyItemId || !pointsOn) return;
+    setError(null);
+    setStatus(null);
+    setBusyItemId(item.id);
     try {
       if (itemOwned(item.id)) {
-        setStatus(`${item.name} is already unlocked.`)
-        return
+        setStatus(`${item.name} is already unlocked.`);
+        return;
       }
-      const current = getScoreSnapshot().total
+      const current = getScoreSnapshot().total;
       if (current < item.cost) {
-        setError(`You need ${item.cost - current} more points for ${item.name}.`)
-        return
+        setError(
+          `You need ${item.cost - current} more points for ${item.name}.`,
+        );
+        return;
       }
-      const spend = spendScore(item.cost)
+      const spend = spendScore(item.cost);
       if (!spend.ok) {
         setError(
-          spend.reason === 'insufficient'
-            ? 'Not enough points to complete this purchase.'
-            : 'Cannot complete purchase due to invalid score state.',
-        )
-        return
+          spend.reason === "insufficient"
+            ? "Not enough points to complete this purchase."
+            : "Cannot complete purchase due to invalid score state.",
+        );
+        return;
       }
-      unlockShopItem(item.id)
+      unlockShopItem(item.id);
       if (canEquip(item)) {
-        equipShopItem(item.type, item.id)
+        equipShopItem(item.type, item.id);
       }
-      setBalance(getScoreSnapshot().total)
-      onScoreChange(-item.cost, `${item.name} unlocked`)
+      setBalance(getScoreSnapshot().total);
+      onScoreChange(-item.cost, `${item.name} unlocked`);
       setStatus(
-        item.type === 'characterAccessory'
+        item.type === "characterAccessory"
           ? `${item.name} unlocked. Customize it in Character lab.`
           : canEquip(item)
             ? `${item.name} unlocked and equipped.`
             : `${item.name} unlocked.`,
-      )
-      void pushLocalChangesNow()
+      );
+      void pushLocalChangesNow();
     } finally {
-      setBusyItemId(null)
+      setBusyItemId(null);
     }
   }
 
-  function toggleEquip(item: Extract<ShopCatalogItem, { type: EquippableType }>) {
-    if (!itemOwned(item.id)) return
-    const current = equippedId(item.type)
-    const next = current === item.id ? null : item.id
-    equipShopItem(item.type, next)
-    setStatus(next ? `${item.name} equipped.` : `${itemTypeLabel(item)} unequipped.`)
-    setError(null)
+  function toggleEquip(
+    item: Extract<ShopCatalogItem, { type: EquippableType }>,
+  ) {
+    if (!itemOwned(item.id)) return;
+    const current = equippedId(item.type);
+    const next = current === item.id ? null : item.id;
+    equipShopItem(item.type, next);
+    setStatus(
+      next ? `${item.name} equipped.` : `${itemTypeLabel(item)} unequipped.`,
+    );
+    setError(null);
   }
 
   return (
@@ -398,23 +431,39 @@ export function Shoppe({
             <div className="font-paper text-2xl">
               <span className="hidden md:inline">Shoppe</span>
               <span className="md:hidden">
-                <HomeGreeting variant="mobile" fallback="Shoppe" context="shop" />
+                <HomeGreeting
+                  variant="mobile"
+                  fallback="Shoppe"
+                  context="shop"
+                />
               </span>
             </div>
-            <div className="ink-muted mt-1 text-sm">Spend points on little rewards.</div>
+            <div className="ink-muted mt-1 text-sm">
+              Spend points on little rewards.
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <div className="rounded-2xl border border-[var(--paper-border)] px-3 py-2">
-              <div className="font-mono text-[11px] uppercase opacity-70">collected</div>
-              <div className="font-mono text-2xl font-bold">{collection.length}</div>
+              <div className="font-mono text-[11px] uppercase opacity-70">
+                collected
+              </div>
+              <div className="font-mono text-2xl font-bold">
+                {collection.length}
+              </div>
             </div>
             <div className="rounded-2xl border border-[var(--paper-border)] px-3 py-2">
-              <div className="font-mono text-[11px] uppercase opacity-70">shop unlocks</div>
-              <div className="font-mono text-2xl font-bold">{inventory.ownedItemIds.length}</div>
+              <div className="font-mono text-[11px] uppercase opacity-70">
+                shop unlocks
+              </div>
+              <div className="font-mono text-2xl font-bold">
+                {inventory.ownedItemIds.length}
+              </div>
             </div>
             {pointsOn ? (
               <div className="rounded-2xl border border-[var(--paper-border)] px-3 py-2">
-                <div className="font-mono text-[11px] uppercase opacity-70">balance</div>
+                <div className="font-mono text-[11px] uppercase opacity-70">
+                  balance
+                </div>
                 <div className="font-mono text-2xl font-bold">{balance}</div>
               </div>
             ) : null}
@@ -427,23 +476,26 @@ export function Shoppe({
       <section className="paper rounded-3xl p-6">
         <div className="flex flex-wrap items-center gap-3">
           <div className="font-paper text-xl">Customization shelves</div>
-          {!shelvesWarm ? <Throbber className="ink-muted text-xs" label="Loading looks" /> : null}
+          {!shelvesWarm ? (
+            <Throbber className="ink-muted text-xs" label="Loading looks" />
+          ) : null}
         </div>
         <div className="ink-muted mt-1 text-sm">
           Unlock themes, stamp variants, and cursor sets from a JSON catalog.
         </div>
         {!pointsOn ? (
           <div className="ink-muted mt-4 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm">
-            Points are turned off in Settings — enable the points system to unlock shop items.
+            Points are turned off in Settings — enable the points system to
+            unlock shop items.
           </div>
         ) : null}
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           {catalog.items.map((item) => {
-            const owned = itemOwned(item.id)
-            const equippable = canEquip(item)
-            const accessory = item.type === 'characterAccessory'
-            const equipped = equippable && equippedId(item.type) === item.id
-            const preview = itemPreview(item)
+            const owned = itemOwned(item.id);
+            const equippable = canEquip(item);
+            const accessory = item.type === "characterAccessory";
+            const equipped = equippable && equippedId(item.type) === item.id;
+            const preview = itemPreview(item);
             return (
               <article
                 key={item.id}
@@ -452,12 +504,18 @@ export function Shoppe({
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <div className="font-medium">{item.name}</div>
-                    <div className="ink-muted text-xs">{itemTypeLabel(item)}</div>
+                    <div className="ink-muted text-xs">
+                      {itemTypeLabel(item)}
+                    </div>
                   </div>
-                  <div className="font-mono text-sm font-bold">{item.cost} pts</div>
+                  <div className="font-mono text-sm font-bold">
+                    {item.cost} pts
+                  </div>
                 </div>
                 <div className="ink-muted mt-2 text-sm">{item.description}</div>
-                <div className="ink-muted mt-1 text-xs">{catalogHint(item)}</div>
+                <div className="ink-muted mt-1 text-xs">
+                  {catalogHint(item)}
+                </div>
                 <ShopItemPreview item={item} preview={preview} />
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {!owned ? (
@@ -467,7 +525,7 @@ export function Shoppe({
                       disabled={!pointsOn || busyItemId === item.id || busy}
                       onClick={() => void buyShopItem(item)}
                     >
-                      {busyItemId === item.id ? 'Unlocking…' : 'Unlock'}
+                      {busyItemId === item.id ? "Unlocking…" : "Unlock"}
                     </button>
                   ) : equippable ? (
                     <button
@@ -475,7 +533,7 @@ export function Shoppe({
                       className="focus-ring rounded-xl border border-[var(--paper-border)] px-3 py-2 text-sm font-semibold"
                       onClick={() => toggleEquip(item)}
                     >
-                      {equipped ? 'Unequip' : 'Equip'}
+                      {equipped ? "Unequip" : "Equip"}
                     </button>
                   ) : (
                     <span className="rounded-xl border border-[var(--paper-border)] px-3 py-2 text-xs font-semibold uppercase tracking-wide opacity-75">
@@ -484,12 +542,12 @@ export function Shoppe({
                   )}
                   {owned ? (
                     <span className="rounded-full border border-[var(--paper-border)] px-2 py-1 text-[11px] font-semibold uppercase tracking-wide opacity-75">
-                      {equipped ? 'Equipped' : accessory ? 'Owned' : 'Unlocked'}
+                      {equipped ? "Equipped" : accessory ? "Owned" : "Unlocked"}
                     </span>
                   ) : null}
                 </div>
               </article>
-            )
+            );
           })}
         </div>
       </section>
@@ -499,24 +557,27 @@ export function Shoppe({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="font-medium">Mystery cat photo</div>
-              <div className="ink-muted text-sm">A random cat print from the Cat API.</div>
+              <div className="ink-muted text-sm">
+                A random cat print from the Cat API.
+              </div>
             </div>
             <div className="font-mono text-lg font-bold">{CAT_COST} pts</div>
           </div>
 
           {!pointsOn ? (
             <div className="ink-muted mt-4 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm">
-              Points are turned off in Settings — enable the points system to collect cats.
+              Points are turned off in Settings — enable the points system to
+              collect cats.
             </div>
           ) : (
             <button
               type="button"
               className="focus-ring mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
-              style={{ background: 'var(--success)', color: 'rgba(0,0,0,0.9)' }}
+              style={{ background: "var(--success)", color: "rgba(0,0,0,0.9)" }}
               disabled={busy}
               onClick={buyCatPhoto}
             >
-              {busy ? 'Collecting…' : 'Collect a mystery cat'}
+              {busy ? "Collecting…" : "Collect a mystery cat"}
             </button>
           )}
 
@@ -542,7 +603,9 @@ export function Shoppe({
             alt="Collected mystery cat"
             className="mt-4 w-full rounded-3xl border border-[var(--paper-border)] object-cover"
           />
-          {catId ? <div className="ink-muted mt-2 text-xs">Cat ID: {catId}</div> : null}
+          {catId ? (
+            <div className="ink-muted mt-2 text-xs">Cat ID: {catId}</div>
+          ) : null}
         </section>
       ) : null}
 
@@ -550,8 +613,8 @@ export function Shoppe({
         <div className="font-paper text-xl">My collection</div>
         <div className="ink-muted mt-1 text-sm">
           {collection.length === 0
-            ? 'No cats collected yet — adopt your first mystery cat above.'
-            : `${collection.length} cat${collection.length === 1 ? '' : 's'} in your gallery.`}
+            ? "No cats collected yet — adopt your first mystery cat above."
+            : `${collection.length} cat${collection.length === 1 ? "" : "s"} in your gallery.`}
         </div>
 
         {collection.length > 0 ? (
@@ -599,12 +662,12 @@ export function Shoppe({
               className="mt-4 w-full rounded-3xl border border-[var(--paper-border)] object-cover"
             />
             <div className="ink-muted mt-3 text-sm">
-              Collected {format(selectedCat.collectedAt, 'MMM d, yyyy')}
+              Collected {format(selectedCat.collectedAt, "MMM d, yyyy")}
             </div>
             <div className="ink-muted mt-1 text-xs">ID: {selectedCat.id}</div>
           </div>
         </div>
       ) : null}
     </div>
-  )
+  );
 }

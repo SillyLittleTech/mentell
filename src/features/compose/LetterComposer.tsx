@@ -96,26 +96,22 @@ function generateRandomId() {
     : Math.random().toString(36).slice(2);
 }
 
-function SkeletonInput({ className = '' }: { className?: string }) {
+function SkeletonInput({ className = "" }: { className?: string }) {
   return (
     <div
       className={`skeleton-block skeleton-block--static w-full h-[60px] ${className}`.trim()}
       aria-hidden
     />
-  )
+  );
 }
 
-function SkeletonTextarea({
-  className = '',
-}: {
-  className?: string
-}) {
+function SkeletonTextarea({ className = "" }: { className?: string }) {
   return (
     <div
       className={`skeleton-block skeleton-block--static w-full ${className}`.trim()}
       aria-hidden
     />
-  )
+  );
 }
 
 export function LetterComposer({
@@ -509,43 +505,43 @@ export function LetterComposer({
                 <div className="font-paper text-xl">
                   Additional entry {index + 1}
                 </div>
-                  <Field
-                    label="Situation"
-                    overLimit={isOverLimit(draft.situation, ENTRY_SITUATION_MAX)}
-                  >
-                    {disabled ? (
-                      <SkeletonInput />
-                    ) : (
-                      <LimitedInput
-                        disabled={disabled}
-                        maxChars={ENTRY_SITUATION_MAX}
-                        value={draft.situation}
-                        onChange={(e) =>
-                          updateDraft(draft.id, { situation: e.target.value })
-                        }
-                        placeholder="What happened?"
-                      />
-                    )}
-                  </Field>
-                  <Field
-                    label="Details"
-                    overLimit={isOverLimit(draft.details, ENTRY_DETAILS_MAX)}
-                  >
-                    {disabled ? (
-                      <SkeletonTextarea className="min-h-[120px]" />
-                    ) : (
-                      <LimitedTextarea
-                        disabled={disabled}
-                        maxChars={ENTRY_DETAILS_MAX}
-                        className="min-h-[120px]"
-                        value={draft.details}
-                        onChange={(e) =>
-                          updateDraft(draft.id, { details: e.target.value })
-                        }
-                        placeholder="Details for this entry…"
-                      />
-                    )}
-                  </Field>
+                <Field
+                  label="Situation"
+                  overLimit={isOverLimit(draft.situation, ENTRY_SITUATION_MAX)}
+                >
+                  {disabled ? (
+                    <SkeletonInput />
+                  ) : (
+                    <LimitedInput
+                      disabled={disabled}
+                      maxChars={ENTRY_SITUATION_MAX}
+                      value={draft.situation}
+                      onChange={(e) =>
+                        updateDraft(draft.id, { situation: e.target.value })
+                      }
+                      placeholder="What happened?"
+                    />
+                  )}
+                </Field>
+                <Field
+                  label="Details"
+                  overLimit={isOverLimit(draft.details, ENTRY_DETAILS_MAX)}
+                >
+                  {disabled ? (
+                    <SkeletonTextarea className="min-h-[120px]" />
+                  ) : (
+                    <LimitedTextarea
+                      disabled={disabled}
+                      maxChars={ENTRY_DETAILS_MAX}
+                      className="min-h-[120px]"
+                      value={draft.details}
+                      onChange={(e) =>
+                        updateDraft(draft.id, { details: e.target.value })
+                      }
+                      placeholder="Details for this entry…"
+                    />
+                  )}
+                </Field>
                 <EntryExtrasFields
                   draft={draft}
                   disabled={disabled}
@@ -686,7 +682,7 @@ export function LetterComposer({
                     accent={false}
                     className="text-[rgba(0,0,0,0.92)]"
                   />
-                  {isSubmitting ? <Throbber label="Checking" /> : 'Submit'}
+                  {isSubmitting ? <Throbber label="Checking" /> : "Submit"}
                 </span>
               </button>
             )}
