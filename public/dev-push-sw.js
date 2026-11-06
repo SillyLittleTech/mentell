@@ -53,7 +53,7 @@ self.addEventListener('notificationclick', (event) => {
           if ('navigate' in client && typeof client.navigate === 'function') {
             return client.navigate(target)
           }
-          return
+          return undefined
         }
       }
       return self.clients.openWindow(target)

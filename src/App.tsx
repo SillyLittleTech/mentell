@@ -515,7 +515,9 @@ function HomePlaceholder({
                 forceIndex: true,
                 userId: auth?.user?.uid || getOrCreateAnonSearchUserId(),
               })
-                .catch(() => {})
+                .catch((error) => {
+                  console.error('Projector search indexing failed:', error)
+                })
                 .finally(() => {
                   emitBackgroundActivity({ type: 'stop', id: 'index', message: '' })
                 })
