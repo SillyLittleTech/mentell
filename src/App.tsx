@@ -236,9 +236,7 @@ function App() {
                 onPackageAward={handleScoreChange}
               />
 
-              <main
-                className="relative mt-6 w-full max-w-4xl overflow-visible"
-              >
+              <main className="relative mt-6 w-full max-w-4xl overflow-visible">
                 <AnimatedRoutes>
                   <Route
                     path="/"
@@ -483,9 +481,9 @@ function HomePlaceholder({
     if (composerLocked) setShakeBanner((k) => k + 1);
   }
 
-  async function runAfterJournalSubmit(award: Awaited<
-    ReturnType<typeof awardForSubmission>
-  >) {
+  async function runAfterJournalSubmit(
+    award: Awaited<ReturnType<typeof awardForSubmission>>,
+  ) {
     if (
       award.hbcmDisplay >= 5 &&
       shouldShowClusterCelebration("hbcm_peak", 8 * 86_400_000)
@@ -496,10 +494,7 @@ function HomePlaceholder({
         at: Date.now(),
       });
     }
-    if (
-      award.missedDaysApplied >= 14 &&
-      shouldShowComeback(30 * 86_400_000)
-    ) {
+    if (award.missedDaysApplied >= 14 && shouldShowComeback(30 * 86_400_000)) {
       recordComebackToast({ gapDays: award.missedDaysApplied, at: Date.now() });
     }
   }
@@ -517,7 +512,11 @@ function HomePlaceholder({
       subtitle="Choose a quick sentiment log or a full letter entry."
     >
       <DeskCharacterLayout>
-        <div className="mb-6 flex flex-wrap gap-2" role="tablist" aria-label="Log type">
+        <div
+          className="mb-6 flex flex-wrap gap-2"
+          role="tablist"
+          aria-label="Log type"
+        >
           <button
             type="button"
             role="tab"
@@ -574,7 +573,8 @@ function HomePlaceholder({
                 <div className="font-paper text-xl">Entry</div>
               </div>
               <p className="ink-muted mt-2 text-sm">
-                Full letter flow — same as before, with review and AI search indexing.
+                Full letter flow — same as before, with review and AI search
+                indexing.
               </p>
             </button>
           </div>
@@ -614,10 +614,16 @@ function HomePlaceholder({
                 message: "Syncing to cloud...",
               });
               pushLocalChangesNow().finally(() => {
-                emitBackgroundActivity({ type: "stop", id: "sync", message: "" });
+                emitBackgroundActivity({
+                  type: "stop",
+                  id: "sync",
+                  message: "",
+                });
               });
               await runAfterJournalSubmit(award);
-              onScoreChange(award.totalDelta, award.hint, { deferOverlay: true });
+              onScoreChange(award.totalDelta, award.hint, {
+                deferOverlay: true,
+              });
               setSubmitting(true);
             }}
           />

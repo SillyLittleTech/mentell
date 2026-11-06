@@ -1,52 +1,52 @@
-import { useEffect, useId, useState } from 'react'
-import { LOCAL_DATA_CHANGED_EVENT } from '../../shared/sync/localDataEvents'
-import { getShopWeekDays, type ShopWeekDay } from './shopWeeklyProgress'
-import type { FeelingDayClass } from '../compilation/feelingsSemantics'
+import { useEffect, useId, useState } from "react";
+import { LOCAL_DATA_CHANGED_EVENT } from "../../shared/sync/localDataEvents";
+import { getShopWeekDays, type ShopWeekDay } from "./shopWeeklyProgress";
+import type { FeelingDayClass } from "../compilation/feelingsSemantics";
 
 function segmentGradient(a: FeelingDayClass, b: FeelingDayClass) {
   const color = (c: FeelingDayClass) => {
     switch (c) {
-      case 'positive':
-        return 'rgb(42,155,88)'
-      case 'neutral':
-        return 'rgb(214,189,64)'
-      case 'negative':
-        return 'rgb(198,29,29)'
-      case 'missed':
-        return 'rgb(22,22,22)'
+      case "positive":
+        return "rgb(42,155,88)";
+      case "neutral":
+        return "rgb(214,189,64)";
+      case "negative":
+        return "rgb(198,29,29)";
+      case "missed":
+        return "rgb(22,22,22)";
       default:
-        return 'rgb(190,190,195)'
+        return "rgb(190,190,195)";
     }
-  }
-  return `linear-gradient(90deg, ${color(a)} 0%, ${color(b)} 100%)`
+  };
+  return `linear-gradient(90deg, ${color(a)} 0%, ${color(b)} 100%)`;
 }
 
 export function ShopWeeklyProgressBar() {
-  const labelId = useId()
-  const [days, setDays] = useState<ShopWeekDay[] | null>(null)
+  const labelId = useId();
+  const [days, setDays] = useState<ShopWeekDay[] | null>(null);
 
   useEffect(() => {
-    let active = true
+    let active = true;
     const refresh = async () => {
-      const next = await getShopWeekDays()
-      if (active) setDays(next)
-    }
-    refresh()
-    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, refresh)
-    const id = window.setInterval(refresh, 4000)
+      const next = await getShopWeekDays();
+      if (active) setDays(next);
+    };
+    refresh();
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, refresh);
+    const id = window.setInterval(refresh, 4000);
     return () => {
-      active = false
-      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, refresh)
-      window.clearInterval(id)
-    }
-  }, [])
+      active = false;
+      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, refresh);
+      window.clearInterval(id);
+    };
+  }, []);
 
   if (!days) {
     return (
       <div className="ink-muted text-sm" aria-hidden>
         Loading weekly progress…
       </div>
-    )
+    );
   }
 
   return (
@@ -55,27 +55,35 @@ export function ShopWeeklyProgressBar() {
         Weekly progress
       </div>
       <p className="ink-muted mt-1 text-sm">
-        Gradient bar for this week — each slice blends with the next. Gear motif is decorative.
+        Gradient bar for this week — each slice blends with the next. Gear motif
+        is decorative.
       </p>
 
       <div
         className="relative mt-5 overflow-hidden rounded-2xl border border-[var(--paper-border)]"
         style={{
           backgroundImage:
-            'repeating-linear-gradient(135deg, rgba(0,0,0,0.04) 0 10px, rgba(0,0,0,0.01) 10px 20px)',
+            "repeating-linear-gradient(135deg, rgba(0,0,0,0.04) 0 10px, rgba(0,0,0,0.01) 10px 20px)",
         }}
       >
-        <div className="grid grid-cols-7 gap-0" role="list" aria-label="Week feelings, one cell per day">
+        <div
+          className="grid grid-cols-7 gap-0"
+          role="list"
+          aria-label="Week feelings, one cell per day"
+        >
           {days.map((d, i) => {
-            const next = days[Math.min(i + 1, days.length - 1)]
-            const bg = segmentGradient(d.feelingClass, next.feelingClass)
+            const next = days[Math.min(i + 1, days.length - 1)];
+            const bg = segmentGradient(d.feelingClass, next.feelingClass);
             return (
               <div
                 key={d.dateKey}
                 role="listitem"
                 className="relative min-h-[4.5rem] border-r border-black/10 last:border-r-0"
                 style={{
-                  background: i === days.length - 1 ? segmentGradient(d.feelingClass, d.feelingClass) : bg,
+                  background:
+                    i === days.length - 1
+                      ? segmentGradient(d.feelingClass, d.feelingClass)
+                      : bg,
                 }}
               >
                 <span
@@ -89,7 +97,7 @@ export function ShopWeeklyProgressBar() {
                   {d.shortLabel}
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       </div>
@@ -102,7 +110,7 @@ export function ShopWeeklyProgressBar() {
         <KeySwatch label="No data" className="bg-[rgb(190,190,195)]" />
       </div>
     </section>
-  )
+  );
 }
 
 function KeySwatch({ label, className }: { label: string; className: string }) {
@@ -111,5 +119,5 @@ function KeySwatch({ label, className }: { label: string; className: string }) {
       <span className={`inline-block h-3 w-6 rounded-sm ${className}`} />
       {label}
     </span>
-  )
+  );
 }

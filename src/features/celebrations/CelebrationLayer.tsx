@@ -1,38 +1,43 @@
-import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import type {
   ClusterCelebrationPayload,
   ComebackPayload,
-} from './clusterCelebration'
-import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
+} from "./clusterCelebration";
+import {
+  motionDuration,
+  shouldReduceMotion,
+} from "../../shared/motion/useMotionPrefs";
 
 export function CelebrationLayer() {
-  const reduced = shouldReduceMotion()
-  const [cluster, setCluster] = useState<ClusterCelebrationPayload | null>(null)
-  const [comeback, setComeback] = useState<ComebackPayload | null>(null)
+  const reduced = shouldReduceMotion();
+  const [cluster, setCluster] = useState<ClusterCelebrationPayload | null>(
+    null,
+  );
+  const [comeback, setComeback] = useState<ComebackPayload | null>(null);
 
   useEffect(() => {
     const onCluster = (e: Event) => {
-      const d = (e as CustomEvent<ClusterCelebrationPayload>).detail
-      if (d) setCluster(d)
-    }
+      const d = (e as CustomEvent<ClusterCelebrationPayload>).detail;
+      if (d) setCluster(d);
+    };
     const onComeback = (e: Event) => {
-      const d = (e as CustomEvent<ComebackPayload>).detail
-      if (d) setComeback(d)
-    }
-    window.addEventListener('mentell:cluster_celebration', onCluster)
-    window.addEventListener('mentell:comeback_toast', onComeback)
+      const d = (e as CustomEvent<ComebackPayload>).detail;
+      if (d) setComeback(d);
+    };
+    window.addEventListener("mentell:cluster_celebration", onCluster);
+    window.addEventListener("mentell:comeback_toast", onComeback);
     return () => {
-      window.removeEventListener('mentell:cluster_celebration', onCluster)
-      window.removeEventListener('mentell:comeback_toast', onComeback)
-    }
-  }, [])
+      window.removeEventListener("mentell:cluster_celebration", onCluster);
+      window.removeEventListener("mentell:comeback_toast", onComeback);
+    };
+  }, []);
 
   useEffect(() => {
-    if (!comeback) return
-    const t = window.setTimeout(() => setComeback(null), 5200)
-    return () => window.clearTimeout(t)
-  }, [comeback])
+    if (!comeback) return;
+    const t = window.setTimeout(() => setComeback(null), 5200);
+    return () => window.clearTimeout(t);
+  }, [comeback]);
 
   return (
     <>
@@ -56,16 +61,18 @@ export function CelebrationLayer() {
             >
               <div className="font-paper text-2xl">Nice consistency</div>
               <p className="ink-muted mt-2 text-sm">
-                Your heat-based consistency reached{' '}
-                <span className="font-mono font-bold">{cluster.hbcmDisplay}</span> — that takes care in real life, not
-                just calendar luck.
+                Your heat-based consistency reached{" "}
+                <span className="font-mono font-bold">
+                  {cluster.hbcmDisplay}
+                </span>{" "}
+                — that takes care in real life, not just calendar luck.
               </p>
               {!reduced ? (
                 <div
                   className="mt-4 h-16 overflow-hidden rounded-2xl border border-[var(--paper-border)] opacity-80"
                   style={{
                     background:
-                      'repeating-linear-gradient(90deg, rgba(42,155,88,0.35) 0 12px, rgba(214,189,64,0.35) 12px 24px, rgba(198,29,29,0.25) 24px 36px)',
+                      "repeating-linear-gradient(90deg, rgba(42,155,88,0.35) 0 12px, rgba(214,189,64,0.35) 12px 24px, rgba(198,29,29,0.25) 24px 36px)",
                   }}
                   aria-hidden
                 />
@@ -94,11 +101,14 @@ export function CelebrationLayer() {
               exit={reduced ? undefined : { y: 8, opacity: 0 }}
             >
               <span className="font-medium">Welcome back</span>
-              <span className="ink-muted"> — after a longer pause, logging again matters.</span>
+              <span className="ink-muted">
+                {" "}
+                — after a longer pause, logging again matters.
+              </span>
             </motion.div>
           ) : null}
         </AnimatePresence>
       </div>
     </>
-  )
+  );
 }

@@ -1,30 +1,33 @@
-import { AnimatePresence, motion } from 'framer-motion'
-import { useLayoutEffect, useRef, useState } from 'react'
-import { motionDuration } from '../../shared/motion/useMotionPrefs'
-import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
-import { MaterialIcon } from '../../components/MaterialIcon'
-import { HbcmDisplay } from './HbcmDisplay'
+import { AnimatePresence, motion } from "framer-motion";
+import { useLayoutEffect, useRef, useState } from "react";
+import { motionDuration } from "../../shared/motion/useMotionPrefs";
+import { shouldReduceMotion } from "../../shared/motion/useMotionPrefs";
+import { MaterialIcon } from "../../components/MaterialIcon";
+import { HbcmDisplay } from "./HbcmDisplay";
 
 export function ScoreTicker(props: {
-  total: number
-  hbcmDisplay: number
-  hbcmPulse?: boolean
-  hint: string | null
+  total: number;
+  hbcmDisplay: number;
+  hbcmPulse?: boolean;
+  hint: string | null;
 }) {
-  const { total, hbcmDisplay, hbcmPulse } = props
-  const reduced = shouldReduceMotion()
+  const { total, hbcmDisplay, hbcmPulse } = props;
+  const reduced = shouldReduceMotion();
 
-  const prevTotalRef = useRef(total)
-  const [direction, setDirection] = useState<'increase' | 'decrease'>('increase')
+  const prevTotalRef = useRef(total);
+  const [direction, setDirection] = useState<"increase" | "decrease">(
+    "increase",
+  );
 
   useLayoutEffect(() => {
-    const nextDirection = total >= prevTotalRef.current ? 'increase' : 'decrease'
-    setDirection(nextDirection)
-    prevTotalRef.current = total
-  }, [total])
+    const nextDirection =
+      total >= prevTotalRef.current ? "increase" : "decrease";
+    setDirection(nextDirection);
+    prevTotalRef.current = total;
+  }, [total]);
 
-  const enterOffset = direction === 'increase' ? 14 : -14
-  const exitOffset = direction === 'increase' ? -14 : 14
+  const enterOffset = direction === "increase" ? 14 : -14;
+  const exitOffset = direction === "increase" ? -14 : 14;
 
   return (
     <div className="flex flex-nowrap items-center justify-end gap-2">
@@ -34,15 +37,18 @@ export function ScoreTicker(props: {
         transition={{ duration: motionDuration(0.16) || 0 }}
       >
         <div className="flex items-center gap-2">
-          <MaterialIcon name="trophy" accent={false} className="opacity-70" size={18} />
+          <MaterialIcon
+            name="trophy"
+            accent={false}
+            className="opacity-70"
+            size={18}
+          />
           <div className="relative min-w-[2.8ch] text-right">
             <AnimatePresence initial={false} mode="wait">
               <motion.div
                 key={total}
                 className="font-mono text-lg font-bold"
-                initial={
-                  reduced ? false : { y: enterOffset, opacity: 0 }
-                }
+                initial={reduced ? false : { y: enterOffset, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={reduced ? undefined : { y: exitOffset, opacity: 0 }}
                 transition={{ duration: motionDuration(0.28) || 0 }}
@@ -58,8 +64,12 @@ export function ScoreTicker(props: {
         whileHover={reduced ? undefined : { y: -1.5 }}
         transition={{ duration: motionDuration(0.16) || 0 }}
       >
-        <HbcmDisplay hbcmDisplay={hbcmDisplay} pulse={hbcmPulse} variant="chip" />
+        <HbcmDisplay
+          hbcmDisplay={hbcmDisplay}
+          pulse={hbcmPulse}
+          variant="chip"
+        />
       </motion.div>
     </div>
-  )
+  );
 }
