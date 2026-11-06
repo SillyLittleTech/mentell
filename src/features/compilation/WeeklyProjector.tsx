@@ -11,8 +11,11 @@ import {
 } from './weeklyStats'
 import type { EntryRow } from '../../db/schema'
 import { getScoreSnapshot } from '../score/scoreService'
-import { StreakDisplay } from '../score/StreakDisplay'
+import { HbcmDisplay } from '../score/HbcmDisplay'
 import { SCORE_CHANGED_EVENT } from '../score/scoreEvents'
+import { FeelingsOverTimeChart } from './FeelingsOverTimeChart'
+import { getFeelingsOverTimeSeries, type FeelingsRange } from './feelingsOverTimeData'
+import type { FeelingPoint } from './feelingsOverTimeData'
 import { useBodyScrollLock } from '../../shared/motion/useBodyScrollLock'
 import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
 import { getLatestDeliveredWeeklyPackage } from '../packages/packageService'
@@ -27,6 +30,7 @@ import {
 import { loadAiProfile, profileFingerprint, type AiProfile } from './aiProfile'
 import { clearWeeklyAiCache, getCachedWeeklySummary } from './weeklyAiCache'
 import { OfflineDeviceSyncSection } from '../settings/OfflineDeviceSyncSection'
+import { LOCAL_DATA_CHANGED_EVENT } from '../../shared/sync/localDataEvents'
 import { WeeklyAiSettings, WeeklyAiSettingsButton } from './WeeklyAiSettings'
 import {
   buildRawReportHtml,
@@ -85,6 +89,9 @@ export function WeeklyProjector() {
   const [paginationCursor, setPaginationCursor] = useState<WeekCursor>(null)
   const [hasMoreWeeks, setHasMoreWeeks] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [feelingsRange, setFeelingsRange] = useState<FeelingsRange>('week')
+  const [feelingsPoints, setFeelingsPoints] = useState<FeelingPoint[]>([])
+  const feelingsTitleId = 'feelings-over-time-heading'
   const aiEnabled = weeklyAiSummaryEnabled()
   const searchEnabled = projectorSearchEnabled()
   const isOnline = useOnlineStatus()
@@ -166,6 +173,25 @@ export function WeeklyProjector() {
     window.addEventListener(SCORE_CHANGED_EVENT, onScore)
     return () => window.removeEventListener(SCORE_CHANGED_EVENT, onScore)
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const refresh = async () => {
+      try {
+        const { points } = await getFeelingsOverTimeSeries(feelingsRange)
+        if (!cancelled) setFeelingsPoints(points)
+      } catch {
+        if (!cancelled) setFeelingsPoints([])
+      }
+    }
+    void refresh()
+    const onData = () => void refresh()
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, onData)
+    return () => {
+      cancelled = true
+      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, onData)
+    }
+  }, [feelingsRange])
 
   // Reset older weeks when primary week changes
   // (handled via olderAnchorWeek mismatch — no effect needed)
@@ -277,11 +303,36 @@ export function WeeklyProjector() {
           <ProjectorCard title="Entries logged" value={stats.total} />
           <ProjectorCard title="Warnings flagged" value={stats.warnings} />
           <ProjectorCard title="Current score" value={score.total} />
-          <StreakDisplay
-            streak={score.streak}
-            variant="card"
-            reducedMotion={shouldReduceMotion()}
-          />
+          <div className="paper flex flex-col justify-center rounded-2xl border border-[var(--paper-border)] px-4 py-3">
+            <div className="ink-muted text-[11px] font-semibold uppercase">HBCM</div>
+            <HbcmDisplay hbcmDisplay={score.hbcmDisplay} variant="inline" />
+          </div>
+        </div>
+      </div>
+
+      <div className="paper rounded-3xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div id={feelingsTitleId} className="font-paper text-xl">
+            Feelings over time
+          </div>
+          <select
+            className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 text-sm"
+            aria-label="Feelings chart range"
+            value={feelingsRange}
+            onChange={(e) => setFeelingsRange(e.target.value as FeelingsRange)}
+          >
+            <option value="week">This week</option>
+            <option value="month">This month</option>
+            <option value="year">This year</option>
+            <option value="all">All time</option>
+          </select>
+        </div>
+        <p className="ink-muted mt-1 text-sm">
+          Chronological sentiment with gradient transitions. Quick logs count for color but stay out of AI search
+          index.
+        </p>
+        <div className="mt-4">
+          <FeelingsOverTimeChart points={feelingsPoints} titleId={feelingsTitleId} />
         </div>
       </div>
 

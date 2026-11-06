@@ -1,32 +1,18 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { motionDuration } from '../../shared/motion/useMotionPrefs'
-import { StreakFlame } from './StreakFlame'
 import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
-import { StreakFreezeBadge } from './StreakFreezeBadge'
 import { MaterialIcon } from '../../components/MaterialIcon'
+import { HbcmDisplay } from './HbcmDisplay'
 
-export function ScoreTicker({
-  total,
-  streak,
-  streakFreezes,
-  hint,
-  streakOutcome,
-}: {
+export function ScoreTicker(props: {
   total: number
-  streak: number
-  streakFreezes?: number
+  hbcmDisplay: number
+  hbcmPulse?: boolean
   hint: string | null
-  streakOutcome?:
-    | { kind: 'break'; key: number; from: number }
-    | { kind: 'freeze'; key: number; previousFreezes: number; nextFreezes: number }
-    | null
 }) {
+  const { total, hbcmDisplay, hbcmPulse } = props
   const reduced = shouldReduceMotion()
-  const streakPulse = Boolean(hint?.toLowerCase().includes('streak'))
-  const freezeAnimation = streakOutcome?.kind === 'freeze' ? streakOutcome : null
-  const visibleFreezes =
-    freezeAnimation && !reduced ? Math.max(streakFreezes ?? 0, freezeAnimation.previousFreezes) : streakFreezes
 
   const prevTotalRef = useRef(total)
   const [direction, setDirection] = useState<'increase' | 'decrease'>('increase')
@@ -72,16 +58,8 @@ export function ScoreTicker({
         whileHover={reduced ? undefined : { y: -1.5 }}
         transition={{ duration: motionDuration(0.16) || 0 }}
       >
-        <StreakFlame
-          streak={streak}
-          reducedMotion={reduced}
-          pulse={streakPulse}
-          outcomeAnimation={streakOutcome}
-        />
+        <HbcmDisplay hbcmDisplay={hbcmDisplay} pulse={hbcmPulse} variant="chip" />
       </motion.div>
-      {visibleFreezes !== undefined && visibleFreezes > 0 ? (
-        <StreakFreezeBadge count={visibleFreezes} consumeAnimation={freezeAnimation} />
-      ) : null}
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { stripDateKey } from '../../shared/dates'
 import { format, parseISO, subDays } from 'date-fns'
 import { getDb, type EntryEmotion, type EntryRow, type EntrySentiment, type RiskLevel } from '../../db/schema'
 import { isDebugMode } from '../../shared/debug/debugFlags'
+import { isRiskHeatV2Enabled } from '../../shared/features/featureFlags'
 import { isAiEnabledLocally } from '../../shared/settings/appSettings'
 import { scopedStorageKey } from '../../shared/storage/storageScope'
 import { normalizeEndpointUrl } from '../compilation/weeklyAiSummary'
@@ -11,6 +12,13 @@ import {
   type LiteralSentimentScore,
 } from './sentimentScorer'
 import { scoreSemanticRisk, type SemanticRiskScore } from './semanticRiskScorer'
+import {
+  normalizedRiskInput,
+  rmaFromWindow,
+  sustainedElevatedHeat,
+  updateEmaRmaState,
+  type EmaRmaHeatState,
+} from './emaRmaHeat'
 
 const CRISIS_TERMS = [
   'suicide',
@@ -505,12 +513,15 @@ export type RiskAssessment = {
   riskScore: number
   interventionScore: number
   exceScore: number
+  /** EMA/RMA heat (normalized -1..1) after this assessment — for audit/debug. */
+  emaRmaHeatEma?: number
+  emaRmaHeatRma?: number
   riskLevel: RiskLevel
   warningLevel: 'none' | 'warn'
   flaggedTerms: string[]
   reasons: string[]
   supportiveMessage?: string
-  responseKind: 'none' | 'positive' | 'support' | 'crisis'
+  responseKind: 'none' | 'positive' | 'support' | 'crisis' | 'hypermania'
   crisisConfirmed?: boolean
   literalSentimentLabel: LiteralSentimentLabel
   literalSentimentConfidence: number
@@ -576,6 +587,13 @@ type SupportMemory = {
 }
 
 const USED_SUPPORT_MEMORY_KEY = scopedStorageKey('mentell.ai.supportMemory.used')
+const EMA_RMA_STATE_KEY = scopedStorageKey('mentell.v2.ema_rma_heat.state')
+const EXCE_RECENT_KEY = scopedStorageKey('mentell.v2.hypermania.exceRecent')
+
+const EMA_CRISIS_SUPPORT_FLOOR = 0.9
+const HYPERMANIA_EXCE_THRESHOLD = 5
+const HYPERMANIA_RECENT_WINDOW = 6
+const HYPERMANIA_REPEAT_MIN = 3
 const MEMORY_STOP_WORDS = new Set([
   'about',
   'after',
@@ -667,6 +685,53 @@ function loadUsedSupportMemoryIds() {
 function saveUsedSupportMemoryId(id: string) {
   const next = [id, ...loadUsedSupportMemoryIds().filter((usedId) => usedId !== id)].slice(0, 24)
   localStorage.setItem(USED_SUPPORT_MEMORY_KEY, JSON.stringify(next))
+}
+
+function loadEmaRmaState(): EmaRmaHeatState | null {
+  try {
+    const raw = localStorage.getItem(EMA_RMA_STATE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<EmaRmaHeatState>
+    if (typeof parsed.ema !== 'number' || !Array.isArray(parsed.rmaWindow)) return null
+    return {
+      ema: parsed.ema,
+      rmaWindow: parsed.rmaWindow.filter((n) => typeof n === 'number'),
+      lastUpdatedAt: typeof parsed.lastUpdatedAt === 'number' ? parsed.lastUpdatedAt : Date.now(),
+    }
+  } catch {
+    return null
+  }
+}
+
+function saveEmaRmaState(state: EmaRmaHeatState) {
+  localStorage.setItem(EMA_RMA_STATE_KEY, JSON.stringify(state))
+}
+
+function pushExceMilestoneScore(exceScore: number): number[] {
+  try {
+    const raw = localStorage.getItem(EXCE_RECENT_KEY)
+    const prev = raw ? (JSON.parse(raw) as unknown) : []
+    const list = Array.isArray(prev) ? prev.filter((n): n is number => typeof n === 'number') : []
+    list.push(exceScore)
+    const next = list.slice(-HYPERMANIA_RECENT_WINDOW)
+    localStorage.setItem(EXCE_RECENT_KEY, JSON.stringify(next))
+    return next
+  } catch {
+    return [exceScore]
+  }
+}
+
+function detectHypermania(
+  crisisConfirmed: boolean,
+  exceScore: number,
+  preliminaryKind: RiskAssessment['responseKind'],
+): boolean {
+  if (crisisConfirmed) return false
+  if (exceScore < HYPERMANIA_EXCE_THRESHOLD) return false
+  if (preliminaryKind !== 'positive') return false
+  const recent = pushExceMilestoneScore(exceScore)
+  const strong = recent.filter((s) => s >= HYPERMANIA_EXCE_THRESHOLD).length
+  return strong >= HYPERMANIA_REPEAT_MIN
 }
 
 function clamp01(n: number) {
@@ -1112,7 +1177,7 @@ export async function assessLocalRisk(
     scoreLiteralSentiment(assessmentText),
     scoreSemanticRisk(assessmentText),
   ])
-  const interventionScore = applyLiteralSentiment(
+  let interventionScore = applyLiteralSentiment(
     message,
     literalSentiment,
     semanticRisk,
@@ -1121,14 +1186,54 @@ export async function assessLocalRisk(
     exce.score,
     suppressSemanticRisk,
   )
-  const responseKind = responseKindForIntervention(interventionScore)
+
+  let emaNext: EmaRmaHeatState | null = null
+  let emaRmaEma = 0
+  let emaRmaRma = 0
+  if (isRiskHeatV2Enabled()) {
+    const emaPrev = loadEmaRmaState()
+    const normSignal = normalizedRiskInput({
+      riskScore: riskScoreForIntervention(interventionScore),
+      riskLevel: riskLevelForIntervention(interventionScore),
+      warningLevel: responseKindForIntervention(interventionScore) === 'crisis' ? 'warn' : 'none',
+      sentiment: input.sentiment,
+    })
+    emaNext = updateEmaRmaState(emaPrev, normSignal, Date.now())
+    saveEmaRmaState(emaNext)
+    emaRmaEma = emaNext.ema
+    emaRmaRma = rmaFromWindow(emaNext.rmaWindow)
+
+    if (
+      sustainedElevatedHeat(emaNext) &&
+      !message.crisisConfirmed &&
+      support.score < EMA_CRISIS_SUPPORT_FLOOR &&
+      responseKindForIntervention(interventionScore) !== 'crisis'
+    ) {
+      interventionScore = Math.max(interventionScore, 0.92)
+    }
+  }
+
+  let responseKind = responseKindForIntervention(interventionScore)
+  if (
+    isRiskHeatV2Enabled() &&
+    detectHypermania(message.crisisConfirmed, exce.score, responseKind)
+  ) {
+    responseKind = 'hypermania'
+  }
+
   const riskScore = riskScoreForIntervention(interventionScore)
   const riskLevel = riskLevelForIntervention(interventionScore)
   const warningLevel = responseKind === 'crisis' ? 'warn' : 'none'
+
+  const hypermaniaMessage =
+    'Your words have a lot of energy and momentum. If sleep, spending, or risk-taking are also speeding up, consider slowing down with a glass of water, a short walk, and a check-in with someone you trust — or a clinician if this pattern lasts.'
+
   return {
     riskScore,
     interventionScore,
     exceScore: exce.score,
+    emaRmaHeatEma: emaRmaEma,
+    emaRmaHeatRma: emaRmaRma,
     riskLevel,
     warningLevel,
     flaggedTerms: message.flaggedTerms,
@@ -1145,11 +1250,14 @@ export async function assessLocalRisk(
       ...heat.reasons,
       ...support.hits.map((hit) => `support: ${hit}`),
       ...exce.hits.map((hit) => `positive: ${hit}`),
+      ...(emaNext && sustainedElevatedHeat(emaNext) ? ['ema_rma_heat: sustained elevated trend'] : []),
     ]),
     supportiveMessage:
       responseKind === 'crisis'
         ? localCrisisFallbackMessage(input, message)
-        : undefined,
+        : responseKind === 'hypermania'
+          ? hypermaniaMessage
+          : undefined,
     responseKind,
     crisisConfirmed: message.crisisConfirmed,
     literalSentimentLabel: literalSentiment.label,

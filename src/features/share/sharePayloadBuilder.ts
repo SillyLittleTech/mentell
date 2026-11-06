@@ -67,7 +67,7 @@ export async function buildSharePayload(
     mixed,
     warnings,
     entries,
-    ...(permissions.showStreak ? { streak: score.streak } : {}),
+    ...(permissions.showStreak ? { streak: score.hbcmDisplay } : {}),
     ...(permissions.showScore ? { score: score.total } : {}),
   };
 }

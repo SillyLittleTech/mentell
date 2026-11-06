@@ -1,23 +1,39 @@
 import { stripDateKey } from '../../shared/dates'
-import { differenceInCalendarDays, parseISO } from 'date-fns'
 import { getDb } from '../../db/schema'
 import { isPointsEnabled } from '../../shared/settings/appSettings'
 import { scopedStorageKey } from '../../shared/storage/storageScope'
 import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
+import { SCORE_CHANGED_EVENT } from './scoreEvents'
+import {
+  applyHbcmCompletion,
+  applyHbcmMisses,
+  calendarDayGap,
+  clampHbcm,
+  hbcmDisplayValue,
+  migrateStreakToHbcmRaw,
+  HBCM_MAX,
+} from './hbcm'
 
 /** Each extra log the same day earns this fraction of the previous log's nominal award. */
 const DAILY_LOG_DECAY = 0.5
 
 const SCORE_KEY = scopedStorageKey('mentell.score.total')
-const STREAK_KEY = scopedStorageKey('mentell.score.streak')
-const LAST_DAY_KEY = scopedStorageKey('mentell.score.lastDay')
-const STREAK_FREEZE_KEY = scopedStorageKey('mentell.score.streakFreezes')
 export const SCORE_UPDATED_AT_KEY = scopedStorageKey('mentell.score.updatedAt')
 
-export const STREAK_FREEZE_COST = 2000
-export const STREAK_FREEZE_MAX = 3
-export const STREAK_RESTORE_COST = 6000
-const STREAK_RESTORE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+/** Fractional HBCM (Heat-Based Consistency Multiplier), internal 0–5. */
+export const HBCM_RAW_STORAGE_KEY = scopedStorageKey('mentell.v2.hbcm.raw')
+export const HBCM_LAST_SCORE_DAY_KEY = scopedStorageKey('mentell.v2.hbcm.lastScoreDay')
+export const HBCM_MIGRATED_FROM_STREAK_KEY = scopedStorageKey('mentell.v2.hbcm.migratedFromStreak')
+
+const HBCM_RAW_KEY = HBCM_RAW_STORAGE_KEY
+const LAST_SCORE_DAY_KEY = HBCM_LAST_SCORE_DAY_KEY
+const HBCM_MIGRATED_KEY = HBCM_MIGRATED_FROM_STREAK_KEY
+
+/** Legacy 1.x keys (cleared after migration). */
+const LEGACY_STREAK_KEY = scopedStorageKey('mentell.score.streak')
+const LEGACY_LAST_DAY_KEY = scopedStorageKey('mentell.score.lastDay')
+const LEGACY_STREAK_FREEZE_KEY = scopedStorageKey('mentell.score.streakFreezes')
+const LEGACY_STREAK_RESTORE_KEY = scopedStorageKey('mentell.score.streakRestore')
 
 export type ScoreResult = {
   base: number
@@ -27,12 +43,11 @@ export type ScoreResult = {
   logsTodayBefore: number
   totalDelta: number
   nextTotal: number
-  nextStreak: number
-  previousStreak: number
-  previousStreakFreezes: number
-  nextStreakFreezes: number
-  streakBroken: boolean
-  freezeConsumed: boolean
+  hbcmRaw: number
+  hbcmDisplay: number
+  previousHbcmRaw: number
+  missedDaysApplied: number
+  hbcmDelta: number
   hint: string | null
 }
 
@@ -46,24 +61,28 @@ export type SpendScoreResult =
   | { ok: true; spent: number; nextTotal: number }
   | { ok: false; spent: number; nextTotal: number; reason: 'insufficient' | 'invalid' }
 
-export type BuyStreakFreezeResult =
-  | { ok: true; spent: number; nextTotal: number; nextFreezes: number }
-  | { ok: false; spent: number; nextTotal: number; nextFreezes: number; reason: 'insufficient' | 'invalid' | 'max' }
-
-export type StreakRestoreCandidate = {
-  streak: number
-  restoreTo: number
-  lastDay: string
-  brokenDateKey: string
-  brokenAt: number
-  missedDays: number
+export type ScoreSyncPayload = {
+  total?: number
+  /** Prefer 2.x */
+  hbcmRaw?: number
+  /** Legacy cloud documents */
+  streak?: number
+  lastDay?: string | null
+  /** Legacy — ignored for gameplay after 2.x */
+  streakFreezes?: number
+  streakRestore?: unknown
 }
 
-export type BuyStreakRestoreResult =
-  | { ok: true; spent: number; nextTotal: number; restoredStreak: number }
-  | { ok: false; spent: number; nextTotal: number; reason: 'insufficient' | 'invalid' | 'none' }
+function getFloat(key: string, fallback: number) {
+  const raw = localStorage.getItem(key)
+  if (!raw) return fallback
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : fallback
+}
 
-const STREAK_RESTORE_KEY = scopedStorageKey('mentell.score.streakRestore')
+function setFloat(key: string, value: number) {
+  localStorage.setItem(key, String(value))
+}
 
 function getInt(key: string, fallback: number) {
   const raw = localStorage.getItem(key)
@@ -76,87 +95,27 @@ function setInt(key: string, value: number) {
   localStorage.setItem(key, String(Math.trunc(value)))
 }
 
-function readRestoreCandidate(): StreakRestoreCandidate | null {
-  try {
-    const raw = localStorage.getItem(STREAK_RESTORE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw) as Partial<StreakRestoreCandidate>
-    if (
-      typeof parsed.streak !== 'number' ||
-      typeof parsed.restoreTo !== 'number' ||
-      typeof parsed.lastDay !== 'string' ||
-      typeof parsed.brokenDateKey !== 'string' ||
-      typeof parsed.brokenAt !== 'number' ||
-      typeof parsed.missedDays !== 'number'
-    ) {
-      return null
-    }
-    if (Date.now() - parsed.brokenAt > STREAK_RESTORE_WINDOW_MS) {
-      localStorage.removeItem(STREAK_RESTORE_KEY)
-      return null
-    }
-    return {
-      streak: Math.max(0, Math.trunc(parsed.streak)),
-      restoreTo: Math.max(0, Math.trunc(parsed.restoreTo)),
-      lastDay: parsed.lastDay,
-      brokenDateKey: parsed.brokenDateKey,
-      brokenAt: Math.trunc(parsed.brokenAt),
-      missedDays: Math.max(1, Math.trunc(parsed.missedDays)),
-    }
-  } catch {
-    return null
-  }
-}
+function migrateLegacyStreakIfNeeded() {
+  if (localStorage.getItem(HBCM_MIGRATED_KEY) === '1') return
 
-function writeRestoreCandidate(candidate: StreakRestoreCandidate | null) {
-  if (!candidate) {
-    localStorage.removeItem(STREAK_RESTORE_KEY)
-    return
+  const existingRaw = localStorage.getItem(HBCM_RAW_KEY)
+  if (existingRaw === null) {
+    const legacyStreak = getInt(LEGACY_STREAK_KEY, 0)
+    setFloat(HBCM_RAW_KEY, legacyStreak > 0 ? migrateStreakToHbcmRaw(legacyStreak) : 0)
   }
-  localStorage.setItem(STREAK_RESTORE_KEY, JSON.stringify(candidate))
-}
 
-function sanitizeRestoreCandidate(candidate: StreakRestoreCandidate | null) {
-  if (!candidate) return null
-  if (
-    typeof candidate.streak !== 'number' ||
-    typeof candidate.restoreTo !== 'number' ||
-    typeof candidate.lastDay !== 'string' ||
-    typeof candidate.brokenDateKey !== 'string' ||
-    typeof candidate.brokenAt !== 'number' ||
-    typeof candidate.missedDays !== 'number'
-  ) {
-    return null
+  const last = localStorage.getItem(LAST_SCORE_DAY_KEY)
+  if (!last) {
+    const legacyLast = localStorage.getItem(LEGACY_LAST_DAY_KEY)
+    if (legacyLast) localStorage.setItem(LAST_SCORE_DAY_KEY, legacyLast)
   }
-  if (Date.now() - candidate.brokenAt > STREAK_RESTORE_WINDOW_MS) {
-    return null
-  }
-  return {
-    streak: Math.max(0, Math.trunc(candidate.streak)),
-    restoreTo: Math.max(0, Math.trunc(candidate.restoreTo)),
-    lastDay: candidate.lastDay,
-    brokenDateKey: candidate.brokenDateKey,
-    brokenAt: Math.trunc(candidate.brokenAt),
-    missedDays: Math.max(1, Math.trunc(candidate.missedDays)),
-  }
-}
 
-function isConsecutiveDay(prevDateKey: string, nextDateKey: string) {
-  try {
-    const prev = parseISO(stripDateKey(prevDateKey))
-    const next = parseISO(stripDateKey(nextDateKey))
-    return differenceInCalendarDays(next, prev) === 1
-  } catch {
-    return false
-  }
-}
+  localStorage.removeItem(LEGACY_STREAK_KEY)
+  localStorage.removeItem(LEGACY_LAST_DAY_KEY)
+  localStorage.removeItem(LEGACY_STREAK_FREEZE_KEY)
+  localStorage.removeItem(LEGACY_STREAK_RESTORE_KEY)
 
-function dayGap(prevDateKey: string, nextDateKey: string) {
-  try {
-    return differenceInCalendarDays(parseISO(stripDateKey(nextDateKey)), parseISO(stripDateKey(prevDateKey)))
-  } catch {
-    return null
-  }
+  localStorage.setItem(HBCM_MIGRATED_KEY, '1')
 }
 
 function dailyLogMultiplier(logsTodayBefore: number) {
@@ -168,13 +127,18 @@ function buildAwardHint(
   dailyMultiplier: number,
   totalDelta: number,
   bonus: number,
-  nextStreak: number,
-  freezeConsumed: boolean,
+  hbcmDisplay: number,
+  hbcmGained: boolean,
+  missedDaysApplied: number,
 ) {
   const parts: string[] = []
 
-  if (freezeConsumed) {
-    parts.push('Streak freeze used')
+  if (missedDaysApplied > 0) {
+    parts.push(
+      missedDaysApplied === 1
+        ? 'One quiet day (HBCM −0.5)'
+        : `${missedDaysApplied} quiet days (HBCM adjusted)`,
+    )
   }
 
   if (logsTodayBefore > 0) {
@@ -184,18 +148,22 @@ function buildAwardHint(
     parts.push(`${ordinal} log today (${pct}% points, +${totalDelta})`)
   } else if (bonus > 0) {
     parts.push(
-      nextStreak === 2
-        ? `Streak bonus unlocked (+${bonus})`
-        : `Streak x${nextStreak} bonus (+${bonus})`,
+      hbcmDisplay === 2
+        ? `Consistency bonus unlocked (+${bonus})`
+        : `Consistency heat ×${hbcmDisplay} (+${bonus})`,
     )
+  } else if (hbcmGained) {
+    parts.push('Day logged — HBCM +1')
   }
 
   return parts.length ? parts.join(' · ') : null
 }
 
 export async function awardForSubmission(dateKey: string): Promise<ScoreResult> {
+  migrateLegacyStreakIfNeeded()
+
   if (!isPointsEnabled()) {
-    const streak = getInt(STREAK_KEY, 0)
+    const raw = getFloat(HBCM_RAW_KEY, 0)
     return {
       base: 0,
       bonus: 0,
@@ -203,12 +171,11 @@ export async function awardForSubmission(dateKey: string): Promise<ScoreResult> 
       logsTodayBefore: 0,
       totalDelta: 0,
       nextTotal: getInt(SCORE_KEY, 0),
-      nextStreak: streak,
-      previousStreak: streak,
-      previousStreakFreezes: getInt(STREAK_FREEZE_KEY, 0),
-      nextStreakFreezes: getInt(STREAK_FREEZE_KEY, 0),
-      streakBroken: false,
-      freezeConsumed: false,
+      hbcmRaw: raw,
+      hbcmDisplay: hbcmDisplayValue(raw),
+      previousHbcmRaw: raw,
+      missedDaysApplied: 0,
+      hbcmDelta: 0,
       hint: null,
     }
   }
@@ -217,49 +184,49 @@ export async function awardForSubmission(dateKey: string): Promise<ScoreResult> 
   const dailyMultiplier = dailyLogMultiplier(logsTodayBefore)
 
   const total = getInt(SCORE_KEY, 0)
-  const streak = getInt(STREAK_KEY, 0)
-  const lastDay = localStorage.getItem(LAST_DAY_KEY)
-  const freezes = getInt(STREAK_FREEZE_KEY, 0)
-  const gap = lastDay ? dayGap(lastDay, dateKey) : null
-  const freezeConsumed = Boolean(lastDay && gap === 2 && freezes > 0)
-  const nextFreezes = freezeConsumed ? freezes - 1 : freezes
+  let hbcmRaw = clampHbcm(getFloat(HBCM_RAW_KEY, 0))
+  const previousHbcmRaw = hbcmRaw
+  const lastScoreDay = localStorage.getItem(LAST_SCORE_DAY_KEY)
 
-  const nextStreak =
-    lastDay && isConsecutiveDay(lastDay, dateKey)
-      ? streak + 1
-      : dateKey === lastDay
-        ? streak
-        : freezeConsumed
-          ? streak + 1
-          : 1
-  const streakBroken = Boolean(lastDay && dateKey !== lastDay && !freezeConsumed && nextStreak === 1)
+  let missedDaysApplied = 0
+  if (lastScoreDay && lastScoreDay !== dateKey) {
+    const gap = calendarDayGap(lastScoreDay, dateKey)
+    if (gap !== null && gap >= 2) {
+      missedDaysApplied = gap - 1
+      hbcmRaw = applyHbcmMisses(hbcmRaw, missedDaysApplied)
+    }
+  }
 
+  let hbcmGained = false
+  if (logsTodayBefore === 0) {
+    const next = applyHbcmCompletion(hbcmRaw)
+    if (next > hbcmRaw) hbcmGained = true
+    hbcmRaw = next
+  }
+
+  const hbcmDisplay = hbcmDisplayValue(hbcmRaw)
+  const bonus = hbcmDisplay >= 2 ? 50 + Math.max(0, hbcmDisplay - 2) * 25 : 0
   const base = 100
-  const bonus = nextStreak >= 2 ? 50 + Math.max(0, nextStreak - 2) * 25 : 0
   const nominal = base + bonus
   const totalDelta = Math.max(0, Math.round(nominal * dailyMultiplier))
   const nextTotal = total + totalDelta
 
   setInt(SCORE_KEY, nextTotal)
-  setInt(STREAK_KEY, nextStreak)
-  if (freezeConsumed) setInt(STREAK_FREEZE_KEY, freezes - 1)
+  setFloat(HBCM_RAW_KEY, hbcmRaw)
+  localStorage.setItem(LAST_SCORE_DAY_KEY, stripDateKey(dateKey))
   localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Date.now()))
-  if (streakBroken && streak > 1) {
-    writeRestoreCandidate({
-      streak,
-      restoreTo: streak + 1,
-      lastDay: lastDay ?? '',
-      brokenDateKey: dateKey,
-      brokenAt: Date.now(),
-      missedDays: Math.max(1, (gap ?? 2) - 1),
-    })
-  } else if (!streakBroken && nextStreak > 1) {
-    writeRestoreCandidate(null)
-  }
-  localStorage.setItem(LAST_DAY_KEY, dateKey)
+
   notifyLocalDataChanged()
 
-  const hint = buildAwardHint(logsTodayBefore, dailyMultiplier, totalDelta, bonus, nextStreak, freezeConsumed)
+  const hint = buildAwardHint(
+    logsTodayBefore,
+    dailyMultiplier,
+    totalDelta,
+    bonus,
+    hbcmDisplay,
+    hbcmGained,
+    missedDaysApplied,
+  )
 
   return {
     base,
@@ -268,72 +235,88 @@ export async function awardForSubmission(dateKey: string): Promise<ScoreResult> 
     logsTodayBefore,
     totalDelta,
     nextTotal,
-    nextStreak,
-    previousStreak: streak,
-    previousStreakFreezes: freezes,
-    nextStreakFreezes: nextFreezes,
-    streakBroken,
-    freezeConsumed,
+    hbcmRaw,
+    hbcmDisplay,
+    previousHbcmRaw,
+    missedDaysApplied,
+    hbcmDelta: hbcmRaw - previousHbcmRaw,
     hint,
   }
 }
 
-export function getScoreSnapshot() {
-  return {
-    total: getInt(SCORE_KEY, 0),
-    streak: getInt(STREAK_KEY, 0),
-    lastDay: localStorage.getItem(LAST_DAY_KEY),
-    streakFreezes: getInt(STREAK_FREEZE_KEY, 0),
-    streakRestore: readRestoreCandidate(),
-  }
+/** @deprecated 1.x restore window — HBCM does not use restores; kept for cloud doc shape. */
+export type StreakRestoreCandidate = {
+  streak: number
+  restoreTo: number
+  lastDay: string
+  brokenDateKey: string
+  brokenAt: number
+  missedDays: number
 }
 
-export type ScoreSyncPayload = {
-  total?: number
-  streak?: number
-  lastDay?: string | null
-  streakFreezes?: number
-  streakRestore?: StreakRestoreCandidate | null
+export type ScoreSnapshot = {
+  total: number
+  hbcmRaw: number
+  hbcmDisplay: number
+  lastScoreDay: string | null
+  /**
+   * Legacy cloud field: 2.x stores HBCM display (0–5) where 1.x stored streak count.
+   * @deprecated Prefer hbcmDisplay
+   */
+  streak: number
+  /** @deprecated Alias of lastScoreDay for Firestore `meta/score` */
+  lastDay: string | null
+  streakFreezes: number
+  streakRestore: StreakRestoreCandidate | null
+}
+
+export function getScoreSnapshot(): ScoreSnapshot {
+  migrateLegacyStreakIfNeeded()
+  const hbcmRaw = clampHbcm(getFloat(HBCM_RAW_KEY, 0))
+  const hbcmDisplay = hbcmDisplayValue(hbcmRaw)
+  const lastScoreDay = localStorage.getItem(LAST_SCORE_DAY_KEY)
+  return {
+    total: getInt(SCORE_KEY, 0),
+    hbcmRaw,
+    hbcmDisplay,
+    lastScoreDay,
+    streak: hbcmDisplay,
+    lastDay: lastScoreDay,
+    streakFreezes: 0,
+    streakRestore: null,
+  }
 }
 
 /** Apply a score document from cloud sync or recovery. */
 export function applyScoreSnapshotFromSync(payload: ScoreSyncPayload, updatedAt: number) {
   let changed = false
+  migrateLegacyStreakIfNeeded()
 
   if (typeof payload.total === 'number' && getInt(SCORE_KEY, 0) !== payload.total) {
     setInt(SCORE_KEY, payload.total)
     changed = true
   }
 
-  if (typeof payload.streak === 'number' && getInt(STREAK_KEY, 0) !== payload.streak) {
-    setInt(STREAK_KEY, payload.streak)
-    changed = true
-  }
-
-  if (payload.lastDay === null) {
-    // We intentionally do not remove the last day if it's null on the remote,
-    // to avoid deleting legitimate local history on a sync overwrite.
-    // (If it was truly a full wipe, the wipe logic handles dropping the DB).
-  } else if (typeof payload.lastDay === 'string' && payload.lastDay) {
-    const currentLastDay = localStorage.getItem(LAST_DAY_KEY)
-    // Only apply remote lastDay if it's chronologically newer or equal to the local lastDay
-    // This prevents older sync data from making the app think there's a day gap on the next log.
-    if (!currentLastDay || payload.lastDay > currentLastDay) {
-      localStorage.setItem(LAST_DAY_KEY, payload.lastDay)
+  if (typeof payload.hbcmRaw === 'number') {
+    const next = clampHbcm(payload.hbcmRaw)
+    if (getFloat(HBCM_RAW_KEY, 0) !== next) {
+      setFloat(HBCM_RAW_KEY, next)
+      changed = true
+    }
+  } else if (typeof payload.streak === 'number') {
+    const next = migrateStreakToHbcmRaw(payload.streak)
+    if (getFloat(HBCM_RAW_KEY, 0) !== next) {
+      setFloat(HBCM_RAW_KEY, next)
       changed = true
     }
   }
 
-  if (typeof payload.streakFreezes === 'number' && getInt(STREAK_FREEZE_KEY, 0) !== payload.streakFreezes) {
-    setStreakFreezesForSync(payload.streakFreezes)
-    changed = true
-  }
-
-  if (payload.streakRestore === null || typeof payload.streakRestore === 'object') {
-    const currentRestore = localStorage.getItem(STREAK_RESTORE_KEY)
-    const nextRestore = payload.streakRestore ? JSON.stringify(payload.streakRestore) : null
-    if (currentRestore !== nextRestore) {
-      setStreakRestoreForSync(payload.streakRestore ?? null)
+  if (payload.lastDay === null) {
+    // preserve local last score day
+  } else if (typeof payload.lastDay === 'string' && payload.lastDay) {
+    const current = localStorage.getItem(LAST_SCORE_DAY_KEY)
+    if (!current || payload.lastDay > current) {
+      localStorage.setItem(LAST_SCORE_DAY_KEY, payload.lastDay)
       changed = true
     }
   }
@@ -347,7 +330,7 @@ export function applyScoreSnapshotFromSync(payload: ScoreSyncPayload, updatedAt:
   if (changed) {
     notifyLocalDataChanged()
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('mentell:score-changed'))
+      window.dispatchEvent(new CustomEvent(SCORE_CHANGED_EVENT))
     }
   }
 }
@@ -374,78 +357,7 @@ export function spendScore(spent: number): SpendScoreResult {
   return { ok: true, spent: clean, nextTotal }
 }
 
-export function setStreakFreezesForSync(count: number) {
-  const clean = Math.min(STREAK_FREEZE_MAX, Math.max(0, Math.trunc(Number(count))))
-  if (Number.isFinite(clean)) localStorage.setItem(STREAK_FREEZE_KEY, String(clean))
-}
-
-export function setStreakRestoreForSync(candidate: StreakRestoreCandidate | null) {
-  writeRestoreCandidate(sanitizeRestoreCandidate(candidate))
-}
-
-export function buyStreakFreeze(): BuyStreakFreezeResult {
-  if (!isPointsEnabled()) {
-    return {
-      ok: false,
-      spent: 0,
-      nextTotal: getInt(SCORE_KEY, 0),
-      nextFreezes: getInt(STREAK_FREEZE_KEY, 0),
-      reason: 'invalid',
-    }
-  }
-  const currentFreezes = getInt(STREAK_FREEZE_KEY, 0)
-  if (currentFreezes >= STREAK_FREEZE_MAX) {
-    return {
-      ok: false,
-      spent: 0,
-      nextTotal: getInt(SCORE_KEY, 0),
-      nextFreezes: currentFreezes,
-      reason: 'max',
-    }
-  }
-  const spend = spendScore(STREAK_FREEZE_COST)
-  if (!spend.ok) {
-    return {
-      ok: false,
-      spent: 0,
-      nextTotal: spend.nextTotal,
-      nextFreezes: currentFreezes,
-      reason: spend.reason,
-    }
-  }
-  const nextFreezes = currentFreezes + 1
-  setInt(STREAK_FREEZE_KEY, nextFreezes)
-  localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Date.now()))
-  notifyLocalDataChanged()
-  return { ok: true, spent: STREAK_FREEZE_COST, nextTotal: spend.nextTotal, nextFreezes }
-}
-
-export function buyStreakRestore(): BuyStreakRestoreResult {
-  if (!isPointsEnabled()) {
-    return { ok: false, spent: 0, nextTotal: getInt(SCORE_KEY, 0), reason: 'invalid' }
-  }
-  const candidate = readRestoreCandidate()
-  if (!candidate) {
-    return { ok: false, spent: 0, nextTotal: getInt(SCORE_KEY, 0), reason: 'none' }
-  }
-  const spend = spendScore(STREAK_RESTORE_COST)
-  if (!spend.ok) {
-    return { ok: false, spent: 0, nextTotal: spend.nextTotal, reason: spend.reason }
-  }
-  setInt(STREAK_KEY, candidate.restoreTo)
-  writeRestoreCandidate(null)
-  localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Date.now()))
-  notifyLocalDataChanged()
-  return {
-    ok: true,
-    spent: STREAK_RESTORE_COST,
-    nextTotal: spend.nextTotal,
-    restoredStreak: candidate.restoreTo,
-  }
-}
-
 function packageDelta(kind: 'weekly' | 'monthly' | 'yearly') {
-  // Scales with length: weekly < monthly < yearly, always bigger than a daily submit.
   if (kind === 'yearly') return 12000
   if (kind === 'monthly') return 3000
   return 600
@@ -472,3 +384,13 @@ export function awardForPackageOpen(kind: 'weekly' | 'monthly' | 'yearly'): Pack
 
   return { delta, nextTotal, hint }
 }
+
+/** Debug / tests: set HBCM raw directly (0–5). */
+export function debugSetHbcmRaw(raw: number) {
+  setFloat(HBCM_RAW_KEY, clampHbcm(raw))
+  localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Date.now()))
+  notifyLocalDataChanged()
+  window.dispatchEvent(new CustomEvent(SCORE_CHANGED_EVENT))
+}
+
+export { HBCM_MAX }

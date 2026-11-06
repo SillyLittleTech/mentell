@@ -23,6 +23,13 @@ import { weekKeyForDateKey } from '../compilation/weeklyStats'
 import { ensurePackage } from '../packages/packageService'
 import { clearCatCollection } from '../shop/catCollection'
 import { clearShopInventory } from '../shop/shopInventory'
+import {
+  HBCM_LAST_SCORE_DAY_KEY,
+  HBCM_MIGRATED_FROM_STREAK_KEY,
+  HBCM_RAW_STORAGE_KEY,
+  debugSetHbcmRaw,
+  getScoreSnapshot,
+} from '../score/scoreService'
 import { notifyScoreChanged } from '../score/scoreEvents'
 import { assessRisk } from '../safety/riskAssessment'
 import {
@@ -60,6 +67,7 @@ import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
 import { isAuthDebugPanelEnabled } from '../../shared/features/featureFlags'
 import { DebugAuthSection } from './DebugAuthSection'
 import { DebugLocalResourcesSection } from './DebugLocalResourcesSection'
+import { recordClusterCelebration, recordComebackToast } from '../celebrations/clusterCelebration'
 
 const DEBUG_AI_TESTS = [
   {
@@ -131,7 +139,7 @@ export function DebugPanel() {
   const [skipAiCache, setSkipAiCacheState] = useState(getSkipAiCache())
   const [skipSearchRate, setSkipSearchRateState] = useState(getSkipSearchRateLimit())
   const [debugScore, setDebugScore] = useState('')
-  const [debugStreak, setDebugStreak] = useState('')
+  const [debugHbcmRaw, setDebugHbcmRaw] = useState('')
   const [notifSnap, setNotifSnap] = useState<NotificationDebugSnapshot | null>(null)
   const [notifResult, setNotifResult] = useState<string | null>(null)
   const [aiEndpointResult, setAiEndpointResult] = useState<string | null>(null)
@@ -147,10 +155,9 @@ export function DebugPanel() {
     stickies: number
     packages: number
     scoreTotal: string | null
-    scoreStreak: string | null
-    lastDay: string | null
-    streakFreezes: string | null
-    streakRestore: string | null
+    hbcmRaw: string | null
+    hbcmDisplay: number | null
+    lastScoreDay: string | null
     recentEntries: Array<{ dateKey: string; sentiment: string; warningLevel: string }>
     recentPackages: Array<{ kind: string; periodKey: string; opened: boolean }>
   } | null>(null)
@@ -167,16 +174,16 @@ export function DebugPanel() {
     const recentEntriesRows = await database.entries.orderBy('createdAt').reverse().limit(6).toArray()
     const recentPackagesRows = await database.packages.orderBy('createdAt').reverse().limit(6).toArray()
 
+    const snap = getScoreSnapshot()
     setInspector({
       entries,
       notes,
       stickies,
       packages,
       scoreTotal: localStorage.getItem(scopedStorageKey('mentell.score.total')),
-      scoreStreak: localStorage.getItem(scopedStorageKey('mentell.score.streak')),
-      lastDay: localStorage.getItem(scopedStorageKey('mentell.score.lastDay')),
-      streakFreezes: localStorage.getItem(scopedStorageKey('mentell.score.streakFreezes')),
-      streakRestore: localStorage.getItem(scopedStorageKey('mentell.score.streakRestore')),
+      hbcmRaw: localStorage.getItem(HBCM_RAW_STORAGE_KEY),
+      hbcmDisplay: snap.hbcmDisplay,
+      lastScoreDay: snap.lastScoreDay,
       recentEntries: recentEntriesRows.map((e) => ({
         dateKey: e.dateKey,
         sentiment: e.sentiment,
@@ -956,7 +963,7 @@ export function DebugPanel() {
             </div>
 
             <div className="rounded-3xl border border-[var(--paper-border)] p-3">
-              <div className="font-mono text-xs font-bold">score / streak</div>
+              <div className="font-mono text-xs font-bold">score / HBCM</div>
               <div className="mt-2 grid gap-2">
                 <label className="grid gap-1 text-xs">
                   <span className="ink-muted">Total score</span>
@@ -970,14 +977,14 @@ export function DebugPanel() {
                   />
                 </label>
                 <label className="grid gap-1 text-xs">
-                  <span className="ink-muted">Streak</span>
+                  <span className="ink-muted">HBCM raw (0–5, fractional)</span>
                   <input
-                    type="number"
-                    min={0}
+                    type="text"
+                    inputMode="decimal"
                     className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-3 py-2 font-mono"
-                    value={debugStreak}
-                    placeholder={inspector?.scoreStreak ?? '0'}
-                    onChange={(e) => setDebugStreak(e.target.value)}
+                    value={debugHbcmRaw}
+                    placeholder={inspector?.hbcmRaw ?? '0'}
+                    onChange={(e) => setDebugHbcmRaw(e.target.value)}
                   />
                 </label>
                 <button
@@ -988,22 +995,24 @@ export function DebugPanel() {
                     setBusy(true)
                     try {
                       const totalRaw = debugScore.trim() || inspector?.scoreTotal || '0'
-                      const streakRaw = debugStreak.trim() || inspector?.scoreStreak || '0'
+                      const hbcmRawRaw = debugHbcmRaw.trim() || inspector?.hbcmRaw || '0'
                       const total = Math.max(0, Math.trunc(Number(totalRaw)) || 0)
-                      const streak = Math.max(0, Math.trunc(Number(streakRaw)) || 0)
+                      const hbcmRaw = Number(hbcmRawRaw)
                       localStorage.setItem(scopedStorageKey('mentell.score.total'), String(total))
-                      localStorage.setItem(scopedStorageKey('mentell.score.streak'), String(streak))
+                      if (Number.isFinite(hbcmRaw)) {
+                        debugSetHbcmRaw(hbcmRaw)
+                      }
                       notifyScoreChanged()
                       notifyLocalDataChanged()
                       setDebugScore('')
-                      setDebugStreak('')
+                      setDebugHbcmRaw('')
                       await refreshInspector()
                     } finally {
                       setBusy(false)
                     }
                   }}
                 >
-                  Apply score &amp; streak
+                  Apply score &amp; HBCM
                   <div className="ink-muted text-xs">Updates localStorage, top bar, and cloud sync.</div>
                 </button>
                 <button
@@ -1014,8 +1023,7 @@ export function DebugPanel() {
                     setBusy(true)
                     try {
                       const missedDay = dateKeyForLocalDay(addDays(new Date(), -2))
-                      localStorage.setItem(scopedStorageKey('mentell.score.lastDay'), missedDay)
-                      localStorage.removeItem(scopedStorageKey('mentell.score.streakRestore'))
+                      localStorage.setItem(HBCM_LAST_SCORE_DAY_KEY, missedDay)
                       notifyScoreChanged()
                       notifyLocalDataChanged()
                       await refreshInspector()
@@ -1026,8 +1034,34 @@ export function DebugPanel() {
                 >
                   Simulate missed day
                   <div className="ink-muted text-xs">
-                    Sets lastDay to two days ago; next submit tests freeze/break behavior.
+                    Sets last score day to two days ago; next log applies HBCM gap penalty.
                   </div>
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={() => {
+                    recordClusterCelebration({
+                      milestone: 'consistency_week',
+                      hbcmDisplay: inspector?.hbcmDisplay ?? 3,
+                      at: Date.now(),
+                    })
+                  }}
+                >
+                  Fire cluster_celebration event
+                  <div className="ink-muted text-xs">Dispatches mentell:cluster_celebration for UI QA.</div>
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                  onClick={() => {
+                    recordComebackToast({ gapDays: 21, at: Date.now() })
+                  }}
+                >
+                  Fire comeback_toast event
+                  <div className="ink-muted text-xs">Dispatches mentell:comeback_toast for UI QA.</div>
                 </button>
               </div>
             </div>
@@ -1078,13 +1112,10 @@ export function DebugPanel() {
                       <div>stickies: {inspector.stickies}</div>
                     </div>
                     <div className="mt-2">
-                      score: {inspector.scoreTotal ?? '0'} (streak {inspector.scoreStreak ?? '0'})
+                      score: {inspector.scoreTotal ?? '0'} · HBCM raw: {inspector.hbcmRaw ?? '—'} · display:{' '}
+                      {inspector.hbcmDisplay ?? '—'}
                     </div>
-                    <div className="mt-1">
-                      last day: {inspector.lastDay ?? '—'} · freezes:{' '}
-                      {inspector.streakFreezes ?? '0'} · restore:{' '}
-                      {inspector.streakRestore ? 'yes' : 'no'}
-                    </div>
+                    <div className="mt-1">last score day: {inspector.lastScoreDay ?? '—'}</div>
                     <div className="mt-2">
                       recent entries:
                       {inspector.recentEntries.length ? (
@@ -1163,6 +1194,9 @@ export function DebugPanel() {
                   localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))
                   localStorage.removeItem(scopedStorageKey('mentell.score.streakFreezes'))
                   localStorage.removeItem(scopedStorageKey('mentell.score.streakRestore'))
+                  localStorage.removeItem(HBCM_RAW_STORAGE_KEY)
+                  localStorage.removeItem(HBCM_LAST_SCORE_DAY_KEY)
+                  localStorage.removeItem(HBCM_MIGRATED_FROM_STREAK_KEY)
                   window.location.reload()
                 } finally {
                   setBusy(false)
@@ -1170,7 +1204,7 @@ export function DebugPanel() {
               }}
             >
               Reset local data
-              <div className="ink-muted text-xs">Clears IndexedDB + score keys.</div>
+              <div className="ink-muted text-xs">Clears IndexedDB + score + HBCM keys.</div>
             </button>
 
             <button
@@ -1183,11 +1217,14 @@ export function DebugPanel() {
                 localStorage.removeItem(scopedStorageKey('mentell.score.lastDay'))
                 localStorage.removeItem(scopedStorageKey('mentell.score.streakFreezes'))
                 localStorage.removeItem(scopedStorageKey('mentell.score.streakRestore'))
+                localStorage.removeItem(HBCM_RAW_STORAGE_KEY)
+                localStorage.removeItem(HBCM_LAST_SCORE_DAY_KEY)
+                localStorage.removeItem(HBCM_MIGRATED_FROM_STREAK_KEY)
                 await refreshInspector()
               }}
             >
               Reset score only
-              <div className="ink-muted text-xs">Keeps IndexedDB, clears score/streak.</div>
+              <div className="ink-muted text-xs">Keeps IndexedDB, clears score and HBCM.</div>
             </button>
 
             <button
@@ -1202,6 +1239,7 @@ export function DebugPanel() {
                     id: makeId('entry'),
                     createdAt: now,
                     updatedAt: now,
+                    entryType: 'entry' as const,
                     dateKey,
                     sentiment,
                     emotion: 'calm' as const,
@@ -1280,6 +1318,7 @@ export function DebugPanel() {
                       id: makeId('entry'),
                       createdAt: now + index,
                       updatedAt: now + index,
+                      entryType: 'entry' as const,
                       dateKey: memory.dateKey,
                       sentiment: '+' as const,
                       emotion: memory.emotion,
@@ -1321,6 +1360,7 @@ export function DebugPanel() {
                     id: makeId('entry'),
                     createdAt: now,
                     updatedAt: now,
+                    entryType: 'entry',
                     dateKey: '2026-05-21',
                     sentiment: '-' as const,
                     emotion: 'sad' as const,
@@ -1358,6 +1398,7 @@ export function DebugPanel() {
                     id: makeId('entry'),
                     createdAt: now,
                     updatedAt: now,
+                    entryType: 'entry',
                     dateKey: '2026-05-22',
                     sentiment: '+' as const,
                     emotion: 'happy' as const,

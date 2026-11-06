@@ -297,6 +297,11 @@ export function LetterComposer({
         } else if (!prevIsCrisis && hasMessage && !prevHasMessage) {
           highestRisk = finalRisk;
         } else if (
+          finalRisk.responseKind === "hypermania" &&
+          highestRisk?.responseKind !== "crisis"
+        ) {
+          highestRisk = finalRisk;
+        } else if (
           !prevIsCrisis &&
           !prevHasMessage &&
           finalRisk.riskScore > highestRisk.riskScore
@@ -724,13 +729,21 @@ function DraftRiskNotice({
 
 function SupportNotice({ risk }: { risk: RiskAssessment }) {
   const celebration = risk.responseKind === "positive";
+  const hyper = risk.responseKind === "hypermania";
   const message = risk.supportiveMessage?.trim();
   return (
     <div className="space-y-2">
-      <div className="font-medium" style={{ color: "var(--success)" }}>
-        {celebration
-          ? "This deserves a little confetti"
-          : "A small note for this moment"}
+      <div
+        className="font-medium"
+        style={{
+          color: hyper ? "var(--accent)" : "var(--success)",
+        }}
+      >
+        {hyper
+          ? "A gentle pace check"
+          : celebration
+            ? "This deserves a little confetti"
+            : "A small note for this moment"}
       </div>
       {message ? <div>{message}</div> : null}
       {isDebugMode() ? <RiskSignalLine risk={risk} /> : null}
@@ -786,6 +799,7 @@ function RiskResultModal({
 }) {
   const crisis = risk.responseKind === "crisis";
   const celebration = risk.responseKind === "positive";
+  const hyper = risk.responseKind === "hypermania";
   const titleId = "risk-result-modal-title";
   const reduced = shouldReduceMotion();
   useBodyScrollLock(true);
@@ -812,16 +826,20 @@ function RiskResultModal({
             <div id={titleId} className="font-paper text-2xl">
               {crisis
                 ? "You are not alone"
-                : celebration
-                  ? "Look at you go"
-                  : "A note for you"}
+                : hyper
+                  ? "Energy check-in"
+                  : celebration
+                    ? "Look at you go"
+                    : "A note for you"}
             </div>
             <div className="ink-muted mt-1 text-sm">
               {crisis
                 ? "Mentell noticed this entry may need extra care."
-                : celebration
-                  ? "Mentell noticed a bright patch worth celebrating."
-                  : "Mentell found a supportive note after reading your entry."}
+                : hyper
+                  ? "Mentell noticed unusually intense upbeat language across recent logs. This is not a diagnosis — just a nudge to notice pace and sleep."
+                  : celebration
+                    ? "Mentell noticed a bright patch worth celebrating."
+                    : "Mentell found a supportive note after reading your entry."}
             </div>
           </div>
           <button
