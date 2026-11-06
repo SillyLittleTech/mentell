@@ -34,7 +34,8 @@ async function runBenchmark() {
       dateKey,
       createdAt: entryDate.getTime(),
       updatedAt: entryDate.getTime(),
-      sentiment: entryIndex % 3 === 0 ? "+" : entryIndex % 3 === 1 ? "-" : "neutral",
+      sentiment:
+        entryIndex % 3 === 0 ? "+" : entryIndex % 3 === 1 ? "-" : "neutral",
       warningLevel: entryIndex % 100 === 0 ? "warn" : "none",
       riskLevel: entryIndex % 100 === 0 ? "elevated" : "none",
       emotion: "happy",
