@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Mentell",
-  "version": "1.18.59",
+  "version": "1.18.60",
   "identifier": "com.mentell.app",
   "build": {
     "frontendDist": "../dist",
@@ -38,12 +38,13 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdGNEY4MjZGNEZBNUM2MzAKUldRd3hxVlBiNEpQZjNtY1pJdDhiYnFyY2w2LytKVmhjYlpzbUxhWFVvM0VzSWdxL2ZUb1MwL28K",
       "endpoints": [
-        "https://github.com/SillyLittleTech/mentell/releases/latest/download/updater.json"
+        "https://github.com/SillyLittleTech/mentell/releases/latest/download/latest.json"
       ]
     }
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "all",
     "macOS": {
       "minimumSystemVersion": "10.14"
