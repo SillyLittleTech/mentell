@@ -8,29 +8,30 @@ import {
   getWeeklyStatsForWeekKey,
   type WeekCursor,
   type WeeklyStats,
-} from "./weeklyStats";
-import type { EntryRow } from "../../db/schema";
-import { getScoreSnapshot } from "../score/scoreService";
-import { StreakDisplay } from "../score/StreakDisplay";
-import { SCORE_CHANGED_EVENT } from "../score/scoreEvents";
-import { useBodyScrollLock } from "../../shared/motion/useBodyScrollLock";
-import {
-  motionDuration,
-  shouldReduceMotion,
-} from "../../shared/motion/useMotionPrefs";
-import { getLatestDeliveredWeeklyPackage } from "../packages/packageService";
-import { useOnlineStatus } from "../../shared/offline/useOnlineStatus";
+} from './weeklyStats'
+import type { EntryRow } from '../../db/schema'
+import { getScoreSnapshot } from '../score/scoreService'
+import { HbcmDisplay } from '../score/HbcmDisplay'
+import { SCORE_CHANGED_EVENT } from '../score/scoreEvents'
+import { FeelingsOverTimeChart } from './FeelingsOverTimeChart'
+import { getFeelingsOverTimeSeries, type FeelingsRange } from './feelingsOverTimeData'
+import type { FeelingPoint } from './feelingsOverTimeData'
+import { useBodyScrollLock } from '../../shared/motion/useBodyScrollLock'
+import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
+import { getLatestDeliveredWeeklyPackage } from '../packages/packageService'
+import { useOnlineStatus } from '../../shared/offline/useOnlineStatus'
 import {
   buildAiSummaryMarkdown,
   downloadTextFile,
   requestWeeklyAiSummary,
   weeklyAiSummaryEnabled,
   type AiSummaryMode,
-} from "./weeklyAiSummary";
-import { loadAiProfile, profileFingerprint, type AiProfile } from "./aiProfile";
-import { clearWeeklyAiCache, getCachedWeeklySummary } from "./weeklyAiCache";
-import { OfflineDeviceSyncSection } from "../settings/OfflineDeviceSyncSection";
-import { WeeklyAiSettings, WeeklyAiSettingsButton } from "./WeeklyAiSettings";
+} from './weeklyAiSummary'
+import { loadAiProfile, profileFingerprint, type AiProfile } from './aiProfile'
+import { clearWeeklyAiCache, getCachedWeeklySummary } from './weeklyAiCache'
+import { OfflineDeviceSyncSection } from '../settings/OfflineDeviceSyncSection'
+import { LOCAL_DATA_CHANGED_EVENT } from '../../shared/sync/localDataEvents'
+import { WeeklyAiSettings, WeeklyAiSettingsButton } from './WeeklyAiSettings'
 import {
   buildRawReportHtml,
   downloadRawReportHtml,
@@ -71,32 +72,34 @@ export type OlderWeekBatch = {
 };
 
 export function WeeklyProjector() {
-  const todayKey = useMemo(() => dateKeyForLocalDay(new Date()), []);
-  const [stats, setStats] = useState<WeeklyStats | null>(null);
-  const [delivered, setDelivered] = useState<boolean | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [score, setScore] = useState(() => getScoreSnapshot());
-  const [summary, setSummary] = useState<string | null>(null);
-  const [summaryError, setSummaryError] = useState<string | null>(null);
-  const [summaryBusy, setSummaryBusy] = useState(false);
-  const [fromCache, setFromCache] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [debugSearchSeed, setDebugSearchSeed] =
-    useState<ProjectorSearchResult | null>(null);
-  const [profile, setProfile] = useState<AiProfile>(() => loadAiProfile());
-  const [mode, setMode] = useState<AiSummaryMode>("reflection");
-  const [rawRange, setRawRange] = useState<RawReportRange>("week");
-  const [rawBusy, setRawBusy] = useState(false);
-  const [settingsStale, setSettingsStale] = useState(false);
-  const [olderWeeks, setOlderWeeks] = useState<OlderWeekBatch[]>([]);
-  const [olderAnchorWeek, setOlderAnchorWeek] = useState<string | null>(null);
-  const [paginationCursor, setPaginationCursor] = useState<WeekCursor>(null);
-  const [hasMoreWeeks, setHasMoreWeeks] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const aiEnabled = weeklyAiSummaryEnabled();
-  const searchEnabled = projectorSearchEnabled();
-  const isOnline = useOnlineStatus();
+  const todayKey = useMemo(() => dateKeyForLocalDay(new Date()), [])
+  const [stats, setStats] = useState<WeeklyStats | null>(null)
+  const [delivered, setDelivered] = useState<boolean | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [score, setScore] = useState(() => getScoreSnapshot())
+  const [summary, setSummary] = useState<string | null>(null)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [summaryBusy, setSummaryBusy] = useState(false)
+  const [fromCache, setFromCache] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [debugSearchSeed, setDebugSearchSeed] = useState<ProjectorSearchResult | null>(null)
+  const [profile, setProfile] = useState<AiProfile>(() => loadAiProfile())
+  const [mode, setMode] = useState<AiSummaryMode>('reflection')
+  const [rawRange, setRawRange] = useState<RawReportRange>('week')
+  const [rawBusy, setRawBusy] = useState(false)
+  const [settingsStale, setSettingsStale] = useState(false)
+  const [olderWeeks, setOlderWeeks] = useState<OlderWeekBatch[]>([])
+  const [olderAnchorWeek, setOlderAnchorWeek] = useState<string | null>(null)
+  const [paginationCursor, setPaginationCursor] = useState<WeekCursor>(null)
+  const [hasMoreWeeks, setHasMoreWeeks] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [feelingsRange, setFeelingsRange] = useState<FeelingsRange>('week')
+  const [feelingsPoints, setFeelingsPoints] = useState<FeelingPoint[]>([])
+  const feelingsTitleId = 'feelings-over-time-heading'
+  const aiEnabled = weeklyAiSummaryEnabled()
+  const searchEnabled = projectorSearchEnabled()
+  const isOnline = useOnlineStatus()
 
   const visibleOlderWeeks = useMemo(
     () => (stats && olderAnchorWeek === stats.weekKey ? olderWeeks : []),
@@ -179,6 +182,25 @@ export function WeeklyProjector() {
     window.addEventListener(SCORE_CHANGED_EVENT, onScore);
     return () => window.removeEventListener(SCORE_CHANGED_EVENT, onScore);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false
+    const refresh = async () => {
+      try {
+        const { points } = await getFeelingsOverTimeSeries(feelingsRange)
+        if (!cancelled) setFeelingsPoints(points)
+      } catch {
+        if (!cancelled) setFeelingsPoints([])
+      }
+    }
+    void refresh()
+    const onData = () => void refresh()
+    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, onData)
+    return () => {
+      cancelled = true
+      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, onData)
+    }
+  }, [feelingsRange])
 
   // Reset older weeks when primary week changes
   // (handled via olderAnchorWeek mismatch — no effect needed)
@@ -313,11 +335,36 @@ export function WeeklyProjector() {
           <ProjectorCard title="Entries logged" value={stats.total} />
           <ProjectorCard title="Warnings flagged" value={stats.warnings} />
           <ProjectorCard title="Current score" value={score.total} />
-          <StreakDisplay
-            streak={score.streak}
-            variant="card"
-            reducedMotion={shouldReduceMotion()}
-          />
+          <div className="paper flex flex-col justify-center rounded-2xl border border-[var(--paper-border)] px-4 py-3">
+            <div className="ink-muted text-[11px] font-semibold uppercase">HBCM</div>
+            <HbcmDisplay hbcmDisplay={score.hbcmDisplay} variant="inline" />
+          </div>
+        </div>
+      </div>
+
+      <div className="paper rounded-3xl p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div id={feelingsTitleId} className="font-paper text-xl">
+            Feelings over time
+          </div>
+          <select
+            className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 text-sm"
+            aria-label="Feelings chart range"
+            value={feelingsRange}
+            onChange={(e) => setFeelingsRange(e.target.value as FeelingsRange)}
+          >
+            <option value="week">This week</option>
+            <option value="month">This month</option>
+            <option value="year">This year</option>
+            <option value="all">All time</option>
+          </select>
+        </div>
+        <p className="ink-muted mt-1 text-sm">
+          Chronological sentiment with gradient transitions. Quick logs count for color but stay out of AI search
+          index.
+        </p>
+        <div className="mt-4">
+          <FeelingsOverTimeChart points={feelingsPoints} titleId={feelingsTitleId} />
         </div>
       </div>
 

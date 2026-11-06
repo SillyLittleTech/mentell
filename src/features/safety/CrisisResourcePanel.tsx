@@ -230,7 +230,10 @@ export function CrisisResourcePanel({
   risk,
 }: {
   compact?: boolean
-  risk?: Pick<RiskAssessment, 'reasons' | 'flaggedTerms' | 'responseKind'>
+  risk?: Pick<
+    RiskAssessment,
+    'reasons' | 'flaggedTerms' | 'responseKind'
+  >
 }) {
   const inferredTopics = useMemo(
     () =>

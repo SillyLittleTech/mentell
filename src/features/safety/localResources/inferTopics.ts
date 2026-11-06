@@ -17,7 +17,7 @@ const CRISIS_PATTERN =
 export function inferResourceTopics(input: {
   reasons?: string[]
   flaggedTerms?: string[]
-  responseKind?: 'none' | 'positive' | 'support' | 'crisis'
+  responseKind?: 'none' | 'positive' | 'support' | 'crisis' | 'hypermania'
   freeText?: string
 }): ResourceTopic[] {
   const blob = [

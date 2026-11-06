@@ -4,6 +4,11 @@ import { getDb } from '../../db/schema'
 import { clearCharacterAppearance } from '../../features/character/characterAppearanceService'
 import { clearShopInventory } from '../../features/shop/shopInventory'
 import { shareDocIdCandidates } from '../../features/share/shareLinkUrl'
+import {
+  HBCM_LAST_SCORE_DAY_KEY,
+  HBCM_MIGRATED_FROM_STREAK_KEY,
+  HBCM_RAW_STORAGE_KEY,
+} from '../../features/score/scoreService'
 import { SCORE_CHANGED_EVENT } from '../../features/score/scoreEvents'
 import { getFirebaseAuth, getFirebaseFirestore } from '../firebase/firebaseApp'
 import { scopedStorageKey } from '../storage/storageScope'
@@ -14,6 +19,11 @@ const SCORE_KEYS = [
   scopedStorageKey('mentell.score.total'),
   scopedStorageKey('mentell.score.streak'),
   scopedStorageKey('mentell.score.lastDay'),
+  scopedStorageKey('mentell.score.streakFreezes'),
+  scopedStorageKey('mentell.score.streakRestore'),
+  HBCM_RAW_STORAGE_KEY,
+  HBCM_LAST_SCORE_DAY_KEY,
+  HBCM_MIGRATED_FROM_STREAK_KEY,
 ] as const
 
 function fs() {

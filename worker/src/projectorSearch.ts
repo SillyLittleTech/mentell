@@ -23,6 +23,8 @@ type RequestBody = {
   indexDigest?: string
   entries?: EntrySnapshot[]
   forceIndex?: boolean
+  /** Monthly (or other) projector sentiment series — not full journal text; Quick Logs excluded client-side. */
+  feelings_over_time?: Array<{ dateKey: string; class: string }>
 }
 
 type IndexStatus = 'synced' | 'skipped' | 'failed' | 'idle'
@@ -47,6 +49,26 @@ function formatEntryPromptLine(e: EntrySnapshot, detailsLen: number) {
   return `${e.dateKey} sentiment=${e.sentiment} situation=${e.situation} details=${details}${
     behaviours ? ` behavioursNoted=${behaviours.slice(0, 100)}` : ''
   }${theme ? ` reoccurringTheme=${theme.slice(0, 100)}` : ''}`
+}
+
+type FeelingsOverTimePoint = { dateKey: string; class: string }
+
+function sanitizeFeelingsOverTime(raw: unknown): FeelingsOverTimePoint[] {
+  if (!Array.isArray(raw) || raw.length === 0) return []
+  const out: FeelingsOverTimePoint[] = []
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') continue
+    const dateKey = 'dateKey' in row && typeof (row as { dateKey: unknown }).dateKey === 'string' ? (row as { dateKey: string }).dateKey : ''
+    const cls = 'class' in row && typeof (row as { class: unknown }).class === 'string' ? (row as { class: string }).class : ''
+    if (dateKey && cls) out.push({ dateKey, class: cls })
+    if (out.length >= 120) break
+  }
+  return out
+}
+
+function formatFeelingsOverTimeBlock(points: FeelingsOverTimePoint[]): string {
+  if (!points.length) return ''
+  return `Feelings over time (aggregated daily mood class; excludes quick_log-only days):\n${points.map((p) => `${p.dateKey}: ${p.class}`).join('\n')}`
 }
 
 const HOUR_LIMIT = 12
@@ -93,6 +115,7 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
   }
 
   const mode = body.mode === 'chat' ? 'chat' : body.mode === 'index' ? 'index' : 'search'
+  const feelingsOverTime = sanitizeFeelingsOverTime(body.feelings_over_time)
   const userId = sanitizeUserId(body.userId)
   if (!userId) {
     return corsJson({ error: 'userId is required' }, 400, env, origin)
@@ -152,6 +175,7 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
         origin,
         indexStatus,
         localHits,
+        feelingsOverTime,
       })
     }
 
@@ -166,6 +190,7 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
           indexStatus,
           origin,
           messages: body.messages,
+          feelingsOverTime,
           maxResults: 8,
           matchThreshold: 0.35,
           preferChat: true,
@@ -276,6 +301,7 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
         indexStatus,
         origin,
         ownedChunks,
+        feelingsOverTime,
         maxResults: 10,
         matchThreshold: 0.35,
         preferChat: false,
@@ -292,6 +318,7 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
         origin,
         indexStatus: indexStatus === 'idle' ? 'failed' : indexStatus,
         localHits,
+        feelingsOverTime,
       })
     }
   } catch (error) {
@@ -308,6 +335,7 @@ export async function handleProjectorSearch(request: Request, env: Env): Promise
         origin,
         indexStatus: 'failed',
         localHits: localMatchEntries(entries, query),
+        feelingsOverTime,
       })
     } catch {
       return corsJson({ type: 'error', message, indexStatus: 'failed' }, 500, env, origin)
@@ -330,6 +358,7 @@ async function handleVerifiedSearchAnswer(
     indexStatus: IndexStatus
     origin: string | null
     messages?: ChatMessage[]
+    feelingsOverTime?: FeelingsOverTimePoint[]
     ownedChunks?: AiSearchChunk[]
     maxResults: number
     matchThreshold: number
@@ -367,13 +396,18 @@ async function handleVerifiedSearchAnswer(
     contextBlocks.push(formatEntrySnippet(e, 200))
   }
 
+  const feelingsBlock = formatFeelingsOverTimeBlock(opts.feelingsOverTime ?? [])
+
   let text = ''
-  if (contextBlocks.length > 0 || opts.preferChat) {
+  if (contextBlocks.length > 0 || opts.preferChat || feelingsBlock) {
     try {
       const messages = opts.preferChat
         ? [
             { role: 'system', content: chatSystemPrompt() },
             ...normalizeMessages(opts.messages, opts.query),
+            ...(feelingsBlock
+              ? [{ role: 'system' as const, content: feelingsBlock }]
+              : []),
             ...(contextBlocks.length
               ? [
                   {
@@ -387,7 +421,7 @@ async function handleVerifiedSearchAnswer(
             { role: 'system', content: chatSystemPrompt() },
             {
               role: 'user',
-              content: `Question: ${opts.query}\n\nJournal context (this user only):\n${
+              content: `Question: ${opts.query}\n\n${feelingsBlock ? `${feelingsBlock}\n\n` : ''}Journal context (this user only):\n${
                 contextBlocks.slice(0, 12).join('\n---\n') || '(none)'
               }`,
             },
@@ -460,12 +494,15 @@ async function handleLocalFallback(
     origin: string | null
     indexStatus?: IndexStatus
     localHits?: EntrySnapshot[]
+    feelingsOverTime?: FeelingsOverTimePoint[]
   },
 ) {
   const matched =
     opts.localHits && opts.localHits.length > 0
       ? opts.localHits
       : localMatchEntries(opts.entries, opts.query)
+
+  const feelingsBlock = formatFeelingsOverTimeBlock(opts.feelingsOverTime ?? [])
 
   if (matched.length > 0) {
     let preamble: string | undefined
@@ -474,6 +511,7 @@ async function handleLocalFallback(
         const brief = await runWorkersAi(env, MODEL, {
           messages: [
             { role: 'system', content: chatSystemPrompt() },
+            ...(feelingsBlock ? [{ role: 'system' as const, content: feelingsBlock }] : []),
             {
               role: 'user',
               content: `Question: ${opts.query}\n\nMatching journal entries (use situation/details, never raw ids):\n${matched
@@ -514,10 +552,12 @@ async function handleLocalFallback(
     opts.mode === 'chat'
       ? [
           { role: 'system', content: chatSystemPrompt() },
+          ...(feelingsBlock ? [{ role: 'system' as const, content: feelingsBlock }] : []),
           ...normalizeMessages(opts.messages, opts.query),
         ]
       : [
           { role: 'system', content: chatSystemPrompt() },
+          ...(feelingsBlock ? [{ role: 'system' as const, content: feelingsBlock }] : []),
           {
             role: 'user',
             content: `Journal context:\n${context || '(none)'}\n\nQuestion: ${opts.query}`,
@@ -585,7 +625,8 @@ Do not diagnose, prescribe, or give medical advice.
 If entries mention crisis language, gently encourage trusted support or local emergency services.
 Answer from retrieved journal context only. If context is missing, say so plainly.
 When referring to entries, use date and situation (and a short details snippet). Never print raw entry ids.
-For data questions (counts, trends, timing), reply in plain language with that context.`
+For data questions (counts, trends, timing), reply in plain language with that context.
+A separate "Feelings over time" block may summarize daily mood classes (positive/neutral/negative/missed/no data) — use it only as a coarse timeline signal, not verbatim journal text.`
 }
 
 function normalizeMessages(messages: ChatMessage[] | undefined, query: string): ChatMessage[] {

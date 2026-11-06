@@ -5,7 +5,7 @@ import { MaterialIcon } from '../../components/MaterialIcon'
 import { SentimentPills, type SentimentValue } from '../../components/SentimentPills'
 import { ScoreTicker } from '../score/ScoreTicker'
 import { ScoreBurst } from '../score/ScoreBurst'
-import { StreakDisplay } from '../score/StreakDisplay'
+import { HbcmDisplay } from '../score/HbcmDisplay'
 import { SubmitAnimation } from '../compose/SubmitAnimation'
 import { DeskCharacterLayout } from '../character/DeskCharacterLayout'
 import { pageTransitionProps } from '../../shared/motion/pageTransition'
@@ -103,25 +103,22 @@ function ModalDemo({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 function AnimationsTab({
-  reduced,
   onOpenModal,
   scoreTotal,
   setScoreTotal,
-  streak,
-  setStreak,
+  hbcm,
+  setHbcm,
 }: {
-  reduced: boolean
   onOpenModal: () => void
   scoreTotal: number
   setScoreTotal: React.Dispatch<React.SetStateAction<number>>
-  streak: number
-  setStreak: React.Dispatch<React.SetStateAction<number>>
+  hbcm: number
+  setHbcm: React.Dispatch<React.SetStateAction<number>>
 }) {
   const [submitOpen, setSubmitOpen] = useState(false)
   const [scoreBurst, setScoreBurst] = useState<{ delta: number; key: number } | null>(null)
   const [pageKey, setPageKey] = useState(0)
   const [buttonBounce, setButtonBounce] = useState(false)
-  const [breakKey, setBreakKey] = useState(0)
 
   return (
     <section className="paper rounded-3xl p-6">
@@ -182,28 +179,28 @@ function AnimationsTab({
           </div>
         </div>
 
-        {/* Streak break */}
+        {/* HBCM chip */}
         <div className="rounded-3xl border border-[var(--paper-border)] p-5">
-          <div className="font-medium">Streak break</div>
-          <div className="ink-muted mt-1 text-sm">Crack + zero animation on the streak chip.</div>
+          <div className="font-medium">HBCM heat chip</div>
+          <div className="ink-muted mt-1 text-sm">Glass vessel + liquid fill (2.x consistency heat).</div>
           <div className="mt-3">
-            <StreakDisplay
-              streak={0}
-              reducedMotion={reduced}
-              pulse={false}
-              variant="chip"
-              outcomeAnimation={breakKey ? { kind: 'break', key: breakKey, from: streak } : undefined}
-            />
-            <button
-              type="button"
-              className="focus-ring mt-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-medium"
-              onClick={() => {
-                setBreakKey(Date.now())
-                setStreak(0)
-              }}
-            >
-              Break streak
-            </button>
+            <HbcmDisplay hbcmDisplay={hbcm} pulse={false} variant="chip" />
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
+                onClick={() => setHbcm((h) => Math.max(0, h - 1))}
+              >
+                −
+              </button>
+              <button
+                type="button"
+                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
+                onClick={() => setHbcm((h) => Math.min(5, h + 1))}
+              >
+                +
+              </button>
+            </div>
           </div>
         </div>
 
@@ -312,7 +309,7 @@ export function UiPlaygroundPage() {
   const [modalOpen, setModalOpen] = useState(false)
 
   const [scoreTotal, setScoreTotal] = useState(2000)
-  const [streak, setStreak] = useState(2)
+  const [hbcmDemo, setHbcmDemo] = useState(3)
 
   const tabButtons = useMemo(
     () =>
@@ -417,22 +414,22 @@ export function UiPlaygroundPage() {
                 </div>
               </div>
               <div className="rounded-2xl border border-[var(--paper-border)] p-4">
-                <div className="font-mono text-xs uppercase opacity-70">Streak chip</div>
+                <div className="font-mono text-xs uppercase opacity-70">HBCM chip</div>
                 <div className="mt-2">
-                  <StreakDisplay streak={streak} reducedMotion={reduced} pulse={false} variant="chip" />
+                  <HbcmDisplay hbcmDisplay={hbcmDemo} pulse={false} variant="chip" />
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   <button
                     type="button"
                     className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
-                    onClick={() => setStreak((s) => Math.max(0, s - 1))}
+                    onClick={() => setHbcmDemo((s) => Math.max(0, s - 1))}
                   >
                     -
                   </button>
                   <button
                     type="button"
                     className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
-                    onClick={() => setStreak((s) => Math.min(9, s + 1))}
+                    onClick={() => setHbcmDemo((s) => Math.min(5, s + 1))}
                   >
                     +
                   </button>
@@ -487,12 +484,11 @@ export function UiPlaygroundPage() {
 
         {tab === 'animations' ? (
           <AnimationsTab
-            reduced={reduced}
             onOpenModal={() => setModalOpen(true)}
             scoreTotal={scoreTotal}
             setScoreTotal={setScoreTotal}
-            streak={streak}
-            setStreak={setStreak}
+            hbcm={hbcmDemo}
+            setHbcm={setHbcmDemo}
           />
         ) : null}
 
@@ -530,7 +526,7 @@ export function UiPlaygroundPage() {
             </div>
 
             <div className="mt-4">
-              <ScoreTicker total={scoreTotal} streak={streak} streakFreezes={0} hint={null} />
+              <ScoreTicker total={scoreTotal} hbcmDisplay={hbcmDemo} hint={null} />
             </div>
           </section>
         ) : null}

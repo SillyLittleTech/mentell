@@ -5,11 +5,14 @@ export const WarningLevelSchema = z.enum(['none', 'warn'])
 export const RiskLevelSchema = z.enum(['none', 'low', 'elevated', 'crisis'])
 export const EntryEmotionSchema = z.enum(['happy', 'calm', 'anxious', 'sad', 'angry', 'other'])
 
+export const EntryKindSchema = z.enum(['entry', 'quick_log'])
+
 export const EntryRowSchema = z.object({
   id: z.string().min(1),
   createdAt: z.number().int().nonnegative(),
   updatedAt: z.number().int().nonnegative(),
   dateKey: z.string().regex(/^~?\d{4}-\d{2}-\d{2}$/),
+  entryType: EntryKindSchema.optional(),
   sentiment: EntrySentimentSchema,
   emotion: EntryEmotionSchema,
   emotionNote: z.string(),
@@ -17,6 +20,7 @@ export const EntryRowSchema = z.object({
   details: z.string(),
   behavioursNoted: z.string().default(''),
   reoccurringTheme: z.string().default(''),
+  quickLogNote: z.string().optional(),
   flaggedTerms: z.array(z.string()),
   warningLevel: WarningLevelSchema,
   riskScore: z.number().min(0).max(1),
@@ -24,6 +28,7 @@ export const EntryRowSchema = z.object({
   riskLevel: RiskLevelSchema,
   scoreDelta: z.number().int(),
   streakAtSubmit: z.number().int().nonnegative(),
+  hbcmAtSubmit: z.number().min(0).max(5).optional(),
 })
 
 export const NoteTagSchema = z.enum(['self', 'therapist', 'other'])

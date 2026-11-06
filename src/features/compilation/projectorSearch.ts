@@ -5,6 +5,7 @@ import { customProjectorSearchAnalytical, customProjectorSearchChat } from '../.
 import { scopedStorageKey } from '../../shared/storage/storageScope'
 import { getSkipSearchRateLimit } from '../../shared/debug/debugFlags'
 import { normalizeEndpointUrl } from './weeklyAiSummary'
+import { getFeelingsOverTimeSeries } from './feelingsOverTimeData'
 
 const HOUR_LIMIT = 12
 const DAY_LIMIT = 40
@@ -139,7 +140,13 @@ export function toSearchSnapshot(entry: EntryRow): ProjectorSearchEntry {
 
 export async function loadAllEntriesForSearch(): Promise<ProjectorSearchEntry[]> {
   const rows = await getDb().entries.toArray()
-  return rows.map(toSearchSnapshot)
+  return rows.filter((r) => r.entryType !== 'quick_log').map(toSearchSnapshot)
+}
+
+/** Compact digest for AI search / worker — `feelings_over_time` internal id. */
+export async function buildFeelingsOverTimeSearchDigest() {
+  const { points } = await getFeelingsOverTimeSeries('month')
+  return points.map((p) => ({ dateKey: p.dateKey, class: p.class }))
 }
 
 function readRateState(): RateState {
@@ -263,6 +270,7 @@ export async function requestProjectorSearch(options: {
       indexDigest,
       entries,
       forceIndex: options.forceIndex,
+      feelings_over_time: await buildFeelingsOverTimeSearchDigest(),
     }),
   })
 

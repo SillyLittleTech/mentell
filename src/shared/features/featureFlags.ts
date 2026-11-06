@@ -54,6 +54,11 @@ export function isAuthHandoffEnabled() {
   return isFirebaseEnabled() && envFlag('VITE_ENABLE_AUTH_HANDOFF')
 }
 
+/** 2.x sustained-risk (ema_rma_heat) + hypermania feedback; set `VITE_DISABLE_RISK_HEAT_V2=1` to disable. */
+export function isRiskHeatV2Enabled() {
+  return import.meta.env.VITE_DISABLE_RISK_HEAT_V2 !== '1'
+}
+
 /** Settings / dev tools: show the auth diagnostics panel. */
 export function isAuthDebugPanelEnabled(): boolean {
   if (isDebugMode()) return true
