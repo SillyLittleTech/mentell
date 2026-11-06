@@ -1,14 +1,14 @@
 export function projectorSearchEnabled() {
-  const settings = loadAppSettings()
-  if (settings.aiProvider === 'custom') {
-    return isAiEnabledLocally() && settings.aiBaseUrl.trim().length > 0
+  const settings = loadAppSettings();
+  if (settings.aiProvider === "custom") {
+    return isAiEnabledLocally() && settings.aiBaseUrl.trim().length > 0;
   }
   return (
     isAiEnabledLocally() &&
-    import.meta.env.VITE_ENABLE_PROJECTOR_AI_SEARCH === '1' &&
-    typeof import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT === 'string' &&
+    import.meta.env.VITE_ENABLE_PROJECTOR_AI_SEARCH === "1" &&
+    typeof import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT === "string" &&
     import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT.length > 0
-  )
+  );
 }
 
 import { localMatchEntries as sharedMatch } from "../../lib/localMatch";
@@ -96,8 +96,7 @@ function localMatchEntries(
 
 export function getProjectorSearchEndpoint() {
   const raw = import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT as
-    | string
-    | undefined;
+    string | undefined;
   return raw ? normalizeEndpointUrl(raw) : "";
 }
 
