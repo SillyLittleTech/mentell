@@ -388,84 +388,41 @@ function TopBar({
     <header
       className={`w-full space-y-3 overflow-visible ${focusActive ? "streak-focus-target" : ""}`}
     >
-        <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-start">
-          <div className="flex min-w-0 flex-wrap items-start gap-3">
-            <div className="relative z-0 hidden min-h-[5rem] min-w-0 flex-1 items-center overflow-visible md:flex">
-              <HomeGreeting
-                variant="desktop"
-                autoPlay={onHome}
-                context={pageContext}
-              />
-            </div>
-            <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3 md:hidden">
-              <img
-                alt=""
-                src={publicUrl("/asset/mentell-icon.png")}
-                className="h-10 w-10 shrink-0 select-none object-contain"
-                draggable={false}
-              />
-              <div className="min-w-0">
-                <div className="font-paper text-2xl tracking-tight truncate">
-                  Mentell
-                </div>
-                <div className="ink-muted text-sm truncate">
-                  local-first stationery journal
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative z-10 hidden min-h-[5rem] items-center justify-center md:flex md:justify-self-center">
-            <PackageAlert
-              onAward={onPackageAward}
-              placement="inline"
-              size="lg"
+      <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-start">
+        <div className="flex min-w-0 flex-wrap items-start gap-3">
+          <div className="relative z-0 hidden min-h-[5rem] min-w-0 flex-1 items-center overflow-visible md:flex">
+            <HomeGreeting
+              variant="desktop"
+              autoPlay={onHome}
+              context={pageContext}
             />
           </div>
-
-          <div className="flex items-start justify-between gap-3 md:justify-end md:justify-self-end">
-            <div className="grid flex-1 grid-cols-[1fr_auto] items-center gap-3 md:hidden">
-              {!settings.disablePoints ? (
-                <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
-                  <ScoreTicker
-                    total={score.total}
-                    streak={score.streak}
-                    streakFreezes={score.streakFreezes}
-                    hint={incomingHint}
-                    streakOutcome={streakOutcome}
-                  />
-                  <MobileHeaderMascot />
-                </div>
-              ) : (
-                <div className="paper flex items-center rounded-2xl px-2 py-1">
-                  <MobileHeaderMascot />
-                </div>
-              )}
-              <AccountButton />
-              <div className="flex min-h-[3rem] items-center justify-between gap-3">
-                <Link
-                  to="/feedback"
-                  className="paper focus-ring flex h-11 w-11 items-center justify-center rounded-full transition"
-                  aria-label="Open feedback form"
-                  title="Feedback form"
-                >
-                  <SpeechBubbleIcon className="h-5 w-5" />
-                </Link>
-                <PackageAlert
-                  onAward={onPackageAward}
-                  placement="inline"
-                  size="sm"
-                />
+          <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3 md:hidden">
+            <img
+              alt=""
+              src={publicUrl("/asset/mentell-icon.png")}
+              className="h-10 w-10 shrink-0 select-none object-contain"
+              draggable={false}
+            />
+            <div className="min-w-0">
+              <div className="font-paper text-2xl tracking-tight truncate">
+                Mentell
               </div>
-              <ThemeToggleButton
-                mode={mode}
-                onToggle={toggle}
-                className="rounded-full"
-              />
+              <div className="ink-muted text-sm truncate">
+                local-first stationery journal
+              </div>
             </div>
+          </div>
+        </div>
 
-            <div className="hidden md:flex">
-              {!settings.disablePoints ? (
+        <div className="relative z-10 hidden min-h-[5rem] items-center justify-center md:flex md:justify-self-center">
+          <PackageAlert onAward={onPackageAward} placement="inline" size="lg" />
+        </div>
+
+        <div className="flex items-start justify-between gap-3 md:justify-end md:justify-self-end">
+          <div className="grid flex-1 grid-cols-[1fr_auto] items-center gap-3 md:hidden">
+            {!settings.disablePoints ? (
+              <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
                 <ScoreTicker
                   total={score.total}
                   streak={score.streak}
@@ -473,10 +430,49 @@ function TopBar({
                   hint={incomingHint}
                   streakOutcome={streakOutcome}
                 />
-              ) : null}
+                <MobileHeaderMascot />
+              </div>
+            ) : (
+              <div className="paper flex items-center rounded-2xl px-2 py-1">
+                <MobileHeaderMascot />
+              </div>
+            )}
+            <AccountButton />
+            <div className="flex min-h-[3rem] items-center justify-between gap-3">
+              <Link
+                to="/feedback"
+                className="paper focus-ring flex h-11 w-11 items-center justify-center rounded-full transition"
+                aria-label="Open feedback form"
+                title="Feedback form"
+              >
+                <SpeechBubbleIcon className="h-5 w-5" />
+              </Link>
+              <PackageAlert
+                onAward={onPackageAward}
+                placement="inline"
+                size="sm"
+              />
             </div>
+            <ThemeToggleButton
+              mode={mode}
+              onToggle={toggle}
+              className="rounded-full"
+            />
+          </div>
+
+          <div className="hidden md:flex">
+            {!settings.disablePoints ? (
+              <ScoreTicker
+                total={score.total}
+                streak={score.streak}
+                streakFreezes={score.streakFreezes}
+                hint={incomingHint}
+                streakOutcome={streakOutcome}
+              />
+            ) : null}
           </div>
         </div>
+      </div>
     </header>
   );
 }
