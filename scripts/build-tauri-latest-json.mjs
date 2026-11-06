@@ -9,11 +9,16 @@ import path from 'node:path'
 const PLATFORM_KEYS = {
   'mentell-macos': 'darwin-aarch64',
   'mentell-linux': 'linux-x86_64',
-  'mentell-windows': 'windows-x86_64',
+  'mentell-windows': 'windows-x86_64'
 }
 
-function parseArgs(argv) {
-  const out = { artifacts: './artifacts', version: '', tag: '', repo: 'SillyLittleTech/mentell' }
+function parseArgs (argv) {
+  const out = {
+    artifacts: './artifacts',
+    version: '',
+    tag: '',
+    repo: 'SillyLittleTech/mentell'
+  }
   for (let i = 2; i < argv.length; i++) {
     const arg = argv[i]
     if (arg === '--artifacts') out.artifacts = argv[++i]
@@ -21,7 +26,9 @@ function parseArgs(argv) {
     else if (arg === '--tag') out.tag = argv[++i]
     else if (arg === '--repo') out.repo = argv[++i]
     else if (arg === '--help' || arg === '-h') {
-      console.log(`Usage: node scripts/build-tauri-latest-json.mjs --version 1.2.3 --tag v1.2.3-123 [--artifacts ./artifacts]`)
+      console.log(
+        'Usage: node scripts/build-tauri-latest-json.mjs --version 1.2.3 --tag v1.2.3-123 [--artifacts ./artifacts]'
+      )
       process.exit(0)
     }
   }
@@ -32,7 +39,7 @@ function parseArgs(argv) {
   return out
 }
 
-function walkFiles(dir, acc = []) {
+function walkFiles (dir, acc = []) {
   if (!fs.existsSync(dir)) return acc
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
@@ -42,12 +49,14 @@ function walkFiles(dir, acc = []) {
   return acc
 }
 
-function pickUpdaterBundle(files, artifactName) {
+function pickUpdaterBundle (files, artifactName) {
   const sigs = files.filter((f) => f.endsWith('.sig'))
   if (sigs.length === 0) return null
 
   if (artifactName === 'mentell-windows') {
-    const nsisSig = sigs.find((f) => f.includes(`${path.sep}nsis${path.sep}`) && f.endsWith('.exe.sig'))
+    const nsisSig = sigs.find(
+      (f) => f.includes(`${path.sep}nsis${path.sep}`) && f.endsWith('.exe.sig')
+    )
     if (nsisSig) {
       return { sigPath: nsisSig, bundlePath: nsisSig.slice(0, -4) }
     }
@@ -78,7 +87,7 @@ const manifest = {
   version,
   notes: `Mentell ${version}`,
   pub_date: new Date().toISOString(),
-  platforms: {},
+  platforms: {}
 }
 
 for (const [folder, platformKey] of Object.entries(PLATFORM_KEYS)) {
@@ -86,7 +95,9 @@ for (const [folder, platformKey] of Object.entries(PLATFORM_KEYS)) {
   const files = walkFiles(root)
   const picked = pickUpdaterBundle(files, folder)
   if (!picked) {
-    console.warn(`No updater signature found under ${root}; skipping ${platformKey}`)
+    console.warn(
+      `No updater signature found under ${root}; skipping ${platformKey}`
+    )
     continue
   }
   if (!fs.existsSync(picked.bundlePath)) {
@@ -96,7 +107,7 @@ for (const [folder, platformKey] of Object.entries(PLATFORM_KEYS)) {
   const filename = path.basename(picked.bundlePath)
   manifest.platforms[platformKey] = {
     url: `${baseUrl}/${filename}`,
-    signature: fs.readFileSync(picked.sigPath, 'utf8').trim(),
+    signature: fs.readFileSync(picked.sigPath, 'utf8').trim()
   }
 }
 
@@ -107,4 +118,6 @@ if (Object.keys(manifest.platforms).length === 0) {
 
 const outPath = path.join(artifacts, 'latest.json')
 fs.writeFileSync(outPath, `${JSON.stringify(manifest, null, 2)}\n`)
-console.log(`Wrote ${outPath} with platforms: ${Object.keys(manifest.platforms).join(', ')}`)
+console.log(
+  `Wrote ${outPath} with platforms: ${Object.keys(manifest.platforms).join(', ')}`
+)
