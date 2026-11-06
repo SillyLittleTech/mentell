@@ -154,7 +154,9 @@ function App() {
       setStreakOutcome(null);
       setStreakFocusActive(false);
     }, 1500);
-    return () => window.clearTimeout(timeout);
+    return () => {
+      window.clearTimeout(timeout);
+    };
   }, [streakOutcome]);
 
   useEffect(() => {
@@ -383,10 +385,9 @@ function TopBar({
   const pageContext = location.pathname.split("/")[1] || "home";
 
   return (
-    <>
-      <header
-        className={`w-full space-y-3 overflow-visible ${focusActive ? "streak-focus-target" : ""}`}
-      >
+    <header
+      className={`w-full space-y-3 overflow-visible ${focusActive ? "streak-focus-target" : ""}`}
+    >
         <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-start">
           <div className="flex min-w-0 flex-wrap items-start gap-3">
             <div className="relative z-0 hidden min-h-[5rem] min-w-0 flex-1 items-center overflow-visible md:flex">
@@ -476,8 +477,7 @@ function TopBar({
             </div>
           </div>
         </div>
-      </header>
-    </>
+    </header>
   );
 }
 
