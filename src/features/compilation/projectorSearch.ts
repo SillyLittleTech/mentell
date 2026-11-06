@@ -94,8 +94,7 @@ function localMatchEntries(entries: ProjectorSearchEntry[], query: string) {
 
 export function getProjectorSearchEndpoint() {
   const raw = import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT as
-    | string
-    | undefined;
+    string | undefined;
   return raw ? normalizeEndpointUrl(raw) : "";
 }
 
