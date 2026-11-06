@@ -609,7 +609,10 @@ function HomePlaceholder({
               });
               if (!loadAppSettings().disableNotifications) {
                 maybeRequestNotificationPermission().catch((error) => {
-                  console.error("Notification permission prompt failed:", error);
+                  console.error(
+                    "Notification permission prompt failed:",
+                    error,
+                  );
                 });
               }
               onScoreChange(award.totalDelta, award.hint, {
