@@ -342,10 +342,8 @@ export function WeeklyProjector() {
           <ProjectorCard title="Entries logged" value={stats.total} />
           <ProjectorCard title="Warnings flagged" value={stats.warnings} />
           <ProjectorCard title="Current score" value={score.total} />
-          <div className="paper flex flex-col justify-center rounded-2xl border border-[var(--paper-border)] px-4 py-3">
-            <div className="ink-muted text-[11px] font-semibold uppercase">
-              HBCM
-            </div>
+          <div className="paper flex flex-col justify-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 sm:gap-3">
+            <div className="ink-muted text-xs sm:text-sm">Consistency heat</div>
             <HbcmDisplay hbcmDisplay={score.hbcmDisplay} variant="inline" />
           </div>
         </div>
@@ -369,8 +367,10 @@ export function WeeklyProjector() {
           </select>
         </div>
         <p className="ink-muted mt-1 text-sm">
-          Chronological sentiment with gradient transitions. Quick logs count
-          for color but stay out of AI search index.
+          Plot entries in order: difficult days in red, steady or mixed in yellow,
+          brighter days in green, quiet gaps in black, and empty days in white —
+          with soft blends between points. Quick logs shape the line but stay out
+          of journal search.
         </p>
         <div className="mt-4">
           <FeelingsOverTimeChart

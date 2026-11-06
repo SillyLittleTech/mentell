@@ -187,12 +187,7 @@ export function FeelingsOverTimeChart({
           <div className="font-medium">{points[active].dateKey}</div>
           <div className="ink-muted">{describePoint(points[active])}</div>
         </div>
-      ) : (
-        <div className="ink-muted mt-2 text-xs">
-          Focus or hover a point for details. Colors match the Shoppe weekly
-          key.
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }

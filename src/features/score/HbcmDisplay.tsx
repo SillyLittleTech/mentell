@@ -1,16 +1,39 @@
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { shouldReduceMotion } from "../../shared/motion/useMotionPrefs";
+import { MaterialIcon } from "../../components/MaterialIcon";
 
-function heatGradient(display: number) {
-  if (display >= 4)
-    return "linear-gradient(180deg, rgba(42,155,88,0.95), rgba(100,200,140,0.7))";
-  if (display === 3)
-    return "linear-gradient(180deg, rgba(214,189,64,0.95), rgba(240,220,120,0.65))";
-  if (display === 2)
-    return "linear-gradient(180deg, rgba(230,150,48,0.95), rgba(255,200,100,0.6))";
-  if (display === 1)
-    return "linear-gradient(180deg, rgba(198,29,29,0.85), rgba(240,120,80,0.55))";
-  return "linear-gradient(180deg, rgba(90,90,90,0.25), rgba(140,140,140,0.15))";
+function fillRatio(display: number): number {
+  switch (display) {
+    case 5:
+      return 0.88;
+    case 4:
+      return 0.72;
+    case 3:
+      return 0.5;
+    case 2:
+      return 0.26;
+    case 1:
+      return 0.1;
+    default:
+      return 0;
+  }
+}
+
+function liquidGradient(display: number) {
+  switch (display) {
+    case 5:
+      return { a: "rgb(34,165,95)", b: "rgb(130,225,160)" };
+    case 4:
+      return { a: "rgb(42,155,88)", b: "rgb(205,215,85)" };
+    case 3:
+      return { a: "rgb(200,190,65)", b: "rgb(235,215,95)" };
+    case 2:
+      return { a: "rgb(215,110,38)", b: "rgb(245,175,88)" };
+    case 1:
+      return { a: "rgb(185,32,32)", b: "rgb(235,95,68)" };
+    default:
+      return { a: "rgba(130,130,138,0.2)", b: "rgba(170,170,178,0.12)" };
+  }
 }
 
 export function HbcmDisplay({
@@ -24,63 +47,138 @@ export function HbcmDisplay({
 }) {
   const reduced = shouldReduceMotion();
   const display = Math.min(5, Math.max(0, Math.round(hbcmDisplay)));
+  const uid = useId().replace(/:/g, "");
+  const clipId = `hbcm-clip-${uid}`;
+  const gradId = `hbcm-liq-${uid}`;
+
+  const fill = fillRatio(display);
+  const { a, b } = liquidGradient(display);
   const label =
     display === 0
-      ? "Consistency heat empty — dust settles; the next log refills the glass."
-      : `Consistency heat ${display} of 5 (rounded up for a little extra grace)`;
+      ? "Consistency heat empty. Next log starts filling the glass."
+      : `Consistency heat ${display} of five`;
 
-  const fillPct = useMemo(() => Math.min(100, (display / 5) * 100), [display]);
+  const svgH = variant === "chip" ? 48 : 54;
+  const svgW = variant === "chip" ? 52 : 58;
+  const fontSize = variant === "chip" ? 34 : 40;
+  const baselineY = svgH * 0.78;
+
+  const waveStyle = useMemo(
+    () =>
+      reduced
+        ? undefined
+        : { animation: "hbcm-liq-wave-x 2.8s ease-in-out infinite" },
+    [reduced],
+  );
+
+  const chipClass = [
+    variant === "chip"
+      ? "rounded-2xl border border-[var(--paper-border)] px-3 py-2"
+      : "",
+    "flex items-center gap-2",
+    pulse && !reduced ? "hbcm-chip--pulse" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <div
-      className={
-        variant === "chip"
-          ? `hbcm-chip flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-3 py-2 ${pulse && !reduced ? "hbcm-chip--pulse" : ""}`
-          : "hbcm-inline flex flex-col gap-1"
-      }
-      role="img"
-      aria-label={label}
-    >
-      {variant === "chip" ? (
-        <div className="ink-muted text-[11px] font-semibold uppercase tracking-wide">
-          HBCM
-        </div>
-      ) : (
-        <div className="ink-muted text-xs">Heat-based consistency</div>
-      )}
-      <div
-        className="relative flex h-11 w-9 items-end justify-center overflow-hidden rounded-lg border border-black/20 bg-white/30 shadow-inner dark:bg-black/25"
-        style={{ backdropFilter: "blur(6px)" }}
-      >
-        <div
-          className="absolute bottom-0 left-0 right-0 transition-[height] duration-300"
-          style={{
-            height: `${fillPct}%`,
-            background: heatGradient(display),
-            opacity: display === 0 ? 0.35 : 1,
-          }}
-        />
-        <span
-          className="relative z-[1] font-mono text-lg font-bold tabular-nums text-[rgba(0,0,0,0.88)] dark:text-[rgba(255,255,255,0.92)]"
-          style={{ textShadow: "0 1px 0 rgba(255,255,255,0.35)" }}
+    <div className={chipClass} role="img" aria-label={label}>
+      <MaterialIcon
+        name="whatshot"
+        size={variant === "chip" ? 18 : 20}
+        accent={false}
+        className="shrink-0 opacity-75"
+      />
+      <div className="relative" style={{ width: svgW, height: svgH }}>
+        <svg
+          width={svgW}
+          height={svgH}
+          viewBox={`0 0 ${svgW} ${svgH}`}
+          className="overflow-visible text-[var(--paper-ink)] dark:text-white"
+          aria-hidden
         >
-          {display}
-        </span>
-        {display === 0 ? (
-          <span
-            className="pointer-events-none absolute inset-0 opacity-40"
-            aria-hidden
+          <defs>
+            <linearGradient id={gradId} x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stopColor={a} />
+              <stop offset="100%" stopColor={b} />
+            </linearGradient>
+            <clipPath id={clipId}>
+              <text
+                x={svgW / 2}
+                y={baselineY}
+                textAnchor="middle"
+                fontFamily='Georgia, "Times New Roman", serif'
+                fontWeight="700"
+                fontSize={fontSize}
+                fontStyle="italic"
+              >
+                {display}
+              </text>
+            </clipPath>
+          </defs>
+
+          <g clipPath={`url(#${clipId})`}>
+            {display > 0 ? (
+              <g style={waveStyle}>
+                <rect
+                  x="-8%"
+                  y={svgH * (1 - fill)}
+                  width="116%"
+                  height={svgH * fill + 8}
+                  fill={`url(#${gradId})`}
+                />
+                <ellipse
+                  cx={svgW * 0.5}
+                  cy={svgH * (1 - fill)}
+                  rx={svgW * 0.52}
+                  ry={svgH * 0.04}
+                  fill="rgba(255,255,255,0.2)"
+                />
+              </g>
+            ) : (
+              <>
+                <rect
+                  x="0"
+                  y="0"
+                  width={svgW}
+                  height={svgH}
+                  fill="rgba(155,155,165,0.08)"
+                />
+                <path
+                  d={`M ${svgW * 0.12} ${svgH * 0.22} Q ${svgW * 0.5} ${svgH * 0.14} ${svgW * 0.88} ${svgH * 0.24}`}
+                  fill="none"
+                  stroke="rgba(0,0,0,0.2)"
+                  strokeWidth="0.45"
+                  className="dark:stroke-[rgba(255,255,255,0.28)]"
+                />
+                <path
+                  d={`M ${svgW * 0.18} ${svgH * 0.9} Q ${svgW * 0.5} ${svgH * 0.97} ${svgW * 0.82} ${svgH * 0.88}`}
+                  fill="none"
+                  stroke="rgba(0,0,0,0.16)"
+                  strokeWidth="0.38"
+                  className="dark:stroke-[rgba(255,255,255,0.22)]"
+                />
+              </>
+            )}
+          </g>
+
+          <text
+            x={svgW / 2}
+            y={baselineY}
+            textAnchor="middle"
+            fill="currentColor"
+            className="opacity-95 dark:[stroke:rgba(248,248,252,0.35)]"
+            stroke="rgba(30,30,38,0.42)"
+            strokeWidth="1.05"
+            fontFamily='Georgia, "Times New Roman", serif'
+            fontWeight="700"
+            fontSize={fontSize}
+            fontStyle="italic"
+            style={{ paintOrder: "stroke fill" }}
           >
-            <svg viewBox="0 0 36 44" className="h-full w-full">
-              <path
-                d="M4 8 Q18 4 30 10 M6 36 Q16 40 28 34"
-                fill="none"
-                stroke="rgba(0,0,0,0.25)"
-                strokeWidth="0.6"
-              />
-            </svg>
-          </span>
-        ) : null}
+            {display}
+          </text>
+        </svg>
       </div>
       <span className="sr-only">{label}</span>
     </div>

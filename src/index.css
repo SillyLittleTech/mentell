@@ -447,6 +447,28 @@ html[data-reduced-motion='true'] .streak-focus-dim {
   }
 }
 
+/* Consistency heat (2.x) — liquid surface motion inside number glyph */
+.hbcm-chip--pulse {
+  animation: streak-pulse 0.6s ease-out 1;
+}
+
+@keyframes hbcm-liq-wave-x {
+  0% {
+    transform: translateX(-4px);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+  100% {
+    transform: translateX(-4px);
+  }
+}
+
+html[data-reduced-motion='true'] .hbcm-chip--pulse,
+html[data-reduced-motion='true'] [style*='hbcm-liq-wave-x'] {
+  animation: none !important;
+}
+
 .streak-number {
   position: relative;
   display: inline-block;

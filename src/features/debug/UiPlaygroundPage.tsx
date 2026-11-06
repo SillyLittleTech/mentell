@@ -199,9 +199,9 @@ function AnimationsTab({
           </div>
         </div>
 
-        {/* HBCM chip */}
+        {/* Consistency heat chip */}
         <div className="rounded-3xl border border-[var(--paper-border)] p-5">
-          <div className="font-medium">HBCM heat chip</div>
+          <div className="font-medium">Consistency heat chip</div>
           <div className="ink-muted mt-1 text-sm">
             Glass vessel + liquid fill (2.x consistency heat).
           </div>
@@ -474,7 +474,7 @@ export function UiPlaygroundPage() {
               </div>
               <div className="rounded-2xl border border-[var(--paper-border)] p-4">
                 <div className="font-mono text-xs uppercase opacity-70">
-                  HBCM chip
+                  Heat chip
                 </div>
                 <div className="mt-2">
                   <HbcmDisplay
