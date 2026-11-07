@@ -34,8 +34,8 @@ export function getCachedCharacterAppearance(): CharacterAppearance | null {
   return cache
 }
 
-export async function loadCharacterAppearance(): Promise<CharacterAppearance> {
-  if (cache) return cache
+export function loadCharacterAppearance(): Promise<CharacterAppearance> {
+  if (cache) return Promise.resolve(cache)
   if (loadPromise) return loadPromise
 
   loadPromise = (async () => {

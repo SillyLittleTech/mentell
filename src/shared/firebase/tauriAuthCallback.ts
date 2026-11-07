@@ -30,7 +30,7 @@ export function localhostContinueUrl(port: number = AUTH_CALLBACK_PORT): string 
 }
 
 /** Wait for a single auth callback URL from the localhost server. */
-export async function waitForAuthCallback(port: number, timeoutMs = 300_000): Promise<string> {
+export function waitForAuthCallback(port: number, timeoutMs = 300_000): Promise<string> {
   return new Promise<string>((resolve, reject) => {
     let unlisten: (() => void) | undefined
 

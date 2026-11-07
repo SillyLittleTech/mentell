@@ -342,7 +342,7 @@ async function parseJsonResponse<T>(res: Response): Promise<T | null> {
   }
 }
 
-export async function fetchResourcesForTopics(input: {
+export function fetchResourcesForTopics(input: {
   place: GeoPlace
   topics: ResourceTopic[]
   contactMethod: ContactMethodPreference

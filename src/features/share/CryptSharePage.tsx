@@ -182,7 +182,7 @@ function ExpiredNotice({ message }: { message: string }) {
   )
 }
 
-async function decryptFromCode(code: string): Promise<OfflineSyncPayload> {
+function decryptFromCode(code: string): Promise<OfflineSyncPayload> {
   const { payloadBase64Url, keyBase64Url } = parseCryptCode(code)
   return decryptOfflineSyncPayload(payloadBase64Url, keyBase64Url)
 }
