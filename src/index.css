@@ -500,7 +500,7 @@ html[data-reduced-motion="true"] [style*="hbcm-liq-wave-x"] {
   stroke: rgba(38, 38, 46, 0.52);
 }
 
-html[data-theme='dark'] .hbcm-glass-digit {
+html[data-theme="dark"] .hbcm-glass-digit {
   fill: rgba(255, 255, 255, 0.16);
   stroke: rgba(236, 236, 244, 0.38);
 }
