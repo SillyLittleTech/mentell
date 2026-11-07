@@ -32,10 +32,12 @@ export type FeelingPoint = {
   note?: string;
 };
 
+/** Documents `toKey` in this module. */
 function toKey(d: Date) {
   return format(d, "yyyy-MM-dd");
 }
 
+/** Documents `loadEntriesInRange` in this module. */
 async function loadEntriesInRange(
   startKey: string,
   endKey: string,

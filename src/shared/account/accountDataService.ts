@@ -26,12 +26,14 @@ const SCORE_KEYS = [
   HBCM_MIGRATED_FROM_STREAK_KEY,
 ] as const;
 
+/** Documents `fs` in this module. */
 function fs() {
   const f = getFirebaseFirestore();
   if (!f) throw new Error("Cloud backup is not available");
   return f;
 }
 
+/** Documents `deleteSubcollection` in this module. */
 async function deleteSubcollection(uid: string, name: string) {
   const snap = await getDocs(collection(fs(), "users", uid, name));
   await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));

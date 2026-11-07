@@ -37,11 +37,13 @@ const CONTACT_OPTIONS: { id: ContactMethodPreference; label: string }[] = [
   { id: "chat", label: "Online chat" },
 ];
 
+/** Documents `telHref` in this module. */
 function telHref(value: string) {
   const digits = value.replace(/[^\d+]/g, "");
   return digits ? `tel:${digits}` : undefined;
 }
 
+/** Documents `ResourceActions` in this module. */
 function ResourceActions({ resource }: { resource: LocalResource }) {
   const phoneHref = resource.phone ? telHref(resource.phone) : undefined;
   return (
@@ -86,6 +88,7 @@ function ResourceActions({ resource }: { resource: LocalResource }) {
   );
 }
 
+/** Documents `ResourceCard` in this module. */
 function ResourceCard({ resource }: { resource: LocalResource }) {
   return (
     <article className="rounded-2xl border border-[var(--paper-border)] bg-[var(--paper-bg)] p-3">
@@ -109,6 +112,7 @@ function ResourceCard({ resource }: { resource: LocalResource }) {
   );
 }
 
+/** Documents `partitionPooled` in this module. */
 function partitionPooled(resources: LocalResource[]) {
   const pooled: LocalResource[] = [];
   const rest: LocalResource[] = [];
@@ -119,6 +123,7 @@ function partitionPooled(resources: LocalResource[]) {
   return { pooled, rest };
 }
 
+/** Documents `HelplineResourceGroups` in this module. */
 function HelplineResourceGroups({
   resources,
   place,
@@ -196,6 +201,7 @@ function HelplineResourceGroups({
   );
 }
 
+/** Documents `ResultSection` in this module. */
 function ResultSection({
   result,
   place,
@@ -247,6 +253,7 @@ function ResultSection({
   );
 }
 
+/** Documents `actionButtonClass` in this module. */
 function actionButtonClass(compact: boolean) {
   return `focus-ring rounded-xl border border-[var(--paper-border)] px-3 font-semibold ${
     compact ? "py-1.5 text-xs" : "py-2 text-sm"
@@ -301,11 +308,13 @@ export function CrisisResourcePanel({
     "US"
   ).toUpperCase();
 
+  /** Documents `resolvedCountryCode` in this module. */
   function resolvedCountryCode() {
     if (countryPick === "OTHER") return countryOther.trim().toUpperCase();
     return countryPick;
   }
 
+  /** Documents `manualFields` in this module. */
   function manualFields(): ManualLocationFields {
     return {
       countryCode: resolvedCountryCode(),
@@ -315,6 +324,7 @@ export function CrisisResourcePanel({
     };
   }
 
+  /** Documents `syncAdjustFormFromPlace` in this module. */
   function syncAdjustFormFromPlace(resolved: GeoPlace) {
     const code = resolved.countryCode.toUpperCase();
     const known = COMMON_COUNTRY_OPTIONS.some((option) => option.code === code);
@@ -325,10 +335,12 @@ export function CrisisResourcePanel({
     setPlaceLabel(resolved.city ?? "");
   }
 
+  /** Documents `topicsForSearch` in this module. */
   function topicsForSearch() {
     return activeTopics.length ? activeTopics : inferredTopics;
   }
 
+  /** Documents `runFetch` in this module. */
   async function runFetch(
     resolvedPlace: GeoPlace,
     method: ContactMethodPreference,
@@ -383,6 +395,7 @@ export function CrisisResourcePanel({
     }
   }
 
+  /** Documents `openAdjust` in this module. */
   function openAdjust(hint?: string) {
     setLocationHint(hint ?? null);
     setActiveTopics((prev) => (prev.length ? prev : inferredTopics));
@@ -390,6 +403,7 @@ export function CrisisResourcePanel({
     setPhase("adjust");
   }
 
+  /** Documents `submitAdjust` in this module. */
   async function submitAdjust() {
     try {
       const resolvedPlace = await placeFromManual(manualFields());
@@ -416,6 +430,7 @@ export function CrisisResourcePanel({
     }
   }
 
+  /** Documents `beginLocalSearch` in this module. */
   function beginLocalSearch() {
     void (async () => {
       setActiveTopics(inferredTopics);
@@ -443,6 +458,7 @@ export function CrisisResourcePanel({
     })();
   }
 
+  /** Documents `toggleTopic` in this module. */
   function toggleTopic(topic: ResourceTopic) {
     setActiveTopics((prev) =>
       prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic],

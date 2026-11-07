@@ -24,6 +24,7 @@ export type ComebackPayload = {
   at: number;
 };
 
+/** Documents `readJson` in this module. */
 function readJson<T>(key: string): T | null {
   try {
     const raw = localStorage.getItem(key);

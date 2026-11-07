@@ -32,6 +32,7 @@ const FEELING_CLASS_OPTIONS: FeelingDayClass[] = [
   "no_data",
 ];
 
+/** Documents `usePlaygroundWeekKeys` in this module. */
 function usePlaygroundWeekKeys() {
   return useMemo(() => {
     const start = startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -41,6 +42,7 @@ function usePlaygroundWeekKeys() {
   }, []);
 }
 
+/** Documents `DebugThemeSpinButton` in this module. */
 function DebugThemeSpinButton() {
   const reduced = shouldReduceMotion();
   const [spinning, setSpinning] = useState(false);
@@ -71,6 +73,7 @@ function DebugThemeSpinButton() {
   );
 }
 
+/** Documents `ModalDemo` in this module. */
 function ModalDemo({ open, onClose }: { open: boolean; onClose: () => void }) {
   const reduced = shouldReduceMotion();
 
@@ -136,6 +139,7 @@ function ModalDemo({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
+/** Documents `AnimationsTab` in this module. */
 function AnimationsTab({
   onOpenModal,
   scoreTotal,
@@ -371,6 +375,7 @@ const VIZ_DEFAULT_CLASSES: FeelingDayClass[] = [
   "neutral",
 ];
 
+/** Documents `VizPlaygroundTab` in this module. */
 function VizPlaygroundTab() {
   const weekLabelId = useId();
   const chartTitleId = useId();
@@ -405,6 +410,7 @@ function VizPlaygroundTab() {
     [shopDays],
   );
 
+  /** Documents `setDayClass` in this module. */
   function setDayClass(index: number, c: FeelingDayClass) {
     setClasses((prev) => {
       const next = [...prev];

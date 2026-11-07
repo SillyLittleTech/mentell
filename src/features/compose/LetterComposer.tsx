@@ -93,12 +93,14 @@ export type DraftInputState = {
   timeframe: Timeframe;
 };
 
+/** Documents `generateRandomId` in this module. */
 function generateRandomId() {
   return typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2);
 }
 
+/** Documents `SkeletonInput` in this module. */
 function SkeletonInput({ className = "" }: { className?: string }) {
   return (
     <div
@@ -108,6 +110,7 @@ function SkeletonInput({ className = "" }: { className?: string }) {
   );
 }
 
+/** Documents `SkeletonTextarea` in this module. */
 function SkeletonTextarea({ className = "" }: { className?: string }) {
   return (
     <div
@@ -247,6 +250,7 @@ export function LetterComposer({
     setDraftInputs((prev) => [...prev, createDraftInput()]);
   };
 
+  /** Documents `handleSubmit` in this module. */
   async function handleSubmit() {
     if (disabled || isSubmitting || anyDraftOverLimit) return;
     setIsSubmitting(true);
@@ -704,6 +708,7 @@ export function LetterComposer({
     </div>
   );
 }
+/** Documents `DraftRiskNotice` in this module. */
 function DraftRiskNotice({
   risk,
 }: {
@@ -727,6 +732,7 @@ function DraftRiskNotice({
   );
 }
 
+/** Documents `SupportNotice` in this module. */
 function SupportNotice({ risk }: { risk: RiskAssessment }) {
   const celebration = risk.responseKind === "positive";
   const hyper = risk.responseKind === "hypermania";
@@ -751,6 +757,7 @@ function SupportNotice({ risk }: { risk: RiskAssessment }) {
   );
 }
 
+/** Documents `RiskNotice` in this module. */
 function RiskNotice({ risk }: { risk: RiskAssessment }) {
   const crisis = risk.responseKind === "crisis";
   return (
@@ -774,6 +781,7 @@ function RiskNotice({ risk }: { risk: RiskAssessment }) {
   );
 }
 
+/** Documents `RiskSignalLine` in this module. */
 function RiskSignalLine({ risk }: { risk: RiskAssessment }) {
   const guard =
     risk.guardSafe === undefined
@@ -790,6 +798,29 @@ function RiskSignalLine({ risk }: { risk: RiskAssessment }) {
   );
 }
 
+/** Documents `riskResultModalTitle` in this module. */
+function riskResultModalTitle(kind: RiskAssessment["responseKind"]): string {
+  if (kind === "crisis") return "You are not alone";
+  if (kind === "hypermania") return "Energy check-in";
+  if (kind === "positive") return "Look at you go";
+  return "A note for you";
+}
+
+/** Documents `riskResultModalSubtitle` in this module. */
+function riskResultModalSubtitle(kind: RiskAssessment["responseKind"]): string {
+  if (kind === "crisis") {
+    return "Mentell noticed this entry may need extra care.";
+  }
+  if (kind === "hypermania") {
+    return "Mentell noticed unusually intense upbeat language across recent logs. This is not a diagnosis — just a nudge to notice pace and sleep.";
+  }
+  if (kind === "positive") {
+    return "Mentell noticed a bright patch worth celebrating.";
+  }
+  return "Mentell found a supportive note after reading your entry.";
+}
+
+/** Documents `RiskResultModal` in this module. */
 function RiskResultModal({
   risk,
   onClose,
@@ -798,8 +829,6 @@ function RiskResultModal({
   onClose: () => void;
 }) {
   const crisis = risk.responseKind === "crisis";
-  const celebration = risk.responseKind === "positive";
-  const hyper = risk.responseKind === "hypermania";
   const titleId = "risk-result-modal-title";
   const reduced = shouldReduceMotion();
   useBodyScrollLock(true);
@@ -824,22 +853,10 @@ function RiskResultModal({
         <div className="flex items-start justify-between gap-3">
           <div>
             <div id={titleId} className="font-paper text-2xl">
-              {crisis
-                ? "You are not alone"
-                : hyper
-                  ? "Energy check-in"
-                  : celebration
-                    ? "Look at you go"
-                    : "A note for you"}
+              {riskResultModalTitle(risk.responseKind)}
             </div>
             <div className="ink-muted mt-1 text-sm">
-              {crisis
-                ? "Mentell noticed this entry may need extra care."
-                : hyper
-                  ? "Mentell noticed unusually intense upbeat language across recent logs. This is not a diagnosis — just a nudge to notice pace and sleep."
-                  : celebration
-                    ? "Mentell noticed a bright patch worth celebrating."
-                    : "Mentell found a supportive note after reading your entry."}
+              {riskResultModalSubtitle(risk.responseKind)}
             </div>
           </div>
           <button
@@ -858,6 +875,7 @@ function RiskResultModal({
   );
 }
 
+/** Documents `EntryExtrasFields` in this module. */
 function EntryExtrasFields({
   draft,
   disabled,
@@ -934,6 +952,7 @@ function EntryExtrasFields({
   );
 }
 
+/** Documents `Field` in this module. */
 function Field({
   label,
   children,

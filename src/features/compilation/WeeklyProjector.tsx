@@ -60,6 +60,7 @@ import {
   type ProjectorDebugDetail,
 } from "../debug/projectorDebug";
 
+/** Documents `profileActiveHint` in this module. */
 function profileActiveHint(profile: AiProfile) {
   if (profile.about.trim()) {
     const snippet = profile.about.trim().slice(0, 60);
@@ -229,6 +230,7 @@ export function WeeklyProjector() {
     : null;
   useBodyScrollLock(Boolean(selected && delivered));
 
+  /** Documents `handleGenerate` in this module. */
   async function handleGenerate() {
     if (!stats) return;
     setSummaryBusy(true);
@@ -252,6 +254,7 @@ export function WeeklyProjector() {
     }
   }
 
+  /** Documents `handleRawDownload` in this module. */
   async function handleRawDownload() {
     setRawBusy(true);
     try {
@@ -275,6 +278,7 @@ export function WeeklyProjector() {
     }
   }
 
+  /** Documents `handleShowMore` in this module. */
   async function handleShowMore() {
     if (!stats || loadingMore || !hasMoreWeeks) return;
     const cursorForWeek =
@@ -693,6 +697,7 @@ export function WeeklyProjector() {
   );
 }
 
+/** Documents `ModeToggle` in this module. */
 function ModeToggle({
   mode,
   onChange,
@@ -724,6 +729,7 @@ function ModeToggle({
   );
 }
 
+/** Documents `StatChip` in this module. */
 function StatChip({
   label,
   children,
@@ -739,6 +745,7 @@ function StatChip({
   );
 }
 
+/** Documents `ProjectorCard` in this module. */
 function ProjectorCard({ title, value }: { title: string; value: number }) {
   return (
     <div className="rounded-3xl border border-[var(--paper-border)] p-4 sm:p-5">
