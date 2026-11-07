@@ -1,24 +1,24 @@
-import { Link } from 'react-router-dom'
-import { MaterialIcon } from '../MaterialIcon'
-import { useAuthOptional } from '../../shared/firebase/AuthProvider'
-import { useBackgroundActivities } from '../../shared/useBackgroundActivities'
-import { useState } from 'react'
+import { Link } from "react-router-dom";
+import { MaterialIcon } from "../MaterialIcon";
+import { useAuthOptional } from "../../shared/firebase/AuthProvider";
+import { useBackgroundActivities } from "../../shared/useBackgroundActivities";
+import { useState } from "react";
 
 export function AccountButton() {
-  const auth = useAuthOptional()
-  const activities = useBackgroundActivities()
-  const [hover, setHover] = useState(false)
+  const auth = useAuthOptional();
+  const activities = useBackgroundActivities();
+  const [hover, setHover] = useState(false);
 
-  const activeMessages = Object.entries(activities)
-  const isSyncBusy = 'sync' in activities
+  const activeMessages = Object.entries(activities);
+  const isSyncBusy = "sync" in activities;
 
   const syncStatusTone = auth?.syncError
-    ? 'var(--danger)'
+    ? "var(--danger)"
     : isSyncBusy
-      ? '#3b82f6'
+      ? "#3b82f6"
       : auth?.user && auth.syncEnabled
-        ? 'var(--success)'
-        : 'rgba(148, 163, 184, 0.9)'
+        ? "var(--success)"
+        : "rgba(148, 163, 184, 0.9)";
 
   return (
     <div
@@ -52,5 +52,5 @@ export function AccountButton() {
         </div>
       )}
     </div>
-  )
+  );
 }
