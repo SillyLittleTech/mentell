@@ -144,17 +144,14 @@ export function FeelingsOverTimeChart({
     if (clientX + TOOLTIP_OFFSET + TOOLTIP_EST_W > window.innerWidth - margin) {
       tx = -TOOLTIP_EST_W - TOOLTIP_OFFSET;
     }
-    if (clientY + TOOLTIP_OFFSET + TOOLTIP_EST_H > window.innerHeight - margin) {
+    if (
+      clientY + TOOLTIP_OFFSET + TOOLTIP_EST_H >
+      window.innerHeight - margin
+    ) {
       ty = -TOOLTIP_EST_H - TOOLTIP_OFFSET;
     }
-    const cx = Math.min(
-      Math.max(margin, clientX),
-      window.innerWidth - margin,
-    );
-    const cy = Math.min(
-      Math.max(margin, clientY),
-      window.innerHeight - margin,
-    );
+    const cx = Math.min(Math.max(margin, clientX), window.innerWidth - margin);
+    const cy = Math.min(Math.max(margin, clientY), window.innerHeight - margin);
     return {
       clientX: cx,
       clientY: cy,
