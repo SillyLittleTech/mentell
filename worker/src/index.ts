@@ -1,67 +1,79 @@
-import { handleAuthHandoffCreate, handleAuthHandoffRedeem } from './authHandoff'
-import { corsJson } from './cors'
-import type { Env } from './env'
+import {
+  handleAuthHandoffCreate,
+  handleAuthHandoffRedeem,
+} from "./authHandoff";
+import { corsJson } from "./cors";
+import type { Env } from "./env";
 import {
   handlePushStatus,
   handlePushSubscribe,
   handlePushTest,
   handlePushTestDelayed,
   handlePushUnsubscribe,
-} from './pushHandlers'
-import { runPushCron } from './pushCron'
-import { handleProjectorSearch } from './projectorSearch'
-import { handlePooledCrisisResources } from './pooledCrisisResources'
-import { handleRiskAssessment } from './riskAssessment'
-import { handleWeeklySummary } from './weeklySummary'
-import { handleEmailSubscribe, handleEmailVerify, handleEmailUnverify, handleEmailUnsubscribe } from './emailHandlers'
-import { handleEmailTest } from './emailTestHandler'
+} from "./pushHandlers";
+import { runPushCron } from "./pushCron";
+import { handleProjectorSearch } from "./projectorSearch";
+import { handlePooledCrisisResources } from "./pooledCrisisResources";
+import { handleRiskAssessment } from "./riskAssessment";
+import { handleWeeklySummary } from "./weeklySummary";
+import {
+  handleEmailSubscribe,
+  handleEmailVerify,
+  handleEmailUnverify,
+  handleEmailUnsubscribe,
+} from "./emailHandlers";
+import { handleEmailTest } from "./emailTestHandler";
 
-export type { Env } from './env'
+export type { Env } from "./env";
 
 export default {
-  fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> | Response {
-    const url = new URL(request.url)
-    const origin = request.headers.get('Origin')
+  fetch(
+    request: Request,
+    env: Env,
+    ctx: ExecutionContext,
+  ): Promise<Response> | Response {
+    const url = new URL(request.url);
+    const origin = request.headers.get("Origin");
 
     switch (url.pathname) {
-      case '/email/subscribe':
-        return handleEmailSubscribe(request, env)
-      case '/email/unsubscribe':
-        return handleEmailUnsubscribe(request, env)
-      case '/email/verify':
-        return handleEmailVerify(request, env)
-      case '/email/unverify':
-        return handleEmailUnverify(request, env)
-      case '/email/test':
-        return handleEmailTest(request, env)
-      case '/weekly-summary':
-        return handleWeeklySummary(request, env)
-      case '/projector-search':
-        return handleProjectorSearch(request, env)
-      case '/risk-assessment':
-        return handleRiskAssessment(request, env)
-      case '/pooled-crisis-resources':
-        return handlePooledCrisisResources(request, env)
-      case '/push/subscribe':
-        return handlePushSubscribe(request, env)
-      case '/push/unsubscribe':
-        return handlePushUnsubscribe(request, env)
-      case '/push/test':
-        return handlePushTest(request, env)
-      case '/push/status':
-        return handlePushStatus(request, env)
-      case '/push/test-delayed':
-        return handlePushTestDelayed(request, env, ctx)
-      case '/auth/handoff/create':
-        return handleAuthHandoffCreate(request, env)
-      case '/auth/handoff/redeem':
-        return handleAuthHandoffRedeem(request, env)
+      case "/email/subscribe":
+        return handleEmailSubscribe(request, env);
+      case "/email/unsubscribe":
+        return handleEmailUnsubscribe(request, env);
+      case "/email/verify":
+        return handleEmailVerify(request, env);
+      case "/email/unverify":
+        return handleEmailUnverify(request, env);
+      case "/email/test":
+        return handleEmailTest(request, env);
+      case "/weekly-summary":
+        return handleWeeklySummary(request, env);
+      case "/projector-search":
+        return handleProjectorSearch(request, env);
+      case "/risk-assessment":
+        return handleRiskAssessment(request, env);
+      case "/pooled-crisis-resources":
+        return handlePooledCrisisResources(request, env);
+      case "/push/subscribe":
+        return handlePushSubscribe(request, env);
+      case "/push/unsubscribe":
+        return handlePushUnsubscribe(request, env);
+      case "/push/test":
+        return handlePushTest(request, env);
+      case "/push/status":
+        return handlePushStatus(request, env);
+      case "/push/test-delayed":
+        return handlePushTestDelayed(request, env, ctx);
+      case "/auth/handoff/create":
+        return handleAuthHandoffCreate(request, env);
+      case "/auth/handoff/redeem":
+        return handleAuthHandoffRedeem(request, env);
       default:
-        return corsJson({ error: 'Not found' }, 404, env, origin)
+        return corsJson({ error: "Not found" }, 404, env, origin);
     }
   },
 
   scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(runPushCron(env))
+    ctx.waitUntil(runPushCron(env));
   },
-}
+};
