@@ -107,9 +107,9 @@ export function WeeklyProjector() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [feelingsRange, setFeelingsRange] = useState<FeelingsRange>("week");
   const [feelingsPoints, setFeelingsPoints] = useState<FeelingPoint[]>([]);
-  const [chartEntryCache, setChartEntryCache] = useState<
-    Map<string, EntryRow>
-  >(() => new Map());
+  const [chartEntryCache, setChartEntryCache] = useState<Map<string, EntryRow>>(
+    () => new Map(),
+  );
   const feelingsTitleId = "feelings-over-time-heading";
   const aiEnabled = weeklyAiSummaryEnabled();
   const searchEnabled = projectorSearchEnabled();
