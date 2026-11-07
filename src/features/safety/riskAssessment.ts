@@ -1771,8 +1771,7 @@ export function shouldRequestLlamaGuard(
     return true;
   if (local.responseKind === "support" || local.responseKind === "positive")
     return true;
-  if (AI_REVIEW_TERMS.some((term) => termMatches(text, term))) return true;
-  return false;
+  return AI_REVIEW_TERMS.some((term) => termMatches(text, term));
 }
 
 export function flagConcerningLanguage(text: string) {

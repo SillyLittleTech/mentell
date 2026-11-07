@@ -29,14 +29,17 @@ const PASTEL_BORDER: Record<FeelingDayClass, string> = {
   no_data: "120, 122, 132",
 };
 
+/** Bar segment RGB triplet (comma-separated) for feeling class `c`. */
 export function pastelSegmentRgb(c: FeelingDayClass): string {
   return PASTEL_SEGMENT[c];
 }
 
+/** Lighter RGB triplet for day-letter fill. */
 export function pastelFillRgb(c: FeelingDayClass): string {
   return PASTEL_FILL[c];
 }
 
+/** Slightly deeper RGB triplet for day-letter stroke. */
 export function pastelBorderRgb(c: FeelingDayClass): string {
   return PASTEL_BORDER[c];
 }
@@ -51,6 +54,7 @@ export function chartRgbForClass(c: FeelingDayClass): string {
   return `rgb(${pastelSegmentRgb(c)})`;
 }
 
+/** Tailwind arbitrary background class for legend swatches. */
 export function swatchClassForClass(c: FeelingDayClass): string {
   switch (c) {
     case "positive":

@@ -31,6 +31,7 @@ function readJson<T>(key: string): T | null {
   }
 }
 
+/** Persists a cluster milestone and dispatches `mentell:cluster_celebration`. */
 export function recordClusterCelebration(payload: ClusterCelebrationPayload) {
   localStorage.setItem(
     `${CLUSTER_PREFIX}${payload.milestone}`,
@@ -43,6 +44,7 @@ export function recordClusterCelebration(payload: ClusterCelebrationPayload) {
   }
 }
 
+/** True when the milestone cooldown has elapsed (localStorage). */
 export function shouldShowClusterCelebration(
   milestone: ClusterMilestone,
   cooldownMs: number,
@@ -53,6 +55,7 @@ export function shouldShowClusterCelebration(
   return Date.now() - lastAt > cooldownMs;
 }
 
+/** Stores comeback toast payload and dispatches `mentell:comeback_toast`. */
 export function recordComebackToast(payload: ComebackPayload) {
   localStorage.setItem(COMEBACK_KEY, JSON.stringify(payload));
   if (typeof window !== "undefined") {
@@ -62,6 +65,7 @@ export function recordComebackToast(payload: ComebackPayload) {
   }
 }
 
+/** True when the user may see another gap comeback toast. */
 export function shouldShowComeback(cooldownMs: number): boolean {
   const last = readJson<ComebackPayload>(COMEBACK_KEY);
   if (!last?.at) return true;

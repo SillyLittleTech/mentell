@@ -483,7 +483,7 @@ function HomePlaceholder({
     if (composerLocked) setShakeBanner((k) => k + 1);
   }
 
-  async function runAfterJournalSubmit(
+  function runAfterJournalSubmit(
     award: Awaited<ReturnType<typeof awardForSubmission>>,
   ) {
     if (
@@ -615,14 +615,14 @@ function HomePlaceholder({
                 id: "sync",
                 message: "Syncing to cloud...",
               });
-              pushLocalChangesNow().finally(() => {
+              void pushLocalChangesNow().finally(() => {
                 emitBackgroundActivity({
                   type: "stop",
                   id: "sync",
                   message: "",
                 });
               });
-              await runAfterJournalSubmit(award);
+              runAfterJournalSubmit(award);
               onScoreChange(award.totalDelta, award.hint, {
                 deferOverlay: true,
               });
@@ -676,7 +676,7 @@ function HomePlaceholder({
                   id: "sync",
                   message: "Syncing to cloud...",
                 });
-                pushLocalChangesNow().finally(() => {
+                void pushLocalChangesNow().finally(() => {
                   emitBackgroundActivity({
                     type: "stop",
                     id: "sync",
@@ -687,7 +687,7 @@ function HomePlaceholder({
                     id: "index",
                     message: "Indexing for AI search...",
                   });
-                  requestProjectorSearch({
+                  void requestProjectorSearch({
                     query: "",
                     mode: "index",
                     forceIndex: true,
@@ -712,7 +712,7 @@ function HomePlaceholder({
                     );
                   });
                 }
-                await runAfterJournalSubmit(award);
+                runAfterJournalSubmit(award);
                 onScoreChange(award.totalDelta, award.hint, {
                   deferOverlay: true,
                 });

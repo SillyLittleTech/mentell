@@ -94,6 +94,31 @@ function seedWeekDateKeys(offsetWeeksFromNow = 0): string[] {
   );
 }
 
+/** Seven date keys for debug seed actions (avoids non-null assertions on indexed access). */
+function requireSeedWeekKeys(): [
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+  string,
+] {
+  const keys = seedWeekDateKeys(0);
+  if (keys.length !== 7) {
+    throw new Error("seedWeekDateKeys must return exactly 7 days");
+  }
+  return [
+    keys[0],
+    keys[1],
+    keys[2],
+    keys[3],
+    keys[4],
+    keys[5],
+    keys[6],
+  ];
+}
+
 const DEBUG_AI_TESTS = [
   {
     id: "CRISIS",
@@ -157,6 +182,7 @@ async function sendDebugEmailTest(
   }
 }
 
+/** Split debug panel filter input into lowercase search terms. */
 function normalizeDebugFilterQuery(q: string): string[] {
   return q
     .toLowerCase()
@@ -165,6 +191,7 @@ function normalizeDebugFilterQuery(q: string): string[] {
     .filter(Boolean);
 }
 
+/** True when every filter term matches at least one section keyword. */
 function debugSectionMatches(query: string, keywords: string[]): boolean {
   const terms = normalizeDebugFilterQuery(query);
   if (terms.length === 0) return true;
@@ -174,6 +201,7 @@ function debugSectionMatches(query: string, keywords: string[]): boolean {
   );
 }
 
+/** Hides children when the debug panel section filter does not match keywords. */
 function DebugFilterBlock({
   query,
   keywords,
@@ -182,9 +210,9 @@ function DebugFilterBlock({
   query: string;
   keywords: string[];
   children: ReactNode;
-}) {
+}): ReactNode {
   if (!debugSectionMatches(query, keywords)) return null;
-  return <>{children}</>;
+  return children;
 }
 
 export function DebugPanel() {
@@ -377,7 +405,7 @@ export function DebugPanel() {
   useEffect(() => {
     if (!enabled || !open) return;
     const t = window.setTimeout(() => {
-      refreshInspector();
+      void refreshInspector();
       void refreshNotifications();
     }, 0);
     return () => window.clearTimeout(t);
@@ -739,8 +767,10 @@ export function DebugPanel() {
                                 .filter(Boolean);
                               const rows = await getDb().entries.bulkGet(ids);
                               const found = rows
-                                .filter(Boolean)
-                                .map((r) => toSearchSnapshot(r!));
+                                .filter((r): r is NonNullable<(typeof rows)[number]> =>
+                                  r != null,
+                                )
+                                .map((r) => toSearchSnapshot(r));
                               setFetchedEntriesPreview(
                                 found.length
                                   ? found
@@ -1655,7 +1685,7 @@ export function DebugPanel() {
                     setBusy(true);
                     try {
                       const now = Date.now();
-                      const wk = seedWeekDateKeys(0);
+                      const wk = requireSeedWeekKeys();
                       const mk = (
                         dateKey: string,
                         sentiment: "+" | "-" | "=",
@@ -1683,9 +1713,9 @@ export function DebugPanel() {
                         streakAtSubmit: 1,
                       });
                       await getDb().entries.bulkPut([
-                        mk(wk[1]!, "+"),
-                        mk(wk[3]!, "="),
-                        mk(wk[5]!, "-"),
+                        mk(wk[1], "+"),
+                        mk(wk[3], "="),
+                        mk(wk[5], "-"),
                       ]);
                       await refreshInspector();
                     } finally {
@@ -1706,10 +1736,10 @@ export function DebugPanel() {
                     setBusy(true);
                     try {
                       const now = Date.now();
-                      const wk = seedWeekDateKeys(0);
+                      const wk = requireSeedWeekKeys();
                       const memories = [
                         {
-                          dateKey: wk[0]!,
+                          dateKey: wk[0],
                           emotion: "calm" as const,
                           emotionNote: "calm after a hard interaction",
                           situation:
@@ -1718,7 +1748,7 @@ export function DebugPanel() {
                             "After a tense interaction at lunch, Maya walked with me to the blue bench by the library. We drank mint tea, watched the rain on the windows, and I remembered I could come back to myself.",
                         },
                         {
-                          dateKey: wk[2]!,
+                          dateKey: wk[2],
                           emotion: "happy" as const,
                           emotionNote: "proud after a presentation",
                           situation:
@@ -1727,7 +1757,7 @@ export function DebugPanel() {
                             "I was nervous about the history presentation, but I used my green note cards, took one slow breath, and Ms. Rivera said my opening story made the whole room listen.",
                         },
                         {
-                          dateKey: wk[4]!,
+                          dateKey: wk[4],
                           emotion: "calm" as const,
                           emotionNote: "steady during a deadline",
                           situation:
@@ -1736,7 +1766,7 @@ export function DebugPanel() {
                             "The project deadline stopped feeling overwhelming when I wrote three tiny tasks on a yellow sticky note, played the rain playlist, and finished the hardest paragraph before dinner.",
                         },
                         {
-                          dateKey: wk[6]!,
+                          dateKey: wk[6],
                           emotion: "happy" as const,
                           emotionNote: "seen by friends",
                           situation:
@@ -1790,13 +1820,13 @@ export function DebugPanel() {
                     setBusy(true);
                     try {
                       const now = Date.now();
-                      const wk = seedWeekDateKeys(0);
+                      const wk = requireSeedWeekKeys();
                       await getDb().entries.put({
                         id: makeId("entry"),
                         createdAt: now,
                         updatedAt: now,
                         entryType: "entry",
-                        dateKey: wk[2]!,
+                        dateKey: wk[2],
                         sentiment: "-" as const,
                         emotion: "sad" as const,
                         emotionNote: "",
@@ -1832,13 +1862,13 @@ export function DebugPanel() {
                     setBusy(true);
                     try {
                       const now = Date.now();
-                      const wk = seedWeekDateKeys(0);
+                      const wk = requireSeedWeekKeys();
                       await getDb().entries.put({
                         id: makeId("entry"),
                         createdAt: now,
                         updatedAt: now,
                         entryType: "entry",
-                        dateKey: wk[4]!,
+                        dateKey: wk[4],
                         sentiment: "+" as const,
                         emotion: "happy" as const,
                         emotionNote: "",

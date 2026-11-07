@@ -1,3 +1,6 @@
+/**
+ * @file Shoppe weekly progress: feeling class per ISO week day from Dexie.
+ */
 import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { getDb, type EntryRow } from "../../db/schema";
 import { dateKeyForLocalDay, stripDateKey } from "../../shared/dates";
@@ -9,6 +12,7 @@ import {
   type FeelingDayClass,
 } from "../compilation/feelingsSemantics";
 
+/** One column in the Shoppe weekly progress strip (Mon–Sun). */
 export type ShopWeekDay = {
   dateKey: string;
   label: string;
@@ -20,6 +24,10 @@ function toDateKey(d: Date) {
   return format(d, "yyyy-MM-dd");
 }
 
+/**
+ * Resolves feeling classes for each day of the ISO week containing anchorDateKey.
+ * Reads normal and bulk-prefixed (`~`) Dexie entries.
+ */
 export async function getShopWeekDays(
   anchorDateKey: string = dateKeyForLocalDay(new Date()),
 ): Promise<ShopWeekDay[]> {
