@@ -6,7 +6,11 @@ import {
   useState,
   type CSSProperties,
 } from "react";
-import { shouldReduceMotion } from "../../shared/motion/useMotionPrefs";
+import { motion } from "framer-motion";
+import {
+  motionDuration,
+  shouldReduceMotion,
+} from "../../shared/motion/useMotionPrefs";
 import { MaterialIcon } from "../../components/MaterialIcon";
 import {
   hbcmFillRatio,
@@ -103,10 +107,17 @@ export function HbcmDisplay({
     }, 420);
   };
 
+  const levelTransition = {
+    duration: reduced ? 0 : motionDuration(0.55) || 0.55,
+    ease: [0.33, 1, 0.68, 1] as const,
+  };
+
   const tileStyle = {
     "--hbcm-tile-fill": String(tileFill),
     "--hbcm-tile-a": palette.tileDeep,
     "--hbcm-tile-b": palette.tileBright,
+    "--hbcm-tile-ring": palette.tileRing,
+    "--hbcm-tile-glow": palette.tileGlow,
   } as CSSProperties;
 
   const digitBoxStyle = {
@@ -129,8 +140,16 @@ export function HbcmDisplay({
       >
         <defs>
           <linearGradient id={gradId} x1="0%" y1="100%" x2="0%" y2="0%">
-            <stop offset="0%" stopColor={palette.deep} />
-            <stop offset="100%" stopColor={palette.bright} />
+            <motion.stop
+              offset="0%"
+              animate={{ stopColor: palette.deep }}
+              transition={levelTransition}
+            />
+            <motion.stop
+              offset="100%"
+              animate={{ stopColor: palette.bright }}
+              transition={levelTransition}
+            />
           </linearGradient>
           <clipPath id={liquidClipId}>
             <text
@@ -157,19 +176,20 @@ export function HbcmDisplay({
                 reduced ? undefined : "hbcm-digit-wave hbcm-liq-wave--digit"
               }
             >
-              <rect
+              <motion.rect
                 x="-25%"
-                y={liqY - 2}
                 width="150%"
-                height={liqH + 8}
                 fill={`url(#${gradId})`}
+                animate={{ y: liqY - 2, height: liqH + 8 }}
+                transition={levelTransition}
               />
-              <ellipse
+              <motion.ellipse
                 cx={svgW * 0.52}
-                cy={surfaceY}
                 rx={svgW * 0.58}
                 ry={svgH * 0.06}
                 fill="rgba(255,255,255,0.32)"
+                animate={{ cy: surfaceY }}
+                transition={levelTransition}
               />
             </g>
           ) : (
