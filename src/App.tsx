@@ -10,7 +10,7 @@ import {
 } from "./features/score/scoreService";
 import { waitForSync } from "./shared/sync/syncService";
 import { upsertEntryFromDraft } from "./features/entries/entryService";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { WeeklyProjector } from "./features/compilation/WeeklyProjector";
 import { PackageAlert } from "./features/packages/PackageAlert";
 import { Notepad } from "./features/notes/Notepad";
@@ -64,28 +64,23 @@ import {
   requestProjectorSearch,
 } from "./features/compilation/projectorSearch";
 import { emitBackgroundActivity } from "./shared/backgroundActivity";
-import { scrollToTop } from "./shared/motion/scroll";
-import { motionDuration } from "./shared/motion/useMotionPrefs";
 import { SidebarNav } from "./components/shell/SidebarNav";
 import { BottomNav } from "./components/shell/BottomNav";
 import { RightRail } from "./components/shell/RightRail";
 import { DeskSpotlight } from "./components/shell/DeskSpotlight";
 import { ThemeToggleButton } from "./components/ThemeToggleButton";
 import { HomeGreeting } from "./features/home/HomeGreeting";
+import { QuickLogComposer } from "./features/compose/QuickLogComposer";
+import { CelebrationLayer } from "./features/celebrations/CelebrationLayer";
+import { runAfterJournalSubmit } from "./features/celebrations/clusterCelebration";
+import { ignorePromise } from "./shared/promise/ignorePromise";
+import { MaterialIcon } from "./components/MaterialIcon";
 
-type StreakOutcomeAnimation =
-  | { kind: "break"; key: number; from: number }
-  | {
-      kind: "freeze";
-      key: number;
-      previousFreezes: number;
-      nextFreezes: number;
-    };
 type ScoreChangeOptions = {
   deferOverlay?: boolean;
-  streakOutcome?: StreakOutcomeAnimation;
 };
 
+/** Documents `App` in this module. */
 function App() {
   const location = useLocation();
   const shareRouteActive = location.pathname.startsWith("/share/");
@@ -95,12 +90,7 @@ function App() {
   const [pendingOverlay, setPendingOverlay] = useState<{
     delta: number;
     hint: string | null;
-    streakOutcome?: StreakOutcomeAnimation;
   } | null>(null);
-  const [streakOutcome, setStreakOutcome] =
-    useState<StreakOutcomeAnimation | null>(null);
-  const [streakFocusActive, setStreakFocusActive] = useState(false);
-  const streakOutcomeTimer = useRef<number | null>(null);
 
   useEffect(() => {
     void runPackageDeliveryAndNotify();
@@ -148,26 +138,6 @@ function App() {
     return () => window.removeEventListener(SCORE_CHANGED_EVENT, refresh);
   }, []);
 
-  useEffect(() => {
-    if (!streakOutcome) return;
-    const timeout = window.setTimeout(() => {
-      setStreakOutcome(null);
-      setStreakFocusActive(false);
-    }, 1500);
-    function clearStreakOutcomeTimeout() {
-      window.clearTimeout(timeout);
-    }
-    return clearStreakOutcomeTimeout;
-  }, [streakOutcome]);
-
-  useEffect(() => {
-    return () => {
-      if (streakOutcomeTimer.current !== null) {
-        window.clearTimeout(streakOutcomeTimer.current);
-      }
-    };
-  }, []);
-
   const handleScoreChange = (
     delta: number,
     hint: string | null,
@@ -176,11 +146,8 @@ function App() {
     setScore(getScoreSnapshot());
     if (delta === 0) return;
     if (options?.deferOverlay) {
-      setPendingOverlay({ delta, hint, streakOutcome: options.streakOutcome });
+      setPendingOverlay({ delta, hint });
       return;
-    }
-    if (options?.streakOutcome) {
-      setStreakOutcome(options.streakOutcome);
     }
     setIncomingDelta(delta);
     setIncomingHint(hint);
@@ -189,22 +156,6 @@ function App() {
   const showPendingScoreOverlay = () => {
     if (!pendingOverlay) return;
     const nextOverlay = pendingOverlay;
-    if (nextOverlay.streakOutcome) {
-      if (streakOutcomeTimer.current !== null) {
-        window.clearTimeout(streakOutcomeTimer.current);
-      }
-      scrollToTop();
-      setStreakFocusActive(true);
-      const delay = motionDuration(420) || 0;
-      streakOutcomeTimer.current = window.setTimeout(() => {
-        setStreakOutcome(nextOverlay.streakOutcome ?? null);
-        setIncomingDelta(nextOverlay.delta);
-        setIncomingHint(nextOverlay.hint);
-        streakOutcomeTimer.current = null;
-      }, delay);
-      setPendingOverlay(null);
-      return;
-    }
     setIncomingDelta(nextOverlay.delta);
     setIncomingHint(nextOverlay.hint);
     setPendingOverlay(null);
@@ -279,16 +230,10 @@ function App() {
               <TopBar
                 score={score}
                 incomingHint={incomingHint}
-                streakOutcome={streakOutcome}
-                focusActive={streakFocusActive}
                 onPackageAward={handleScoreChange}
               />
 
-              <main
-                className={`relative mt-6 w-full max-w-4xl overflow-visible ${
-                  streakFocusActive ? "streak-focus-dim" : ""
-                }`}
-              >
+              <main className="relative mt-6 w-full max-w-4xl overflow-visible">
                 <AnimatedRoutes>
                   <Route
                     path="/"
@@ -344,7 +289,7 @@ function App() {
         {!shareRouteActive ? <BottomNav /> : null}
         {!shareRouteActive ? (
           <>
-            <div className={streakFocusActive ? "streak-focus-dim" : ""}>
+            <div>
               <AppLegalFooter />
             </div>
             <AnimatePresence>
@@ -358,6 +303,7 @@ function App() {
                 />
               ) : null}
             </AnimatePresence>
+            <CelebrationLayer />
             <DebugPanel />
           </>
         ) : null}
@@ -366,17 +312,14 @@ function App() {
   );
 }
 
+/** Documents `TopBar` in this module. */
 function TopBar({
   score,
   incomingHint,
-  streakOutcome,
-  focusActive,
   onPackageAward,
 }: {
   score: ReturnType<typeof getScoreSnapshot>;
   incomingHint: string | null;
-  streakOutcome: StreakOutcomeAnimation | null;
-  focusActive: boolean;
   onPackageAward: (delta: number, hint: string | null) => void;
 }) {
   const { mode, toggle } = useTheme();
@@ -387,17 +330,17 @@ function TopBar({
   const scoreTicker = (
     <ScoreTicker
       total={score.total}
-      streak={score.streak}
-      streakFreezes={score.streakFreezes}
+      hbcmDisplay={score.hbcmDisplay}
+      logStreak={score.logStreak}
+      hbcmPulse={Boolean(
+        incomingHint?.toLowerCase().includes("consistency heat"),
+      )}
       hint={incomingHint}
-      streakOutcome={streakOutcome}
     />
   );
 
   return (
-    <header
-      className={`w-full space-y-3 overflow-visible ${focusActive ? "streak-focus-target" : ""}`}
-    >
+    <header className="w-full space-y-3 overflow-visible">
       <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-start">
         <div className="flex min-w-0 flex-wrap items-start gap-3">
           <div className="relative z-0 hidden min-h-[5rem] min-w-0 flex-1 items-center overflow-visible md:flex">
@@ -447,6 +390,7 @@ function TopBar({
   );
 }
 
+/** Documents `TopBarMobileControls` in this module. */
 function TopBarMobileControls({
   disablePoints,
   scoreTicker,
@@ -493,6 +437,7 @@ function TopBarMobileControls({
   );
 }
 
+/** Documents `PaperSection` in this module. */
 function PaperSection({
   title,
   subtitle,
@@ -511,6 +456,7 @@ function PaperSection({
   );
 }
 
+/** Documents `HomePlaceholder` in this module. */
 function HomePlaceholder({
   onScoreChange,
   onSubmitAnimationDone,
@@ -522,6 +468,9 @@ function HomePlaceholder({
   ) => void;
   onSubmitAnimationDone: () => void;
 }) {
+  const [composeMode, setComposeMode] = useState<"select" | "quick" | "entry">(
+    "select",
+  );
   const [submitting, setSubmitting] = useState(false);
   const [shakeBanner, setShakeBanner] = useState(0);
   const { settings } = useAppSettings();
@@ -532,6 +481,7 @@ function HomePlaceholder({
     !auth?.user &&
     !settings.syncPromptDismissed;
 
+  /** Documents `onBlockedComposerInteraction` in this module. */
   function onBlockedComposerInteraction() {
     if (composerLocked) setShakeBanner((k) => k + 1);
   }
@@ -540,114 +490,234 @@ function HomePlaceholder({
     <PaperSection
       title={
         <>
-          <span className="hidden md:inline">Draft a letter</span>
+          <span className="hidden md:inline">Log today</span>
           <span className="md:hidden">
-            <HomeGreeting variant="mobile" fallback="Draft a letter" />
+            <HomeGreeting variant="mobile" fallback="Log today" />
           </span>
         </>
       }
-      subtitle="Draft it like stationery — then review and submit."
+      subtitle="Choose a quick sentiment log or a full letter entry."
     >
       <DeskCharacterLayout>
         <div
-          className="relative"
-          onPointerDownCapture={
-            composerLocked ? onBlockedComposerInteraction : undefined
-          }
+          className="mb-6 flex flex-wrap gap-2"
+          role="tablist"
+          aria-label="Log type"
         >
-          {composerLocked ? (
-            <div className="absolute inset-x-0 top-32 z-20 sm:top-36">
-              <SyncOnboardingBanner shakeKey={shakeBanner} mode="overlay" />
-            </div>
-          ) : null}
-          {composerLocked ? (
-            <div
-              className="absolute inset-0 z-10 cursor-not-allowed"
-              aria-hidden
-              onFocus={onBlockedComposerInteraction}
-            />
-          ) : null}
-          <LetterComposer
+          <button
+            type="button"
+            role="tab"
+            aria-selected={composeMode === "select"}
+            className={`focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold ${composeMode === "select" ? "bg-[var(--paper-bg)]" : ""}`}
+            onClick={() => setComposeMode("select")}
+          >
+            Choose
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={composeMode === "quick"}
+            className={`focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold ${composeMode === "quick" ? "bg-[var(--paper-bg)]" : ""}`}
+            onClick={() => setComposeMode("quick")}
+          >
+            <MaterialIcon name="schedule" accent={false} size={18} />
+            Quick log
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={composeMode === "entry"}
+            className={`focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold ${composeMode === "entry" ? "bg-[var(--paper-bg)]" : ""}`}
+            onClick={() => setComposeMode("entry")}
+          >
+            <MaterialIcon name="edit_note" accent={false} size={18} />
+            Entry
+          </button>
+        </div>
+
+        {composeMode === "select" ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <button
+              type="button"
+              className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
+              onClick={() => setComposeMode("quick")}
+            >
+              <div className="flex items-center gap-3">
+                <MaterialIcon name="schedule" accent={false} size={28} />
+                <div className="font-paper text-xl">Quick log</div>
+              </div>
+              <p className="ink-muted mt-2 text-sm">
+                Sentiment only, optional short note — fast check-in.
+              </p>
+            </button>
+            <button
+              type="button"
+              className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
+              onClick={() => setComposeMode("entry")}
+            >
+              <div className="flex items-center gap-3">
+                <MaterialIcon name="edit_note" accent={false} size={28} />
+                <div className="font-paper text-xl">Entry</div>
+              </div>
+              <p className="ink-muted mt-2 text-sm">
+                Full letter flow — same as before, with review and AI search
+                indexing.
+              </p>
+            </button>
+          </div>
+        ) : null}
+
+        {composeMode === "quick" ? (
+          <QuickLogComposer
             disabled={composerLocked}
-            onSubmit={async (drafts) => {
+            onSubmit={async (draft) => {
               await waitForSync();
               const submitDateKey = dateKeyForLocalDay(new Date());
               const award = await awardForSubmission(submitDateKey);
-
-              await Promise.all(
-                drafts.map((draft) =>
-                  upsertEntryFromDraft({
-                    ...draft,
-                    dateKey: draft.dateKey,
-                    scoreDelta: award.totalDelta,
-                    streakAtSubmit: award.nextStreak,
-                  }),
-                ),
-              );
-
+              await upsertEntryFromDraft({
+                dateKey: submitDateKey,
+                entryType: "quick_log",
+                sentiment: draft.sentiment,
+                emotion: draft.emotion,
+                emotionNote: "",
+                situation: "Quick log",
+                details: "",
+                behavioursNoted: "",
+                reoccurringTheme: "",
+                quickLogNote: draft.quickLogNote,
+                flaggedTerms: draft.flaggedTerms,
+                warningLevel: draft.warningLevel,
+                riskScore: draft.riskScore,
+                interventionScore: draft.interventionScore,
+                riskLevel: draft.riskLevel,
+                scoreDelta: award.totalDelta,
+                streakAtSubmit: 0,
+                hbcmAtSubmit: award.hbcmDisplay,
+              });
               await runPackageDeliveryAndNotify();
               emitBackgroundActivity({
                 type: "start",
                 id: "sync",
                 message: "Syncing to cloud...",
               });
-              pushLocalChangesNow().finally(() => {
-                emitBackgroundActivity({
-                  type: "stop",
-                  id: "sync",
-                  message: "",
-                });
-                emitBackgroundActivity({
-                  type: "start",
-                  id: "index",
-                  message: "Indexing for AI search...",
-                });
-                requestProjectorSearch({
-                  query: "",
-                  mode: "index",
-                  forceIndex: true,
-                  userId: auth?.user?.uid || getOrCreateAnonSearchUserId(),
-                })
-                  .catch((error) => {
-                    console.error("Projector search indexing failed:", error);
-                  })
-                  .finally(() => {
-                    emitBackgroundActivity({
-                      type: "stop",
-                      id: "index",
-                      message: "",
-                    });
+              ignorePromise(
+                pushLocalChangesNow().finally(() => {
+                  emitBackgroundActivity({
+                    type: "stop",
+                    id: "sync",
+                    message: "",
                   });
-              });
-              if (!loadAppSettings().disableNotifications) {
-                maybeRequestNotificationPermission().catch((error) => {
-                  console.error(
-                    "Notification permission prompt failed:",
-                    error,
-                  );
-                });
-              }
+                }),
+              );
+              runAfterJournalSubmit(award);
               onScoreChange(award.totalDelta, award.hint, {
                 deferOverlay: true,
-                streakOutcome: award.freezeConsumed
-                  ? {
-                      kind: "freeze",
-                      key: Date.now(),
-                      previousFreezes: award.previousStreakFreezes,
-                      nextFreezes: award.nextStreakFreezes,
-                    }
-                  : award.streakBroken
-                    ? {
-                        kind: "break",
-                        key: Date.now(),
-                        from: award.previousStreak,
-                      }
-                    : undefined,
               });
               setSubmitting(true);
             }}
           />
-        </div>
+        ) : null}
+
+        {composeMode === "entry" ? (
+          <div
+            className="relative"
+            onPointerDownCapture={
+              composerLocked ? onBlockedComposerInteraction : undefined
+            }
+          >
+            {composerLocked ? (
+              <div className="absolute inset-x-0 top-32 z-20 sm:top-36">
+                <SyncOnboardingBanner shakeKey={shakeBanner} mode="overlay" />
+              </div>
+            ) : null}
+            {composerLocked ? (
+              <div
+                className="absolute inset-0 z-10 cursor-not-allowed"
+                aria-hidden
+                onFocus={onBlockedComposerInteraction}
+              />
+            ) : null}
+            <LetterComposer
+              disabled={composerLocked}
+              onSubmit={async (drafts) => {
+                await waitForSync();
+                const submitDateKey = dateKeyForLocalDay(new Date());
+                const award = await awardForSubmission(submitDateKey);
+
+                await Promise.all(
+                  drafts.map((draft) =>
+                    upsertEntryFromDraft({
+                      ...draft,
+                      entryType: "entry",
+                      dateKey: draft.dateKey,
+                      scoreDelta: award.totalDelta,
+                      streakAtSubmit: 0,
+                      hbcmAtSubmit: award.hbcmDisplay,
+                    }),
+                  ),
+                );
+
+                await runPackageDeliveryAndNotify();
+                emitBackgroundActivity({
+                  type: "start",
+                  id: "sync",
+                  message: "Syncing to cloud...",
+                });
+                ignorePromise(
+                  pushLocalChangesNow().finally(() => {
+                    emitBackgroundActivity({
+                      type: "stop",
+                      id: "sync",
+                      message: "",
+                    });
+                    emitBackgroundActivity({
+                      type: "start",
+                      id: "index",
+                      message: "Indexing for AI search...",
+                    });
+                    ignorePromise(
+                      requestProjectorSearch({
+                        query: "",
+                        mode: "index",
+                        forceIndex: true,
+                        userId:
+                          auth?.user?.uid || getOrCreateAnonSearchUserId(),
+                      })
+                        .catch((error) => {
+                          console.error(
+                            "Projector search indexing failed:",
+                            error,
+                          );
+                        })
+                        .finally(() => {
+                          emitBackgroundActivity({
+                            type: "stop",
+                            id: "index",
+                            message: "",
+                          });
+                        }),
+                    );
+                  }),
+                );
+                if (!loadAppSettings().disableNotifications) {
+                  ignorePromise(
+                    maybeRequestNotificationPermission().catch((error) => {
+                      console.error(
+                        "Notification permission prompt failed:",
+                        error,
+                      );
+                    }),
+                  );
+                }
+                runAfterJournalSubmit(award);
+                onScoreChange(award.totalDelta, award.hint, {
+                  deferOverlay: true,
+                });
+                setSubmitting(true);
+              }}
+            />
+          </div>
+        ) : null}
 
         <SubmitAnimation
           key={submitting ? "submit-open" : "submit-closed"}
@@ -662,6 +732,7 @@ function HomePlaceholder({
   );
 }
 
+/** Documents `WeekPlaceholder` in this module. */
 function WeekPlaceholder() {
   return (
     <DeskCharacterLayout>
@@ -670,6 +741,7 @@ function WeekPlaceholder() {
   );
 }
 
+/** Documents `NotesPlaceholder` in this module. */
 function NotesPlaceholder() {
   return (
     <DeskCharacterLayout>
@@ -681,6 +753,7 @@ function NotesPlaceholder() {
   );
 }
 
+/** Documents `ShopPlaceholder` in this module. */
 function ShopPlaceholder({
   onScoreChange,
 }: {
@@ -697,6 +770,7 @@ function ShopPlaceholder({
   );
 }
 
+/** Documents `ArchivePlaceholder` in this module. */
 function ArchivePlaceholder() {
   return (
     <PaperSection
