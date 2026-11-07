@@ -24,7 +24,7 @@ type VerifyResult = { ok: boolean; error?: string };
 const verifyResults = new Map<string, VerifyResult>();
 const verifyInflight = new Map<string, Promise<VerifyResult>>();
 
-function requestVerify(token: string): Promise<VerifyResult> {
+async function requestVerify(token: string): Promise<VerifyResult> {
   const cached = verifyResults.get(token);
   if (cached) return cached;
   const pending = verifyInflight.get(token);

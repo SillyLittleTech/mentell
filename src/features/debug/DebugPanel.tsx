@@ -424,7 +424,9 @@ export function DebugPanel() {
   /** Documents `runNotifAction` in this module. */
   async function runNotifAction(
     label: string,
-    fn: () => Promise<{ ok: boolean; detail: string; status?: number }>,
+    fn: () =>
+      | Promise<{ ok: boolean; detail: string; status?: number }>
+      | { ok: boolean; detail: string; status?: number },
   ) {
     setBusy(true);
     setNotifResult(`${label}…`);
@@ -1703,7 +1705,7 @@ export function DebugPanel() {
                       setBusy(true);
                       try {
                         const now = Date.now();
-                        const wk = seedWeekDateKeys(0);
+                        const wk = requireSeedWeekKeys();
                         const mk = (
                           dateKey: string,
                           sentiment: "+" | "-" | "=",
@@ -1733,9 +1735,9 @@ export function DebugPanel() {
                           streakAtSubmit: 1,
                         });
                         await getDb().entries.bulkPut([
-                          mk(wk[1]!, "+"),
-                          mk(wk[3]!, "="),
-                          mk(wk[5]!, "-"),
+                          mk(wk[1], "+"),
+                          mk(wk[3], "="),
+                          mk(wk[5], "-"),
                         ]);
                         await refreshInspector();
                       } finally {
@@ -1756,10 +1758,10 @@ export function DebugPanel() {
                       setBusy(true);
                       try {
                         const now = Date.now();
-                        const wk = seedWeekDateKeys(0);
+                        const wk = requireSeedWeekKeys();
                         const memories = [
                           {
-                            dateKey: wk[0]!,
+                            dateKey: wk[0],
                             emotion: "calm" as const,
                             emotionNote: "calm after a hard interaction",
                             situation:
@@ -1768,7 +1770,7 @@ export function DebugPanel() {
                               "After a tense interaction at lunch, Maya walked with me to the blue bench by the library. We drank mint tea, watched the rain on the windows, and I remembered I could come back to myself.",
                           },
                           {
-                            dateKey: wk[2]!,
+                            dateKey: wk[2],
                             emotion: "happy" as const,
                             emotionNote: "proud after a presentation",
                             situation:
@@ -1777,7 +1779,7 @@ export function DebugPanel() {
                               "I was nervous about the history presentation, but I used my green note cards, took one slow breath, and Ms. Rivera said my opening story made the whole room listen.",
                           },
                           {
-                            dateKey: wk[4]!,
+                            dateKey: wk[4],
                             emotion: "calm" as const,
                             emotionNote: "steady during a deadline",
                             situation:
@@ -1786,7 +1788,7 @@ export function DebugPanel() {
                               "The project deadline stopped feeling overwhelming when I wrote three tiny tasks on a yellow sticky note, played the rain playlist, and finished the hardest paragraph before dinner.",
                           },
                           {
-                            dateKey: wk[6]!,
+                            dateKey: wk[6],
                             emotion: "happy" as const,
                             emotionNote: "seen by friends",
                             situation:
@@ -1840,13 +1842,13 @@ export function DebugPanel() {
                       setBusy(true);
                       try {
                         const now = Date.now();
-                        const wk = seedWeekDateKeys(0);
+                        const wk = requireSeedWeekKeys();
                         await getDb().entries.put({
                           id: makeId("entry"),
                           createdAt: now,
                           updatedAt: now,
                           entryType: "entry",
-                          dateKey: wk[2]!,
+                          dateKey: wk[2],
                           sentiment: "-" as const,
                           emotion: "sad" as const,
                           emotionNote: "",
@@ -1882,13 +1884,13 @@ export function DebugPanel() {
                       setBusy(true);
                       try {
                         const now = Date.now();
-                        const wk = seedWeekDateKeys(0);
+                        const wk = requireSeedWeekKeys();
                         await getDb().entries.put({
                           id: makeId("entry"),
                           createdAt: now,
                           updatedAt: now,
                           entryType: "entry",
-                          dateKey: wk[4]!,
+                          dateKey: wk[4],
                           sentiment: "+" as const,
                           emotion: "happy" as const,
                           emotionNote: "",
