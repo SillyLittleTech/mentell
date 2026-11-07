@@ -17,8 +17,9 @@ import { FeelingsOverTimeChart } from "./FeelingsOverTimeChart";
 import {
   getFeelingsOverTimeSeries,
   type FeelingsRange,
+  type FeelingPoint,
 } from "./feelingsOverTimeData";
-import type { FeelingPoint } from "./feelingsOverTimeData";
+import { ignorePromise } from "../../shared/promise/ignorePromise";
 import { useBodyScrollLock } from "../../shared/motion/useBodyScrollLock";
 import {
   motionDuration,
@@ -178,8 +179,8 @@ export function WeeklyProjector() {
       }
     };
 
-    void refresh();
-    const id = window.setInterval(() => void refresh(), 2000);
+    ignorePromise(refresh());
+    const id = window.setInterval(() => ignorePromise(refresh()), 2000);
     return () => {
       active = false;
       window.clearInterval(id);
@@ -202,8 +203,8 @@ export function WeeklyProjector() {
         if (!cancelled) setFeelingsPoints([]);
       }
     };
-    void refresh();
-    const onData = () => void refresh();
+    ignorePromise(refresh());
+    const onData = () => ignorePromise(refresh());
     window.addEventListener(LOCAL_DATA_CHANGED_EVENT, onData);
     return () => {
       cancelled = true;

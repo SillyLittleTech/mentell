@@ -74,3 +74,25 @@ export function shouldShowComeback(cooldownMs: number): boolean {
   if (!last?.at) return true;
   return Date.now() - last.at > cooldownMs;
 }
+
+type JournalAward = {
+  hbcmDisplay: number;
+  missedDaysApplied: number;
+};
+
+/** Record HBCM peak / long-gap comeback toasts after a successful journal submit. */
+export function runAfterJournalSubmit(award: JournalAward): void {
+  if (
+    award.hbcmDisplay >= 5 &&
+    shouldShowClusterCelebration("hbcm_peak", 8 * 86_400_000)
+  ) {
+    recordClusterCelebration({
+      milestone: "hbcm_peak",
+      hbcmDisplay: award.hbcmDisplay,
+      at: Date.now(),
+    });
+  }
+  if (award.missedDaysApplied >= 14 && shouldShowComeback(30 * 86_400_000)) {
+    recordComebackToast({ gapDays: award.missedDaysApplied, at: Date.now() });
+  }
+}

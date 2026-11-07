@@ -477,6 +477,10 @@ html[data-reduced-motion="true"] .streak-focus-dim {
   animation: streak-pulse 0.6s ease-out 1;
 }
 
+.hbcm-liq-wave {
+  animation: hbcm-liq-wave-x 2.6s ease-in-out infinite;
+}
+
 @keyframes hbcm-liq-wave-x {
   0% {
     transform: translateX(-4px);
@@ -489,9 +493,16 @@ html[data-reduced-motion="true"] .streak-focus-dim {
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .hbcm-chip--pulse,
+  .hbcm-liq-wave {
+    animation: none;
+  }
+}
+
 html[data-reduced-motion="true"] .hbcm-chip--pulse,
-html[data-reduced-motion="true"] [style*="hbcm-liq-wave-x"] {
-  animation: none !important;
+html[data-reduced-motion="true"] .hbcm-liq-wave {
+  animation: none;
 }
 
 /* HBCM glass digit — drawn above animated liquid */

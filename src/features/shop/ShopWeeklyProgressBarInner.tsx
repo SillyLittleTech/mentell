@@ -38,14 +38,16 @@ function dayLabelStyle(c: FeelingDayClass): CSSProperties {
   };
 }
 
+type ShopWeeklyProgressBarInnerProps = {
+  readonly days: readonly ShopWeekDay[];
+  readonly labelId: string;
+};
+
 /** Presentational weekly feelings bar (Shoppe + UI playground). */
 export function ShopWeeklyProgressBarInner({
   days,
   labelId,
-}: {
-  days: ShopWeekDay[];
-  labelId: string;
-}) {
+}: ShopWeeklyProgressBarInnerProps) {
   const legendId = useId();
 
   return (
@@ -67,18 +69,16 @@ export function ShopWeeklyProgressBarInner({
               "repeating-linear-gradient(135deg, rgba(0,0,0,0.055) 0 10px, rgba(0,0,0,0.012) 10px 20px)",
           }}
         />
-        <div
-          className="relative z-[1] grid grid-cols-7 gap-0"
-          role="list"
+        <ul
+          className="relative z-[1] m-0 grid list-none grid-cols-7 gap-0 p-0"
           aria-label="Week feelings, one cell per day"
         >
           {days.map((d, i) => {
             const next = days[Math.min(i + 1, days.length - 1)];
             const bg = segmentGradient(d.feelingClass, next.feelingClass);
             return (
-              <div
+              <li
                 key={d.dateKey}
-                role="listitem"
                 className="relative flex min-h-[5.25rem] flex-col"
               >
                 <div
@@ -110,10 +110,10 @@ export function ShopWeeklyProgressBarInner({
                     {d.shortLabel}
                   </span>
                 </div>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       </div>
 
       <div
@@ -136,7 +136,13 @@ export function ShopWeeklyProgressBarInner({
   );
 }
 
-function KeySwatch({ label, className }: { label: string; className: string }) {
+function KeySwatch({
+  label,
+  className,
+}: {
+  readonly label: string;
+  readonly className: string;
+}) {
   return (
     <span className="inline-flex items-center gap-2">
       <span className={`inline-block h-3 w-6 rounded-sm ${className}`} />

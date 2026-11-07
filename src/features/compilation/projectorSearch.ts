@@ -116,7 +116,7 @@ export function getOrCreateAnonSearchUserId() {
   try {
     const existing = localStorage.getItem(ANON_ID_KEY);
     if (existing) return existing;
-    const id = `anon_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+    const id = `anon_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
     localStorage.setItem(ANON_ID_KEY, id);
     return id;
   } catch {
@@ -134,7 +134,10 @@ export function buildIndexDigest(
     .join("|");
   let hash = 0;
   for (let i = 0; i < parts.length; i++) {
-    hash = (hash * 31 + parts.charCodeAt(i)) >>> 0;
+    const code = parts.codePointAt(i);
+    if (code === undefined) continue;
+    hash = (hash * 31 + code) >>> 0;
+    if (code > 0xffff) i += 1;
   }
   return `${entries.length}:${hash.toString(16)}`;
 }

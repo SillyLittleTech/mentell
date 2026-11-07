@@ -705,9 +705,9 @@ function sanitizeUserId(raw: string | undefined) {
 
 function authorize(request: Request, env: Env) {
   const header = request.headers.get("Authorization") ?? "";
-  const match = header.match(/^Bearer\s+(.+)$/i);
-  if (!match) return false;
-  const token = normalizeToken(match[1]);
+  const bearer = "Bearer ";
+  if (!header.toLowerCase().startsWith(bearer.toLowerCase())) return false;
+  const token = normalizeToken(header.slice(bearer.length).trim());
   const expected = normalizeToken(
     env.PROJECTOR_SEARCH_TOKEN || env.WEEKLY_SUMMARY_TOKEN,
   );

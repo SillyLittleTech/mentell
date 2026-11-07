@@ -101,7 +101,7 @@ export async function deleteAccount(uid: string) {
 
   const auth = getFirebaseAuth();
   const user = auth?.currentUser;
-  if (!user || user.uid !== uid) return;
+  if (user?.uid !== uid) return;
 
   try {
     await deleteUser(user);

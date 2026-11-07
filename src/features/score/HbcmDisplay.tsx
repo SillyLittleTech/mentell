@@ -1,4 +1,4 @@
-import { useId, useMemo } from "react";
+import { useId } from "react";
 import { shouldReduceMotion } from "../../shared/motion/useMotionPrefs";
 import { MaterialIcon } from "../../components/MaterialIcon";
 
@@ -37,18 +37,20 @@ function liquidGradient(display: number) {
 }
 
 /** Consistency heat numeral with optional glass vessel + animated liquid fill. */
+type HbcmDisplayProps = {
+  readonly hbcmDisplay: number;
+  readonly pulse?: boolean;
+  readonly variant?: "chip" | "inline";
+};
+
 export function HbcmDisplay({
   hbcmDisplay,
   pulse,
   variant = "chip",
-}: {
-  hbcmDisplay: number;
-  pulse?: boolean;
-  variant?: "chip" | "inline";
-}) {
+}: HbcmDisplayProps) {
   const reduced = shouldReduceMotion();
   const display = Math.min(5, Math.max(0, Math.round(hbcmDisplay)));
-  const uid = useId().replace(/:/g, "");
+  const uid = useId().replaceAll(":", "");
   const liquidClipId = `hbcm-liq-clip-${uid}`;
   const gradId = `hbcm-liq-grad-${uid}`;
 
@@ -63,14 +65,6 @@ export function HbcmDisplay({
   const svgW = variant === "chip" ? 30 : 36;
   const fontSize = variant === "chip" ? 26 : 31;
   const baselineY = svgH * 0.82;
-
-  const waveStyle = useMemo(
-    () =>
-      reduced
-        ? undefined
-        : ({ animation: "hbcm-liq-wave-x 2.6s ease-in-out infinite" } as const),
-    [reduced],
-  );
 
   const chipClass = [
     "flex items-center gap-2",
@@ -126,7 +120,7 @@ export function HbcmDisplay({
           {/* Liquid fills the glyph from below; clipped to digit shape */}
           <g clipPath={`url(#${liquidClipId})`}>
             {display > 0 ? (
-              <g style={waveStyle}>
+              <g className={reduced ? undefined : "hbcm-liq-wave"}>
                 <rect
                   x="-15%"
                   y={liqY}

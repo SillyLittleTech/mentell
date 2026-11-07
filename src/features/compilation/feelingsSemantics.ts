@@ -11,17 +11,22 @@ export type FeelingDayClass =
 
 const SENTIMENT_RANK: Record<string, number> = { "-": 2, "=": 1, "+": 0 };
 
+type EntrySentimentMark = "+" | "-" | "=";
+
 /** Picks the stronger of two entry sentiments for multi-entry days. */
-export function strongestSentiment(a: string, b: string): "+" | "-" | "=" {
+export function strongestSentiment(
+  a: string,
+  b: string,
+): EntrySentimentMark {
   const ra = SENTIMENT_RANK[a] ?? 0;
   const rb = SENTIMENT_RANK[b] ?? 0;
-  if (rb > ra) return b as "-" | "=" | "+";
-  return a as "+" | "-" | "=";
+  if (rb > ra) return b as EntrySentimentMark;
+  return a as EntrySentimentMark;
 }
 
 /** Maps journal sentiment to a positive / neutral / negative day class. */
 export function classForSentiment(
-  s: "+" | "-" | "=",
+  s: EntrySentimentMark,
 ): Exclude<FeelingDayClass, "missed" | "no_data"> {
   if (s === "+") return "positive";
   if (s === "-") return "negative";
