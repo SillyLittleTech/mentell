@@ -7,9 +7,7 @@ describe("nextLogStreakOnFirstDailyLog", () => {
   });
 
   it("increments on consecutive days", () => {
-    expect(nextLogStreakOnFirstDailyLog(3, "2026-03-01", "2026-03-02")).toBe(
-      4,
-    );
+    expect(nextLogStreakOnFirstDailyLog(3, "2026-03-01", "2026-03-02")).toBe(4);
   });
 
   it("resets after a gap", () => {

@@ -38,9 +38,7 @@ const LAST_SCORE_DAY_KEY = HBCM_LAST_SCORE_DAY_KEY;
 const HBCM_MIGRATED_KEY = HBCM_MIGRATED_FROM_STREAK_KEY;
 
 /** Hidden consecutive-day log streak (fire chrome only; not shown as a number). */
-export const LOG_STREAK_STORAGE_KEY = scopedStorageKey(
-  "mentell.v2.logStreak",
-);
+export const LOG_STREAK_STORAGE_KEY = scopedStorageKey("mentell.v2.logStreak");
 const LOG_STREAK_KEY = LOG_STREAK_STORAGE_KEY;
 
 /** Legacy 1.x keys (cleared after migration). */
