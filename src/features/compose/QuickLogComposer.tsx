@@ -29,6 +29,7 @@ export type QuickLogDraft = {
   riskLevel: import("../../db/schema").RiskLevel;
 };
 
+/** Public type `QuickLogComposerProps` for Mentell 2.x. */
 export type QuickLogComposerProps = {
   disabled?: boolean;
   onSubmit: (draft: QuickLogDraft) => Promise<void>;

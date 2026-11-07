@@ -6,11 +6,16 @@
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
 import { stripDateKey } from "../../shared/dates";
 
+/** Constant `HBCM_MIN` used by the app. */
 export const HBCM_MIN = 0;
+/** Constant `HBCM_MAX` used by the app. */
 export const HBCM_MAX = 5;
+/** Constant `HBCM_COMPLETE_DELTA` used by the app. */
 export const HBCM_COMPLETE_DELTA = 1;
+/** Constant `HBCM_MISS_DELTA` used by the app. */
 export const HBCM_MISS_DELTA = 0.5;
 
+/** `clampHbcm` — see module for behavior. */
 export function clampHbcm(raw: number): number {
   if (!Number.isFinite(raw)) return 0;
   return Math.min(HBCM_MAX, Math.max(HBCM_MIN, raw));
@@ -28,6 +33,7 @@ function parseDateKey(key: string) {
   return parseISO(stripDateKey(key));
 }
 
+/** `calendarDayGap` — see module for behavior. */
 export function calendarDayGap(
   prevKey: string,
   nextKey: string,
@@ -42,6 +48,7 @@ export function calendarDayGap(
   }
 }
 
+/** `nextCalendarDayKey` — see module for behavior. */
 export function nextCalendarDayKey(dateKey: string): string {
   return format(addDays(parseDateKey(dateKey), 1), "yyyy-MM-dd");
 }
@@ -50,6 +57,7 @@ export function nextCalendarDayKey(dateKey: string): string {
  * Apply missed-day penalties for empty calendar days between lastProcessedDay and today (exclusive of today’s handling by caller).
  * lastProcessedDay: last YYYY-MM-DD we already applied HBCM accounting for; null if never.
  */
+/** `missedDayPenalties` — see module for behavior. */
 export function missedDayPenalties(
   lastProcessedDay: string | null,
   todayKey: string,
@@ -70,10 +78,12 @@ export function missedDayPenalties(
   };
 }
 
+/** `applyHbcmCompletion` — see module for behavior. */
 export function applyHbcmCompletion(raw: number): number {
   return clampHbcm(raw + HBCM_COMPLETE_DELTA);
 }
 
+/** `applyHbcmMisses` — see module for behavior. */
 export function applyHbcmMisses(raw: number, missedCount: number): number {
   if (missedCount <= 0) return clampHbcm(raw);
   return clampHbcm(raw - missedCount * HBCM_MISS_DELTA);

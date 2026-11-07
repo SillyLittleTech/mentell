@@ -18,13 +18,16 @@ import {
 const DAILY_LOG_DECAY = 0.5;
 
 const SCORE_KEY = scopedStorageKey("mentell.score.total");
+/** Constant `SCORE_UPDATED_AT_KEY` used by the app. */
 export const SCORE_UPDATED_AT_KEY = scopedStorageKey("mentell.score.updatedAt");
 
 /** Fractional HBCM (Heat-Based Consistency Multiplier), internal 0–5. */
 export const HBCM_RAW_STORAGE_KEY = scopedStorageKey("mentell.v2.hbcm.raw");
+/** Last calendar day (YYYY-MM-DD) that received HBCM completion accounting. */
 export const HBCM_LAST_SCORE_DAY_KEY = scopedStorageKey(
   "mentell.v2.hbcm.lastScoreDay",
 );
+/** Constant `HBCM_MIGRATED_FROM_STREAK_KEY` used by the app. */
 export const HBCM_MIGRATED_FROM_STREAK_KEY = scopedStorageKey(
   "mentell.v2.hbcm.migratedFromStreak",
 );
@@ -43,6 +46,7 @@ const LEGACY_STREAK_RESTORE_KEY = scopedStorageKey(
   "mentell.score.streakRestore",
 );
 
+/** Public type `ScoreResult` for Mentell 2.x. */
 export type ScoreResult = {
   base: number;
   bonus: number;
@@ -59,12 +63,14 @@ export type ScoreResult = {
   hint: string | null;
 };
 
+/** Public type `PackageOpenResult` for Mentell 2.x. */
 export type PackageOpenResult = {
   delta: number;
   nextTotal: number;
   hint: string;
 };
 
+/** Public type `SpendScoreResult` for Mentell 2.x. */
 export type SpendScoreResult =
   | { ok: true; spent: number; nextTotal: number }
   | {
@@ -74,6 +80,7 @@ export type SpendScoreResult =
       reason: "insufficient" | "invalid";
     };
 
+/** Public type `ScoreSyncPayload` for Mentell 2.x. */
 export type ScoreSyncPayload = {
   total?: number;
   /** Prefer 2.x */
@@ -179,6 +186,7 @@ function buildAwardHint(
   return parts.length ? parts.join(" · ") : null;
 }
 
+/** Async API: `awardForSubmission`. */
 export async function awardForSubmission(
   dateKey: string,
 ): Promise<ScoreResult> {
@@ -279,6 +287,7 @@ export type StreakRestoreCandidate = {
   missedDays: number;
 };
 
+/** Public type `ScoreSnapshot` for Mentell 2.x. */
 export type ScoreSnapshot = {
   total: number;
   hbcmRaw: number;
@@ -295,6 +304,7 @@ export type ScoreSnapshot = {
   streakRestore: StreakRestoreCandidate | null;
 };
 
+/** `getScoreSnapshot` — see module for behavior. */
 export function getScoreSnapshot(): ScoreSnapshot {
   migrateLegacyStreakIfNeeded();
   const hbcmRaw = clampHbcm(getFloat(HBCM_RAW_KEY, 0));
@@ -366,6 +376,7 @@ export function applyScoreSnapshotFromSync(
   }
 }
 
+/** `spendScore` — see module for behavior. */
 export function spendScore(spent: number): SpendScoreResult {
   if (!isPointsEnabled()) {
     return {
@@ -409,6 +420,7 @@ function packageDelta(kind: "weekly" | "monthly" | "yearly") {
   return 600;
 }
 
+/** `awardForPackageOpen` — see module for behavior. */
 export function awardForPackageOpen(
   kind: "weekly" | "monthly" | "yearly",
 ): PackageOpenResult {

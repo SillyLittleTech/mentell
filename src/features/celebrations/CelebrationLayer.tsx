@@ -9,6 +9,7 @@ import {
   shouldReduceMotion,
 } from "../../shared/motion/useMotionPrefs";
 
+/** `CelebrationLayer` — see module for behavior. */
 export function CelebrationLayer() {
   const reduced = shouldReduceMotion();
   const [cluster, setCluster] = useState<ClusterCelebrationPayload | null>(

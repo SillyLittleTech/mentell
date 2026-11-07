@@ -214,6 +214,7 @@ function ShopItemPreview({
   );
 }
 
+/** `Shoppe` — see module for behavior. */
 export function Shoppe({
   onScoreChange,
 }: {

@@ -28,6 +28,7 @@ function toDateKey(d: Date) {
  * Resolves feeling classes for each day of the ISO week containing anchorDateKey.
  * Reads normal and bulk-prefixed (`~`) Dexie entries.
  */
+/** Async API: `getShopWeekDays`. */
 export async function getShopWeekDays(
   anchorDateKey: string = dateKeyForLocalDay(new Date()),
 ): Promise<ShopWeekDay[]> {

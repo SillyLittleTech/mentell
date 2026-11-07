@@ -253,6 +253,7 @@ function actionButtonClass(compact: boolean) {
   }`;
 }
 
+/** `CrisisResourcePanel` — see module for behavior. */
 export function CrisisResourcePanel({
   compact = false,
   risk,

@@ -205,6 +205,7 @@ function DebugFilterBlock({
   return children;
 }
 
+/** `DebugPanel` — see module for behavior. */
 export function DebugPanel() {
   const enabled = useMemo(() => isDebugMode(), []);
   const navigate = useNavigate();

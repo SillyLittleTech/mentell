@@ -7,6 +7,7 @@ import type {
   SharePermissions,
 } from "./shareTypes";
 
+/** Async API: `buildSharePayload`. */
 export async function buildSharePayload(
   permissions: SharePermissions,
 ): Promise<ShareDashboardPayload> {

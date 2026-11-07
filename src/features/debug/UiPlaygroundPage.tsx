@@ -521,6 +521,7 @@ function VizPlaygroundTab() {
   );
 }
 
+/** `UiPlaygroundPage` — see module for behavior. */
 export function UiPlaygroundPage() {
   // Local-only UI; we intentionally avoid mutating global theme/auth/sync state.
   const reduced = shouldReduceMotion();

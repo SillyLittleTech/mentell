@@ -37,6 +37,7 @@ async function deleteSubcollection(uid: string, name: string) {
   await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 }
 
+/** Async API: `clearLocalJournalData`. */
 export async function clearLocalJournalData() {
   await Promise.all([
     getDb().entries.clear(),
@@ -50,6 +51,7 @@ export async function clearLocalJournalData() {
   window.dispatchEvent(new CustomEvent(SCORE_CHANGED_EVENT));
 }
 
+/** Async API: `deleteCloudAccount`. */
 export async function deleteCloudAccount(uid: string) {
   const linkSnap = await getDocs(collection(fs(), "users", uid, "shareLinks"));
   await Promise.all(
@@ -87,6 +89,7 @@ export async function deleteCloudAccount(uid: string) {
   );
 }
 
+/** Async API: `deleteAccount`. */
 export async function deleteAccount(uid: string) {
   await deleteCloudAccount(uid);
   await clearLocalJournalData();

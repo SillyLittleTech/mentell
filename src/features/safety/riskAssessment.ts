@@ -511,8 +511,10 @@ const EXCE_PATTERNS = [
 
 const NEGATIVE_SUPPORT_THRESHOLD = 0.85;
 const SEMANTIC_SUPPORT_THRESHOLD = 0.9;
+/** Constant `EXCE_AI_THRESHOLD` used by the app. */
 export const EXCE_AI_THRESHOLD = 4;
 
+/** Public type `RiskAssessmentInput` for Mentell 2.x. */
 export type RiskAssessmentInput = {
   sentiment: EntrySentiment;
   emotion: EntryEmotion;
@@ -524,6 +526,7 @@ export type RiskAssessmentInput = {
 const DEBUG_SENTINEL_PATTERN =
   /\bSENT_TRIGGER_(CRISIS|SUPPORT|EXEC|EXCE)(?:\(([^)]*)\))?/i;
 
+/** Public type `RiskAssessment` for Mentell 2.x. */
 export type RiskAssessment = {
   riskScore: number;
   interventionScore: number;
@@ -790,6 +793,7 @@ function riskLevelForIntervention(score: number): RiskLevel {
   return riskLevelForScore(riskScoreForIntervention(score));
 }
 
+/** `riskLevelForScore` — see module for behavior. */
 export function riskLevelForScore(score: number): RiskLevel {
   if (score >= 0.75) return "crisis";
   if (score >= 0.35) return "elevated";
@@ -1099,6 +1103,7 @@ function messageRisk(input: RiskAssessmentInput) {
   };
 }
 
+/** `debugAssessLocalMessageRisk` — see module for behavior. */
 export function debugAssessLocalMessageRisk(text: string) {
   return messageRisk({
     sentiment: "=",
@@ -1359,6 +1364,7 @@ function trendHeat(entries: EntryRow[]) {
   return { heat: clamp01(heat / 5), reasons };
 }
 
+/** Async API: `assessLocalRisk`. */
 export async function assessLocalRisk(
   input: RiskAssessmentInput & { dateKey: string },
 ): Promise<RiskAssessment> {
@@ -1484,6 +1490,7 @@ export async function assessLocalRisk(
   };
 }
 
+/** `assessDraftRisk` — see module for behavior. */
 export function assessDraftRisk(
   input: RiskAssessmentInput,
 ): Pick<
@@ -1597,6 +1604,7 @@ function parseWorkerRisk(
   };
 }
 
+/** Async API: `refineRiskWithWorker`. */
 export async function refineRiskWithWorker(
   local: RiskAssessment,
   input: RiskAssessmentInput & { dateKey?: string },
@@ -1720,6 +1728,7 @@ export async function refineRiskWithWorker(
   }
 }
 
+/** Async API: `assessRisk`. */
 export async function assessRisk(
   input: RiskAssessmentInput & { dateKey: string },
   options: RiskAssessmentOptions = {},
@@ -1729,6 +1738,7 @@ export async function assessRisk(
   return refineRiskWithWorker(local, input, options);
 }
 
+/** `shouldRequestAiRiskReview` — see module for behavior. */
 export function shouldRequestAiRiskReview(
   local: RiskAssessment,
   input: RiskAssessmentInput,
@@ -1736,6 +1746,7 @@ export function shouldRequestAiRiskReview(
   return shouldRequestLlamaGuard(local, input);
 }
 
+/** `shouldRequestLlamaGuard` — see module for behavior. */
 export function shouldRequestLlamaGuard(
   local: RiskAssessment,
   input: RiskAssessmentInput,
@@ -1774,6 +1785,7 @@ export function shouldRequestLlamaGuard(
   return AI_REVIEW_TERMS.some((term) => termMatches(text, term));
 }
 
+/** `flagConcerningLanguage` — see module for behavior. */
 export function flagConcerningLanguage(text: string) {
   const message = messageRisk({
     sentiment: "=",
