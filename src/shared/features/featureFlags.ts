@@ -15,11 +15,7 @@ function hasDebugFirebaseToken() {
 
 /** Debug builds normally use DebugAuthProvider; Tauri/auth-testing uses real AuthProvider. */
 export function shouldUseDebugAuthProvider(): boolean {
-  return (
-    isDebugMode() &&
-    !isTauri() &&
-    !envFlag("VITE_DEBUG_ENABLE_AUTH")
-  );
+  return isDebugMode() && !isTauri() && !envFlag("VITE_DEBUG_ENABLE_AUTH");
 }
 
 export function isFirebaseEnabled() {

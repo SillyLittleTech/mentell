@@ -108,15 +108,7 @@ function requireSeedWeekKeys(): [
   if (keys.length !== 7) {
     throw new Error("seedWeekDateKeys must return exactly 7 days");
   }
-  return [
-    keys[0],
-    keys[1],
-    keys[2],
-    keys[3],
-    keys[4],
-    keys[5],
-    keys[6],
-  ];
+  return [keys[0], keys[1], keys[2], keys[3], keys[4], keys[5], keys[6]];
 }
 
 const DEBUG_AI_TESTS = [
@@ -772,8 +764,9 @@ export function DebugPanel() {
                                   .filter(
                                     (
                                       r,
-                                    ): r is NonNullable<(typeof rows)[number]> =>
-                                      r != null,
+                                    ): r is NonNullable<
+                                      (typeof rows)[number]
+                                    > => r != null,
                                   )
                                   .map((r) => toSearchSnapshot(r));
                                 setFetchedEntriesPreview(
