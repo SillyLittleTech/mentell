@@ -18,13 +18,16 @@ const DAY_LIMIT = 40;
 const RATE_KEY = scopedStorageKey("mentell.ai.projectorSearch.rate");
 const ANON_ID_KEY = scopedStorageKey("mentell.ai.projectorSearch.anonId");
 
+/** Public type `ProjectorSearchMode` for Mentell 2.x. */
 export type ProjectorSearchMode = "search" | "chat" | "index";
 
+/** Public type `ProjectorSearchMessage` for Mentell 2.x. */
 export type ProjectorSearchMessage = {
   role: "user" | "assistant" | "system";
   content: string;
 };
 
+/** Public type `ProjectorSearchEntry` for Mentell 2.x. */
 export type ProjectorSearchEntry = Pick<
   EntryRow,
   | "id"
@@ -47,8 +50,10 @@ export type ProjectorSearchEntry = Pick<
   | "streakAtSubmit"
 >;
 
+/** Public type `ProjectorIndexStatus` for Mentell 2.x. */
 export type ProjectorIndexStatus = "synced" | "skipped" | "failed" | "idle";
 
+/** Public type `ProjectorSearchResult` for Mentell 2.x. */
 export type ProjectorSearchResult =
   | {
       type: "entries";
@@ -74,6 +79,7 @@ function normalizeEnvToken(raw: string | undefined) {
   return t;
 }
 
+/** `projectorSearchEnabled` — see module for behavior. */
 export function projectorSearchEnabled() {
   const settings = loadAppSettings();
   if (settings.aiProvider === "custom") {
@@ -98,12 +104,14 @@ function localMatchEntries(entries: ProjectorSearchEntry[], query: string) {
   );
 }
 
+/** `getProjectorSearchEndpoint` — see module for behavior. */
 export function getProjectorSearchEndpoint() {
   const raw = import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT as
     string | undefined;
   return raw ? normalizeEndpointUrl(raw) : "";
 }
 
+/** `getOrCreateAnonSearchUserId` — see module for behavior. */
 export function getOrCreateAnonSearchUserId() {
   try {
     const existing = localStorage.getItem(ANON_ID_KEY);
@@ -116,6 +124,7 @@ export function getOrCreateAnonSearchUserId() {
   }
 }
 
+/** `buildIndexDigest` — see module for behavior. */
 export function buildIndexDigest(
   entries: Array<{ id: string; updatedAt?: number; createdAt?: number }>,
 ) {
@@ -130,6 +139,7 @@ export function buildIndexDigest(
   return `${entries.length}:${hash.toString(16)}`;
 }
 
+/** `toSearchSnapshot` — see module for behavior. */
 export function toSearchSnapshot(entry: EntryRow): ProjectorSearchEntry {
   return {
     id: entry.id,
@@ -153,6 +163,7 @@ export function toSearchSnapshot(entry: EntryRow): ProjectorSearchEntry {
   };
 }
 
+/** Async API: `loadAllEntriesForSearch`. */
 export async function loadAllEntriesForSearch(): Promise<
   ProjectorSearchEntry[]
 > {
@@ -213,6 +224,7 @@ function consumeRateAllowance(now: number) {
   return { ok: true as const };
 }
 
+/** Async API: `requestProjectorSearch`. */
 export async function requestProjectorSearch(options: {
   query: string;
   mode?: ProjectorSearchMode;
@@ -348,6 +360,7 @@ export async function requestProjectorSearch(options: {
   return { type: "error", message: "Unexpected search response." };
 }
 
+/** Async API: `probeProjectorSearchEndpoint`. */
 export async function probeProjectorSearchEndpoint(): Promise<string> {
   const endpoint = getProjectorSearchEndpoint();
   if (!endpoint) return "No VITE_PROJECTOR_SEARCH_ENDPOINT configured.";

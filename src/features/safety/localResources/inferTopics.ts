@@ -1,5 +1,6 @@
 import type { ResourceTopic } from "./types";
 
+/** Constant `ALL_RESOURCE_TOPICS` used by the app. */
 export const ALL_RESOURCE_TOPICS: ResourceTopic[] = [
   "suicide",
   "mental_health",
@@ -14,6 +15,7 @@ const SHELTER_PATTERN =
 const CRISIS_PATTERN =
   /\b(suicide|self[- ]?harm|kill myself|hurt myself|988|overdose|end my life|want to die)\b/i;
 
+/** `inferResourceTopics` — see module for behavior. */
 export function inferResourceTopics(input: {
   reasons?: string[];
   flaggedTerms?: string[];
@@ -50,6 +52,7 @@ export function inferResourceTopics(input: {
   return [...topics];
 }
 
+/** `topicLabel` — see module for behavior. */
 export function topicLabel(topic: ResourceTopic) {
   switch (topic) {
     case "suicide":

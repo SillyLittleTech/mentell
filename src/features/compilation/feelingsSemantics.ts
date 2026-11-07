@@ -5,6 +5,7 @@
 
 import type { EntryRow } from "../../db/schema";
 
+/** Public type `FeelingDayClass` for Mentell 2.x. */
 export type FeelingDayClass =
   "positive" | "neutral" | "negative" | "missed" | "no_data";
 

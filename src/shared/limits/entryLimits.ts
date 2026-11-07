@@ -1,15 +1,22 @@
 /** Max characters for journal compose fields (new writes). */
 export const ENTRY_DETAILS_MAX = 10_000;
+/** Max characters for the situation field on new entries. */
 export const ENTRY_SITUATION_MAX = 150;
+/** Constant `ENTRY_EMOTION_NOTE_MAX` used by the app. */
 export const ENTRY_EMOTION_NOTE_MAX = 15;
+/** Constant `ENTRY_BEHAVIOURS_NOTED_MAX` used by the app. */
 export const ENTRY_BEHAVIOURS_NOTED_MAX = 500;
+/** Constant `ENTRY_REOCCURRING_THEME_MAX` used by the app. */
 export const ENTRY_REOCCURRING_THEME_MAX = 500;
+/** Constant `QUICK_LOG_NOTE_MAX` used by the app. */
 export const QUICK_LOG_NOTE_MAX = 200;
 
+/** `isOverLimit` — see module for behavior. */
 export function isOverLimit(value: string, max: number) {
   return value.length > max;
 }
 
+/** `draftFieldsOverLimit` — see module for behavior. */
 export function draftFieldsOverLimit(draft: {
   situation: string;
   details: string;
@@ -26,6 +33,7 @@ export function draftFieldsOverLimit(draft: {
   );
 }
 
+/** `assertEntryFieldLimits` — see module for behavior. */
 export function assertEntryFieldLimits(draft: {
   situation: string;
   details: string;

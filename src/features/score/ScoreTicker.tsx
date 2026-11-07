@@ -5,6 +5,7 @@ import { shouldReduceMotion } from "../../shared/motion/useMotionPrefs";
 import { MaterialIcon } from "../../components/MaterialIcon";
 import { HbcmDisplay } from "./HbcmDisplay";
 
+/** `ScoreTicker` — see module for behavior. */
 export function ScoreTicker(props: {
   total: number;
   hbcmDisplay: number;

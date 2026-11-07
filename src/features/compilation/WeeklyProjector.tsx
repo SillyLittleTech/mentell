@@ -70,6 +70,7 @@ function profileActiveHint(profile: AiProfile) {
   return null;
 }
 
+/** Public type `OlderWeekBatch` for Mentell 2.x. */
 export type OlderWeekBatch = {
   weekKey: string;
   startDateKey: string;
@@ -77,6 +78,7 @@ export type OlderWeekBatch = {
   entries: EntryRow[];
 };
 
+/** `WeeklyProjector` — see module for behavior. */
 export function WeeklyProjector() {
   const todayKey = useMemo(() => dateKeyForLocalDay(new Date()), []);
   const [stats, setStats] = useState<WeeklyStats | null>(null);

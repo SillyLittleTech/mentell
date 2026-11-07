@@ -705,7 +705,7 @@ function HomePlaceholder({
                     });
                 });
                 if (!loadAppSettings().disableNotifications) {
-                  maybeRequestNotificationPermission().catch((error) => {
+                  void maybeRequestNotificationPermission().catch((error) => {
                     console.error(
                       "Notification permission prompt failed:",
                       error,

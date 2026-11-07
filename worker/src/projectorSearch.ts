@@ -86,6 +86,7 @@ const DIGEST_KV_PREFIX = "ps:digest:";
 const ANALYTICAL_RE =
   /\b(how many|how often|count|trend|average|when did|summary of|over time|statistics|stats|compare)\b/i;
 
+/** Async API: `handleProjectorSearch`. */
 export async function handleProjectorSearch(
   request: Request,
   env: Env,

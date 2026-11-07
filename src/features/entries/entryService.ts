@@ -12,6 +12,7 @@ import { makeId } from "../../shared/id";
 import { assertEntryFieldLimits } from "../../shared/limits/entryLimits";
 import { notifyLocalDataChanged } from "../../shared/sync/localDataEvents";
 
+/** Public type `EntryDraft` for Mentell 2.x. */
 export type EntryDraft = {
   dateKey: string;
   entryType?: EntryKindJournal | EntryKindQuickLog;
@@ -34,6 +35,7 @@ export type EntryDraft = {
   hbcmAtSubmit: number;
 };
 
+/** Async API: `upsertEntryFromDraft`. */
 export async function upsertEntryFromDraft(draft: EntryDraft) {
   assertEntryFieldLimits(draft);
 

@@ -8,14 +8,17 @@ import { scopedStorageKey } from "../../shared/storage/storageScope";
 const CLUSTER_PREFIX = scopedStorageKey("mentell.v2.clusterCelebration.");
 const COMEBACK_KEY = scopedStorageKey("mentell.v2.comebackToast.last");
 
+/** Public type `ClusterMilestone` for Mentell 2.x. */
 export type ClusterMilestone = "hbcm_peak" | "consistency_week";
 
+/** Public type `ClusterCelebrationPayload` for Mentell 2.x. */
 export type ClusterCelebrationPayload = {
   milestone: ClusterMilestone;
   hbcmDisplay: number;
   at: number;
 };
 
+/** Public type `ComebackPayload` for Mentell 2.x. */
 export type ComebackPayload = {
   gapDays: number;
   at: number;

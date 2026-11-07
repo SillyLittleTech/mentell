@@ -40,6 +40,7 @@ import { CrisisResourcePanel } from "../safety/CrisisResourcePanel";
 import type { EntryEmotion, RiskLevel } from "../../db/schema";
 import { useComposeInsight } from "./utils/useComposeInsight";
 
+/** Public type `Draft` for Mentell 2.x. */
 export type Draft = {
   dateKey: string;
   sentiment: SentimentValue;
@@ -75,8 +76,10 @@ type DebugAiTestFill = {
   reoccurringTheme?: string;
 };
 
+/** Public type `Timeframe` for Mentell 2.x. */
 export type Timeframe = "just now" | "an hour ago" | "yesterday";
 
+/** Public type `DraftInputState` for Mentell 2.x. */
 export type DraftInputState = {
   id: string;
   sentiment: SentimentValue;
@@ -114,6 +117,7 @@ function SkeletonTextarea({ className = "" }: { className?: string }) {
   );
 }
 
+/** `LetterComposer` — see module for behavior. */
 export function LetterComposer({
   onSubmit,
   disabled = false,

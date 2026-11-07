@@ -3,9 +3,12 @@
  * @see docs/SCORING_SEMANTICS.md
  */
 
+/** Constant `EMA_RMA_N` used by the app. */
 export const EMA_RMA_N = 5;
+/** Constant `EMA_ALPHA` used by the app. */
 export const EMA_ALPHA = 2 / (EMA_RMA_N + 1);
 
+/** Public type `EmaRmaHeatState` for Mentell 2.x. */
 export type EmaRmaHeatState = {
   ema: number;
   rmaWindow: number[];
@@ -14,6 +17,7 @@ export type EmaRmaHeatState = {
 
 const MAX_WINDOW = EMA_RMA_N;
 
+/** `clampNeg1To1` — see module for behavior. */
 export function clampNeg1To1(n: number): number {
   if (!Number.isFinite(n)) return 0;
   return Math.min(1, Math.max(-1, n));
@@ -36,18 +40,21 @@ export function normalizedRiskInput(params: {
   return clampNeg1To1(v);
 }
 
+/** `pushRmaWindow` — see module for behavior. */
 export function pushRmaWindow(prev: number[], value: number): number[] {
   const next = [...prev, value];
   if (next.length > MAX_WINDOW) next.splice(0, next.length - MAX_WINDOW);
   return next;
 }
 
+/** `rmaFromWindow` — see module for behavior. */
 export function rmaFromWindow(window: number[]): number {
   if (!window.length) return 0;
   const sum = window.reduce((a, b) => a + b, 0);
   return clampNeg1To1(sum / window.length);
 }
 
+/** `nextEma` — see module for behavior. */
 export function nextEma(
   prevEma: number,
   score: number,
@@ -56,6 +63,7 @@ export function nextEma(
   return clampNeg1To1(score * alpha + prevEma * (1 - alpha));
 }
 
+/** `updateEmaRmaState` — see module for behavior. */
 export function updateEmaRmaState(
   state: EmaRmaHeatState | null,
   score: number,

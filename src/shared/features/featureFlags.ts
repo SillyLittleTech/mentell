@@ -18,6 +18,7 @@ export function shouldUseDebugAuthProvider(): boolean {
   return isDebugMode() && !isTauri() && !envFlag("VITE_DEBUG_ENABLE_AUTH");
 }
 
+/** `isFirebaseEnabled` — see module for behavior. */
 export function isFirebaseEnabled() {
   if (!envFlag("VITE_ENABLE_FIREBASE")) return false;
   if (shouldUseDebugAuthProvider() && !hasDebugFirebaseToken()) {
@@ -40,10 +41,12 @@ export function isFirebaseEnabled() {
   return true;
 }
 
+/** `isFirebaseSyncEnabled` — see module for behavior. */
 export function isFirebaseSyncEnabled() {
   return isFirebaseEnabled() && envFlag("VITE_ENABLE_FIREBASE_SYNC");
 }
 
+/** `isShareLinksEnabled` — see module for behavior. */
 export function isShareLinksEnabled() {
   return isFirebaseEnabled() && envFlag("VITE_ENABLE_SHARE_LINKS");
 }

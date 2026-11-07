@@ -55,6 +55,7 @@ async function loadEntriesInRange(
  * Loads per-day feeling classes from Dexie for the selected calendar range.
  * Used by the weekly projector chart (week / month / year / all).
  */
+/** Async API: `getFeelingsOverTimeSeries`. */
 export async function getFeelingsOverTimeSeries(
   range: FeelingsRange,
   anchorDate: Date = new Date(),
