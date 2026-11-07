@@ -62,7 +62,7 @@ export function ScoreTicker(props: {
       </motion.div>
 
       <motion.div
-        className="rounded-2xl border border-[var(--paper-border)] px-3 py-2"
+        className="inline-flex"
         whileHover={reduced ? undefined : { y: -1.5 }}
         transition={{ duration: motionDuration(0.16) || 0 }}
       >
