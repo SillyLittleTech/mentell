@@ -2,10 +2,10 @@ import {
   useCallback,
   useId,
   useMemo,
-  useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import type { FeelingPoint } from "./feelingsOverTimeData";
 import type { FeelingDayClass } from "./feelingsSemantics";
 import { chartRgbForClass } from "../shop/weeklyProgressColors";
@@ -40,7 +40,8 @@ const CLASS_COLORS: Record<FeelingDayClass, { stroke: string; fill: string }> =
   };
 
 const TOOLTIP_OFFSET = 14;
-const TOOLTIP_WIDTH = 240;
+const TOOLTIP_EST_W = 240;
+const TOOLTIP_EST_H = 156;
 
 /** Documents `mix` in this module. */
 function mix(a: string, b: string, t: number) {
@@ -68,7 +69,7 @@ function yForClass(c: FeelingDayClass, h: number) {
   }
 }
 
-type TooltipPos = { x: number; y: number };
+type TooltipPos = { clientX: number; clientY: number; transform: string };
 
 /** SVG feelings-over-time chart with interactive dots (Projector + UI playground). */
 export function FeelingsOverTimeChart({
@@ -82,7 +83,6 @@ export function FeelingsOverTimeChart({
   onPointClick?: (point: FeelingPoint) => void;
 }) {
   const gridId = useId();
-  const wrapRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<number | null>(null);
   const [tooltipAt, setTooltipAt] = useState<TooltipPos | null>(null);
 
@@ -136,30 +136,53 @@ export function FeelingsOverTimeChart({
     return parts.join(" · ");
   }, []);
 
-  const clampTooltip = useCallback((clientX: number, clientY: number) => {
+  /** Anchor at pointer; flip so the box stays on-screen (viewport coords). */
+  const tooltipAtPointer = useCallback((clientX: number, clientY: number) => {
     const margin = 8;
-    const maxX = window.innerWidth - TOOLTIP_WIDTH - margin;
-    let x = clientX + TOOLTIP_OFFSET;
-    let y = clientY + TOOLTIP_OFFSET;
-    if (x > maxX) x = clientX - TOOLTIP_WIDTH - TOOLTIP_OFFSET;
-    if (y > window.innerHeight - 120) y = clientY - 110;
-    return { x: Math.max(margin, x), y: Math.max(margin, y) };
+    let tx = TOOLTIP_OFFSET;
+    let ty = TOOLTIP_OFFSET;
+    if (clientX + TOOLTIP_OFFSET + TOOLTIP_EST_W > window.innerWidth - margin) {
+      tx = -TOOLTIP_EST_W - TOOLTIP_OFFSET;
+    }
+    if (clientY + TOOLTIP_OFFSET + TOOLTIP_EST_H > window.innerHeight - margin) {
+      ty = -TOOLTIP_EST_H - TOOLTIP_OFFSET;
+    }
+    const cx = Math.min(
+      Math.max(margin, clientX),
+      window.innerWidth - margin,
+    );
+    const cy = Math.min(
+      Math.max(margin, clientY),
+      window.innerHeight - margin,
+    );
+    return {
+      clientX: cx,
+      clientY: cy,
+      transform: `translate(${tx}px, ${ty}px)`,
+    };
   }, []);
 
   const onWrapMove = useCallback(
     (e: ReactMouseEvent) => {
       if (hovered === null) return;
-      setTooltipAt(clampTooltip(e.clientX, e.clientY));
+      setTooltipAt(tooltipAtPointer(e.clientX, e.clientY));
     },
-    [clampTooltip, hovered],
+    [hovered, tooltipAtPointer],
   );
 
   const activate = useCallback(
     (index: number, clientX: number, clientY: number) => {
       setHovered(index);
-      setTooltipAt(clampTooltip(clientX, clientY));
+      setTooltipAt(tooltipAtPointer(clientX, clientY));
     },
-    [clampTooltip],
+    [tooltipAtPointer],
+  );
+
+  const trackPointer = useCallback(
+    (e: ReactMouseEvent) => {
+      setTooltipAt(tooltipAtPointer(e.clientX, e.clientY));
+    },
+    [tooltipAtPointer],
   );
 
   const deactivate = useCallback(() => {
@@ -183,7 +206,6 @@ export function FeelingsOverTimeChart({
 
   return (
     <div
-      ref={wrapRef}
       className="relative rounded-2xl border border-[var(--paper-border)] p-3"
       role="region"
       aria-labelledby={titleId}
@@ -253,10 +275,17 @@ export function FeelingsOverTimeChart({
                   const rect = (
                     e.target as SVGCircleElement
                   ).getBoundingClientRect();
-                  activate(i, rect.left + rect.width / 2, rect.top);
+                  activate(
+                    i,
+                    rect.left + rect.width / 2,
+                    rect.top + rect.height / 2,
+                  );
                 }}
                 onBlur={deactivate}
                 onMouseEnter={(e) => activate(i, e.clientX, e.clientY)}
+                onMouseMove={(e) => {
+                  if (hovered === i) trackPointer(e);
+                }}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (p.entryId && onPointClick) onPointClick(p);
@@ -273,49 +302,56 @@ export function FeelingsOverTimeChart({
         })}
       </svg>
 
-      {hoveredPoint && tooltipAt ? (
-        <div
-          className="pointer-events-none fixed z-50 w-[min(92vw,15rem)] rounded-xl border border-[var(--paper-border)] bg-[var(--paper-bg)] px-3 py-2 text-sm shadow-lg"
-          style={{ left: tooltipAt.x, top: tooltipAt.y }}
-          role="tooltip"
-        >
-          <div className="font-medium">{hoveredPoint.label}</div>
-          <div className="ink-muted text-xs">{hoveredPoint.dateKey}</div>
-          <dl className="mt-2 space-y-1 text-xs">
-            <div className="flex gap-2">
-              <dt className="ink-muted shrink-0">Day</dt>
-              <dd>{feelingClassLabel(hoveredPoint.class)}</dd>
-            </div>
-            {sentimentTooltipLabel(hoveredPoint.sentiment) ? (
-              <div className="flex gap-2">
-                <dt className="ink-muted shrink-0">Sentiment</dt>
-                <dd>{sentimentTooltipLabel(hoveredPoint.sentiment)}</dd>
-              </div>
-            ) : null}
-            {emotionTooltipLine(hoveredPoint) ? (
-              <div className="flex gap-2">
-                <dt className="ink-muted shrink-0">Emotion</dt>
-                <dd className="min-w-0 break-words">
-                  {emotionTooltipLine(hoveredPoint)}
-                </dd>
-              </div>
-            ) : null}
-            {hoveredPoint.situation ? (
-              <div className="flex gap-2">
-                <dt className="ink-muted shrink-0">Situation</dt>
-                <dd className="min-w-0 line-clamp-3 break-words">
-                  {hoveredPoint.situation}
-                </dd>
-              </div>
-            ) : null}
-          </dl>
-          {hoveredPoint.entryId && onPointClick ? (
-            <div className="ink-muted mt-2 border-t border-[var(--paper-border)] pt-2 text-[11px]">
-              Click to open entry
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      {hoveredPoint && tooltipAt
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed z-[200] w-[15rem] max-w-[92vw] rounded-xl border border-[var(--paper-border)] bg-[var(--paper-bg)] px-3 py-2 text-sm shadow-lg"
+              style={{
+                left: tooltipAt.clientX,
+                top: tooltipAt.clientY,
+                transform: tooltipAt.transform,
+              }}
+              role="tooltip"
+            >
+              <div className="font-medium">{hoveredPoint.label}</div>
+              <div className="ink-muted text-xs">{hoveredPoint.dateKey}</div>
+              <dl className="mt-2 space-y-1 text-xs">
+                <div className="flex gap-2">
+                  <dt className="ink-muted shrink-0">Day</dt>
+                  <dd>{feelingClassLabel(hoveredPoint.class)}</dd>
+                </div>
+                {sentimentTooltipLabel(hoveredPoint.sentiment) ? (
+                  <div className="flex gap-2">
+                    <dt className="ink-muted shrink-0">Sentiment</dt>
+                    <dd>{sentimentTooltipLabel(hoveredPoint.sentiment)}</dd>
+                  </div>
+                ) : null}
+                {emotionTooltipLine(hoveredPoint) ? (
+                  <div className="flex gap-2">
+                    <dt className="ink-muted shrink-0">Emotion</dt>
+                    <dd className="min-w-0 break-words">
+                      {emotionTooltipLine(hoveredPoint)}
+                    </dd>
+                  </div>
+                ) : null}
+                {hoveredPoint.situation ? (
+                  <div className="flex gap-2">
+                    <dt className="ink-muted shrink-0">Situation</dt>
+                    <dd className="min-w-0 line-clamp-3 break-words">
+                      {hoveredPoint.situation}
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+              {hoveredPoint.entryId && onPointClick ? (
+                <div className="ink-muted mt-2 border-t border-[var(--paper-border)] pt-2 text-[11px]">
+                  Click to open entry
+                </div>
+              ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
