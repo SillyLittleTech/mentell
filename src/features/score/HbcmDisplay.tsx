@@ -17,11 +17,31 @@ import {
   hbcmLiquidPalette,
   hbcmTileFillRatio,
 } from "./hbcmVisual";
+import {
+  getHbcmFireLevel,
+  getStreakFlameCount,
+  streakFlickerDuration,
+} from "./hbcmFireLevel";
+import { HbcmTileWaves } from "./HbcmTileWaves";
+
+const FLAME_OFFSETS = [
+  { top: -7, right: 4 },
+  { top: -5, right: 20 },
+  { top: 0, right: -4 },
+] as const;
 
 type Bubble = {
   id: number;
   cx: number;
   r: number;
+  delayMs: number;
+  durationMs: number;
+};
+
+type TileBubble = {
+  id: number;
+  leftPct: number;
+  size: number;
   delayMs: number;
   durationMs: number;
 };
@@ -50,6 +70,11 @@ export function HbcmDisplay({
   const fill = hbcmFillRatio(display);
   const tileFill = hbcmTileFillRatio(display);
   const palette = hbcmLiquidPalette(display);
+  const fireLevel = getHbcmFireLevel(display);
+  const displayFireLevel =
+    pulse && !reduced ? Math.min(6, fireLevel + 1) : fireLevel;
+  const flameCount = getStreakFlameCount(displayFireLevel);
+  const flickerSec = streakFlickerDuration(displayFireLevel);
   const label =
     display === 0
       ? "Consistency heat empty. Next log starts filling the glass."
@@ -67,13 +92,15 @@ export function HbcmDisplay({
   const iconSize = variant === "chip" ? 18 : 20;
 
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
+  const [tileBubbles, setTileBubbles] = useState<TileBubble[]>([]);
   const [burstAll, setBurstAll] = useState(false);
+  const [tileBurst, setTileBurst] = useState(false);
   const burstTimer = useRef<number | null>(null);
 
   const spawnBubble = useCallback(() => {
     if (display === 0) return;
-    const cx = svgW * (0.25 + Math.random() * 0.5);
-    const r = 0.55 + Math.random() * 1.1;
+    const cx = svgW * (0.22 + Math.random() * 0.56);
+    const r = 1.1 + Math.random() * 1.8;
     const b: Bubble = {
       id: bubbleIdSeq++,
       cx,
@@ -84,6 +111,18 @@ export function HbcmDisplay({
     setBubbles((prev) => [...prev, b].slice(-8));
   }, [display, svgW]);
 
+  const spawnTileBubble = useCallback(() => {
+    if (display === 0) return;
+    const b: TileBubble = {
+      id: bubbleIdSeq++,
+      leftPct: 12 + Math.random() * 76,
+      size: 5 + Math.random() * 7,
+      delayMs: 0,
+      durationMs: 2400 + Math.random() * 1800,
+    };
+    setTileBubbles((prev) => [...prev, b].slice(-10));
+  }, [display]);
+
   useEffect(() => {
     if (reduced || display === 0) return;
     const first = window.setTimeout(spawnBubble, 400 + Math.random() * 800);
@@ -91,20 +130,53 @@ export function HbcmDisplay({
       () => spawnBubble(),
       2600 + Math.random() * 2200,
     );
+    const tileFirst = window.setTimeout(
+      spawnTileBubble,
+      200 + Math.random() * 600,
+    );
+    const tileInterval = window.setInterval(
+      () => spawnTileBubble(),
+      1800 + Math.random() * 1400,
+    );
     return () => {
       window.clearTimeout(first);
       window.clearInterval(interval);
+      window.clearTimeout(tileFirst);
+      window.clearInterval(tileInterval);
     };
-  }, [display, reduced, spawnBubble]);
+  }, [display, reduced, spawnBubble, spawnTileBubble]);
 
   const onTileActivate = () => {
     if (display === 0) return;
+    const popDigit: Bubble[] = [];
+    const popTile: TileBubble[] = [];
+    for (let i = 0; i < 8; i++) {
+      popDigit.push({
+        id: bubbleIdSeq++,
+        cx: svgW * (0.15 + Math.random() * 0.7),
+        r: 1.4 + Math.random() * 2.2,
+        delayMs: 0,
+        durationMs: 400,
+      });
+      popTile.push({
+        id: bubbleIdSeq++,
+        leftPct: 8 + Math.random() * 84,
+        size: 6 + Math.random() * 10,
+        delayMs: i * 18,
+        durationMs: 520,
+      });
+    }
+    setBubbles(popDigit);
+    setTileBubbles((prev) => [...prev, ...popTile].slice(-16));
     setBurstAll(true);
+    setTileBurst(true);
     if (burstTimer.current) window.clearTimeout(burstTimer.current);
     burstTimer.current = window.setTimeout(() => {
       setBurstAll(false);
+      setTileBurst(false);
       setBubbles([]);
-    }, 420);
+      setTileBubbles([]);
+    }, 520);
   };
 
   const levelTransition = {
@@ -263,16 +335,23 @@ export function HbcmDisplay({
     );
   }
 
+  const tileChromeStyle =
+    !reduced && flameCount > 0
+      ? ({ "--streak-flicker-duration": `${flickerSec}s` } as CSSProperties)
+      : undefined;
+
   return (
     <button
       type="button"
       className={[
         "hbcm-heat-tile focus-ring relative flex items-center gap-2 overflow-hidden",
         pulse && !reduced ? "hbcm-chip--pulse" : "",
+        tileBurst && !reduced ? "hbcm-heat-tile--bubble-burst" : "",
       ]
         .filter(Boolean)
         .join(" ")}
-      style={tileStyle}
+      style={{ ...tileStyle, ...tileChromeStyle }}
+      data-hbcm-fire-level={String(displayFireLevel)}
       aria-label={label}
       onClick={onTileActivate}
     >
@@ -284,17 +363,58 @@ export function HbcmDisplay({
           <div className="hbcm-heat-tile__pool">
             <div
               className={
-                reduced
-                  ? "hbcm-heat-tile__liquid"
-                  : "hbcm-heat-tile__liquid hbcm-tile-wave"
+                reduced ? "hbcm-heat-tile__liquid" : "hbcm-heat-tile__liquid"
               }
             />
+            <HbcmTileWaves palette={palette} reduced={reduced} />
             {!reduced ? (
               <div className="hbcm-heat-tile__surface hbcm-tile-crest" />
+            ) : null}
+            {display > 0 && !reduced ? (
+              <div className="hbcm-heat-tile__bubbles">
+                {tileBubbles.map((b) => (
+                  <span
+                    key={b.id}
+                    className={
+                      tileBurst
+                        ? "hbcm-tile-bubble hbcm-tile-bubble--burst"
+                        : "hbcm-tile-bubble hbcm-tile-bubble--rise"
+                    }
+                    style={{
+                      left: `${b.leftPct}%`,
+                      width: b.size,
+                      height: b.size,
+                      animationDuration: `${b.durationMs}ms`,
+                      animationDelay: `${b.delayMs}ms`,
+                    }}
+                  />
+                ))}
+              </div>
             ) : null}
           </div>
         ) : null}
       </div>
+
+      {flameCount > 0
+        ? FLAME_OFFSETS.slice(0, flameCount).map((pos, i) => (
+            <span
+              key={i}
+              className={`streak-flame streak-flame--${i + 1} ${
+                reduced ? "" : "streak-flame--animated"
+              }`}
+              style={pos}
+              aria-hidden
+            >
+              🔥
+            </span>
+          ))
+        : null}
+      {displayFireLevel >= 3 && displayFireLevel < 4 ? (
+        <span className="streak-spark" aria-hidden>
+          ✨
+        </span>
+      ) : null}
+
       <MaterialIcon
         name="whatshot"
         size={iconSize}
