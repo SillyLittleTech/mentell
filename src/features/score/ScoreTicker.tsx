@@ -9,10 +9,11 @@ import { HbcmDisplay } from "./HbcmDisplay";
 export function ScoreTicker(props: {
   total: number;
   hbcmDisplay: number;
+  logStreak: number;
   hbcmPulse?: boolean;
   hint: string | null;
 }) {
-  const { total, hbcmDisplay, hbcmPulse } = props;
+  const { total, hbcmDisplay, logStreak, hbcmPulse } = props;
   const reduced = shouldReduceMotion();
 
   const prevTotalRef = useRef(total);
@@ -68,6 +69,7 @@ export function ScoreTicker(props: {
       >
         <HbcmDisplay
           hbcmDisplay={hbcmDisplay}
+          logStreak={logStreak}
           pulse={hbcmPulse}
           variant="chip"
         />

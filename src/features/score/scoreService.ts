@@ -13,6 +13,7 @@ import {
   migrateStreakToHbcmRaw,
   HBCM_MAX,
 } from "./hbcm";
+import { nextLogStreakOnFirstDailyLog } from "./logStreak";
 
 /** Each extra log the same day earns this fraction of the previous log's nominal award. */
 const DAILY_LOG_DECAY = 0.5;
@@ -35,6 +36,12 @@ export const HBCM_MIGRATED_FROM_STREAK_KEY = scopedStorageKey(
 const HBCM_RAW_KEY = HBCM_RAW_STORAGE_KEY;
 const LAST_SCORE_DAY_KEY = HBCM_LAST_SCORE_DAY_KEY;
 const HBCM_MIGRATED_KEY = HBCM_MIGRATED_FROM_STREAK_KEY;
+
+/** Hidden consecutive-day log streak (fire chrome only; not shown as a number). */
+export const LOG_STREAK_STORAGE_KEY = scopedStorageKey(
+  "mentell.v2.logStreak",
+);
+const LOG_STREAK_KEY = LOG_STREAK_STORAGE_KEY;
 
 /** Legacy 1.x keys (cleared after migration). */
 const LEGACY_STREAK_KEY = scopedStorageKey("mentell.score.streak");
@@ -124,12 +131,15 @@ function migrateLegacyStreakIfNeeded() {
   if (localStorage.getItem(HBCM_MIGRATED_KEY) === "1") return;
 
   const existingRaw = localStorage.getItem(HBCM_RAW_KEY);
+  const legacyStreak = getInt(LEGACY_STREAK_KEY, 0);
   if (existingRaw === null) {
-    const legacyStreak = getInt(LEGACY_STREAK_KEY, 0);
     setFloat(
       HBCM_RAW_KEY,
       legacyStreak > 0 ? migrateStreakToHbcmRaw(legacyStreak) : 0,
     );
+  }
+  if (legacyStreak > 0 && localStorage.getItem(LOG_STREAK_KEY) === null) {
+    setInt(LOG_STREAK_KEY, legacyStreak);
   }
 
   const last = localStorage.getItem(LAST_SCORE_DAY_KEY);
@@ -238,10 +248,17 @@ export async function awardForSubmission(
   }
 
   let hbcmGained = false;
+  let logStreak = getInt(LOG_STREAK_KEY, 0);
   if (logsTodayBefore === 0) {
     const next = applyHbcmCompletion(hbcmRaw);
     if (next > hbcmRaw) hbcmGained = true;
     hbcmRaw = next;
+    logStreak = nextLogStreakOnFirstDailyLog(
+      logStreak,
+      lastScoreDay,
+      stripDateKey(dateKey),
+    );
+    setInt(LOG_STREAK_KEY, logStreak);
   }
 
   const hbcmDisplay = hbcmDisplayValue(hbcmRaw);
@@ -299,10 +316,12 @@ export type ScoreSnapshot = {
   total: number;
   hbcmRaw: number;
   hbcmDisplay: number;
+  /** Consecutive logged days; drives heat-tile fire only (not shown in UI). */
+  logStreak: number;
   lastScoreDay: string | null;
   /**
-   * Legacy cloud field: 2.x stores HBCM display (0–5) where 1.x stored streak count.
-   * @deprecated Prefer hbcmDisplay
+   * Firestore `meta/score` consecutive-day streak (same as `logStreak`).
+   * Not the same as consistency heat 0–5.
    */
   streak: number;
   /** @deprecated Alias of lastScoreDay for Firestore `meta/score` */
@@ -317,12 +336,14 @@ export function getScoreSnapshot(): ScoreSnapshot {
   const hbcmRaw = clampHbcm(getFloat(HBCM_RAW_KEY, 0));
   const hbcmDisplay = hbcmDisplayValue(hbcmRaw);
   const lastScoreDay = localStorage.getItem(LAST_SCORE_DAY_KEY);
+  const logStreak = getInt(LOG_STREAK_KEY, 0);
   return {
     total: getInt(SCORE_KEY, 0),
     hbcmRaw,
     hbcmDisplay,
+    logStreak,
     lastScoreDay,
-    streak: hbcmDisplay,
+    streak: logStreak,
     lastDay: lastScoreDay,
     streakFreezes: 0,
     streakRestore: null,
@@ -337,13 +358,16 @@ function applyHbcmFromSyncPayload(payload: ScoreSyncPayload): boolean {
     setFloat(HBCM_RAW_KEY, next);
     return true;
   }
-  if (typeof payload.streak === "number") {
-    const next = migrateStreakToHbcmRaw(payload.streak);
-    if (getFloat(HBCM_RAW_KEY, 0) === next) return false;
-    setFloat(HBCM_RAW_KEY, next);
-    return true;
-  }
   return false;
+}
+
+/** Documents `applyLogStreakFromSyncPayload` in this module. */
+function applyLogStreakFromSyncPayload(payload: ScoreSyncPayload): boolean {
+  if (typeof payload.streak !== "number") return false;
+  const next = Math.max(0, Math.trunc(payload.streak));
+  if (getInt(LOG_STREAK_KEY, 0) === next) return false;
+  setInt(LOG_STREAK_KEY, next);
+  return true;
 }
 
 /** Documents `applyLastScoreDayFromSyncPayload` in this module. */
@@ -383,6 +407,7 @@ export function applyScoreSnapshotFromSync(
   }
 
   if (applyHbcmFromSyncPayload(payload)) changed = true;
+  if (applyLogStreakFromSyncPayload(payload)) changed = true;
   if (applyLastScoreDayFromSyncPayload(payload)) changed = true;
 
   const nextUpdatedAt = String(Math.trunc(updatedAt));
@@ -467,6 +492,14 @@ export function awardForPackageOpen(
 /** Debug / tests: set HBCM raw directly (0–5). */
 export function debugSetHbcmRaw(raw: number) {
   setFloat(HBCM_RAW_KEY, clampHbcm(raw));
+  localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Date.now()));
+  notifyLocalDataChanged();
+  window.dispatchEvent(new CustomEvent(SCORE_CHANGED_EVENT));
+}
+
+/** Debug: set hidden log streak (consecutive days → fire tier). */
+export function debugSetLogStreak(streak: number) {
+  setInt(LOG_STREAK_KEY, Math.max(0, Math.trunc(streak)));
   localStorage.setItem(SCORE_UPDATED_AT_KEY, String(Date.now()));
   notifyLocalDataChanged();
   window.dispatchEvent(new CustomEvent(SCORE_CHANGED_EVENT));

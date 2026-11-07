@@ -246,6 +246,7 @@ export function DebugPanel() {
     scoreTotal: string | null;
     hbcmRaw: string | null;
     hbcmDisplay: number | null;
+    logStreak: number | null;
     lastScoreDay: string | null;
     recentEntries: Array<{
       dateKey: string;
@@ -285,6 +286,7 @@ export function DebugPanel() {
       scoreTotal: localStorage.getItem(scopedStorageKey("mentell.score.total")),
       hbcmRaw: localStorage.getItem(HBCM_RAW_STORAGE_KEY),
       hbcmDisplay: snap.hbcmDisplay,
+      logStreak: snap.logStreak,
       lastScoreDay: snap.lastScoreDay,
       recentEntries: recentEntriesRows.map((e) => ({
         dateKey: e.dateKey,
@@ -1530,7 +1532,8 @@ export function DebugPanel() {
                           <div className="mt-2">
                             score: {inspector.scoreTotal ?? "0"} · heat raw:{" "}
                             {inspector.hbcmRaw ?? "—"} · display:{" "}
-                            {inspector.hbcmDisplay ?? "—"}
+                            {inspector.hbcmDisplay ?? "—"} · log streak:{" "}
+                            {inspector.logStreak ?? "—"}
                           </div>
                           <div className="mt-1">
                             last score day: {inspector.lastScoreDay ?? "—"}

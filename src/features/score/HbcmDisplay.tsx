@@ -18,10 +18,10 @@ import {
   hbcmTileFillRatio,
 } from "./hbcmVisual";
 import {
-  getHbcmFireLevel,
+  getStreakFireLevel,
   getStreakFlameCount,
   streakFlickerDuration,
-} from "./hbcmFireLevel";
+} from "./streakFireLevel";
 import { HbcmTileWaves } from "./HbcmTileWaves";
 
 const FLAME_OFFSETS = [
@@ -48,6 +48,8 @@ type TileBubble = {
 
 type HbcmDisplayProps = {
   readonly hbcmDisplay: number;
+  /** Hidden consecutive-day log streak; fire chrome only (not heat 0–5). */
+  readonly logStreak?: number;
   readonly pulse?: boolean;
   readonly variant?: "chip" | "inline";
 };
@@ -57,6 +59,7 @@ let bubbleIdSeq = 0;
 /** Consistency heat chip: subtle liquid tile + glass numeral with occasional bubbles. */
 export function HbcmDisplay({
   hbcmDisplay,
+  logStreak = 0,
   pulse,
   variant = "chip",
 }: HbcmDisplayProps) {
@@ -70,7 +73,7 @@ export function HbcmDisplay({
   const fill = hbcmFillRatio(display);
   const tileFill = hbcmTileFillRatio(display);
   const palette = hbcmLiquidPalette(display);
-  const fireLevel = getHbcmFireLevel(display);
+  const fireLevel = getStreakFireLevel(logStreak);
   const displayFireLevel =
     pulse && !reduced ? Math.min(6, fireLevel + 1) : fireLevel;
   const flameCount = getStreakFlameCount(displayFireLevel);

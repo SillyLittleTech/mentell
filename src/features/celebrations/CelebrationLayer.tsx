@@ -6,6 +6,7 @@ import type {
 } from "./clusterCelebration";
 import { ConfettiBurst } from "./ConfettiBurst";
 import { HbcmDisplay } from "../score/HbcmDisplay";
+import { getScoreSnapshot } from "../score/scoreService";
 import {
   motionDuration,
   shouldReduceMotion,
@@ -75,6 +76,7 @@ export function CelebrationLayer() {
                 <div className="origin-center scale-[1.4]">
                   <HbcmDisplay
                     hbcmDisplay={cluster.hbcmDisplay}
+                    logStreak={getScoreSnapshot().logStreak}
                     pulse={!reduced}
                     variant="chip"
                   />

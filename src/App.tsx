@@ -331,6 +331,7 @@ function TopBar({
     <ScoreTicker
       total={score.total}
       hbcmDisplay={score.hbcmDisplay}
+      logStreak={score.logStreak}
       hbcmPulse={Boolean(
         incomingHint?.toLowerCase().includes("consistency heat"),
       )}

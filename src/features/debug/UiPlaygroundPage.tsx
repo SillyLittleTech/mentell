@@ -146,12 +146,16 @@ function AnimationsTab({
   setScoreTotal,
   hbcm,
   setHbcm,
+  logStreak,
+  setLogStreak,
 }: {
   onOpenModal: () => void;
   scoreTotal: number;
   setScoreTotal: React.Dispatch<React.SetStateAction<number>>;
   hbcm: number;
   setHbcm: React.Dispatch<React.SetStateAction<number>>;
+  logStreak: number;
+  setLogStreak: React.Dispatch<React.SetStateAction<number>>;
 }) {
   const [submitOpen, setSubmitOpen] = useState(false);
   const [scoreBurst, setScoreBurst] = useState<{
@@ -230,11 +234,17 @@ function AnimationsTab({
         <div className="rounded-3xl border border-[var(--paper-border)] p-5">
           <div className="font-medium">Consistency heat chip</div>
           <div className="ink-muted mt-1 text-sm">
-            Glass vessel + liquid fill (2.x consistency heat).
+            Heat 0–5 (fill) vs hidden log streak (fire only).
           </div>
           <div className="mt-3">
-            <HbcmDisplay hbcmDisplay={hbcm} pulse={false} variant="chip" />
-            <div className="mt-2 flex gap-2">
+            <HbcmDisplay
+              hbcmDisplay={hbcm}
+              logStreak={logStreak}
+              pulse={false}
+              variant="chip"
+            />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <span className="ink-muted self-center text-xs">Heat</span>
               <button
                 type="button"
                 className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
@@ -246,6 +256,21 @@ function AnimationsTab({
                 type="button"
                 className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
                 onClick={() => setHbcm((h) => Math.min(5, h + 1))}
+              >
+                +
+              </button>
+              <span className="ink-muted self-center text-xs">Log streak</span>
+              <button
+                type="button"
+                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
+                onClick={() => setLogStreak((s) => Math.max(0, s - 1))}
+              >
+                −
+              </button>
+              <button
+                type="button"
+                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
+                onClick={() => setLogStreak((s) => s + 1)}
               >
                 +
               </button>
@@ -539,6 +564,7 @@ export function UiPlaygroundPage() {
 
   const [scoreTotal, setScoreTotal] = useState(2000);
   const [hbcmDemo, setHbcmDemo] = useState(3);
+  const [logStreakDemo, setLogStreakDemo] = useState(12);
 
   const tabButtons = useMemo(
     () =>
@@ -670,6 +696,7 @@ export function UiPlaygroundPage() {
                 <div className="mt-2">
                   <HbcmDisplay
                     hbcmDisplay={hbcmDemo}
+                    logStreak={logStreakDemo}
                     pulse={false}
                     variant="chip"
                   />
@@ -751,6 +778,8 @@ export function UiPlaygroundPage() {
             setScoreTotal={setScoreTotal}
             hbcm={hbcmDemo}
             setHbcm={setHbcmDemo}
+            logStreak={logStreakDemo}
+            setLogStreak={setLogStreakDemo}
           />
         ) : null}
 
@@ -793,6 +822,7 @@ export function UiPlaygroundPage() {
               <ScoreTicker
                 total={scoreTotal}
                 hbcmDisplay={hbcmDemo}
+                logStreak={logStreakDemo}
                 hint={null}
               />
             </div>

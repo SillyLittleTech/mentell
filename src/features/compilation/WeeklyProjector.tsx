@@ -351,7 +351,11 @@ export function WeeklyProjector() {
           <ProjectorCard title="Current score" value={score.total} />
           <div className="paper flex flex-col justify-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 sm:gap-3">
             <div className="ink-muted text-xs sm:text-sm">Consistency heat</div>
-            <HbcmDisplay hbcmDisplay={score.hbcmDisplay} variant="inline" />
+            <HbcmDisplay
+              hbcmDisplay={score.hbcmDisplay}
+              logStreak={score.logStreak}
+              variant="inline"
+            />
           </div>
         </div>
       </div>
