@@ -631,10 +631,7 @@ async function localFallbackEntryCards(
 }
 
 /** Documents `handleLocalFallback` in this module. */
-async function handleLocalFallback(
-  env: Env,
-  opts: LocalFallbackOpts,
-) {
+async function handleLocalFallback(env: Env, opts: LocalFallbackOpts) {
   const matched =
     opts.localHits && opts.localHits.length > 0
       ? opts.localHits
