@@ -10,6 +10,7 @@ import { dateKeyForLocalDay } from "../../shared/dates";
 import { assessRisk, type RiskAssessment } from "../safety/riskAssessment";
 import type { EntryEmotion } from "../../db/schema";
 import { QUICK_LOG_NOTE_MAX } from "../../shared/limits/entryLimits";
+import { ignorePromise } from "../../shared/promise/ignorePromise";
 
 /** Normalized payload for a quick-log entry before persistence. */
 export type QuickLogDraft = {
@@ -36,10 +37,8 @@ export type QuickLogComposerProps = {
 };
 
 /** Short-form journal composer (sentiment + optional note). */
-export function QuickLogComposer({
-  disabled,
-  onSubmit,
-}: QuickLogComposerProps) {
+export function QuickLogComposer(props: Readonly<QuickLogComposerProps>) {
+  const { disabled, onSubmit } = props;
   const [sentiment, setSentiment] = useState<SentimentValue>("=");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
@@ -121,7 +120,7 @@ export function QuickLogComposer({
           type="button"
           className="btn-primary focus-ring inline-flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold"
           disabled={disabled || busy}
-          onClick={() => void handleSubmit()}
+          onClick={() => ignorePromise(handleSubmit())}
         >
           <MaterialIcon
             name="schedule"

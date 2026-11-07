@@ -358,7 +358,7 @@ export function Shoppe({
       setBalance(getScoreSnapshot().total);
       onScoreChange(-CAT_COST, "Cat photo collected");
       setStatus("Mystery cat collected.");
-      void pushLocalChangesNow();
+      await pushLocalChangesNow();
     } catch {
       setError("Failed to reach cat photo service.");
     } finally {
@@ -405,7 +405,7 @@ export function Shoppe({
             ? `${item.name} unlocked and equipped.`
             : `${item.name} unlocked.`,
       );
-      void pushLocalChangesNow();
+      await pushLocalChangesNow();
     } finally {
       setBusyItemId(null);
     }

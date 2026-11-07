@@ -72,12 +72,8 @@ import { ThemeToggleButton } from "./components/ThemeToggleButton";
 import { HomeGreeting } from "./features/home/HomeGreeting";
 import { QuickLogComposer } from "./features/compose/QuickLogComposer";
 import { CelebrationLayer } from "./features/celebrations/CelebrationLayer";
-import {
-  recordClusterCelebration,
-  recordComebackToast,
-  shouldShowClusterCelebration,
-  shouldShowComeback,
-} from "./features/celebrations/clusterCelebration";
+import { runAfterJournalSubmit } from "./features/celebrations/clusterCelebration";
+import { ignorePromise } from "./shared/promise/ignorePromise";
 import { MaterialIcon } from "./components/MaterialIcon";
 
 type ScoreChangeOptions = {
@@ -483,24 +479,6 @@ function HomePlaceholder({
     if (composerLocked) setShakeBanner((k) => k + 1);
   }
 
-  function runAfterJournalSubmit(
-    award: Awaited<ReturnType<typeof awardForSubmission>>,
-  ) {
-    if (
-      award.hbcmDisplay >= 5 &&
-      shouldShowClusterCelebration("hbcm_peak", 8 * 86_400_000)
-    ) {
-      recordClusterCelebration({
-        milestone: "hbcm_peak",
-        hbcmDisplay: award.hbcmDisplay,
-        at: Date.now(),
-      });
-    }
-    if (award.missedDaysApplied >= 14 && shouldShowComeback(30 * 86_400_000)) {
-      recordComebackToast({ gapDays: award.missedDaysApplied, at: Date.now() });
-    }
-  }
-
   return (
     <PaperSection
       title={
@@ -615,13 +593,15 @@ function HomePlaceholder({
                 id: "sync",
                 message: "Syncing to cloud...",
               });
-              void pushLocalChangesNow().finally(() => {
-                emitBackgroundActivity({
-                  type: "stop",
-                  id: "sync",
-                  message: "",
-                });
-              });
+              ignorePromise(
+                pushLocalChangesNow().finally(() => {
+                  emitBackgroundActivity({
+                    type: "stop",
+                    id: "sync",
+                    message: "",
+                  });
+                }),
+              );
               runAfterJournalSubmit(award);
               onScoreChange(award.totalDelta, award.hint, {
                 deferOverlay: true,
@@ -676,41 +656,51 @@ function HomePlaceholder({
                   id: "sync",
                   message: "Syncing to cloud...",
                 });
-                void pushLocalChangesNow().finally(() => {
-                  emitBackgroundActivity({
-                    type: "stop",
-                    id: "sync",
-                    message: "",
-                  });
-                  emitBackgroundActivity({
-                    type: "start",
-                    id: "index",
-                    message: "Indexing for AI search...",
-                  });
-                  void requestProjectorSearch({
-                    query: "",
-                    mode: "index",
-                    forceIndex: true,
-                    userId: auth?.user?.uid || getOrCreateAnonSearchUserId(),
-                  })
-                    .catch((error) => {
-                      console.error("Projector search indexing failed:", error);
-                    })
-                    .finally(() => {
-                      emitBackgroundActivity({
-                        type: "stop",
-                        id: "index",
-                        message: "",
-                      });
+                ignorePromise(
+                  pushLocalChangesNow().finally(() => {
+                    emitBackgroundActivity({
+                      type: "stop",
+                      id: "sync",
+                      message: "",
                     });
-                });
-                if (!loadAppSettings().disableNotifications) {
-                  void maybeRequestNotificationPermission().catch((error) => {
-                    console.error(
-                      "Notification permission prompt failed:",
-                      error,
+                    emitBackgroundActivity({
+                      type: "start",
+                      id: "index",
+                      message: "Indexing for AI search...",
+                    });
+                    ignorePromise(
+                      requestProjectorSearch({
+                        query: "",
+                        mode: "index",
+                        forceIndex: true,
+                        userId:
+                          auth?.user?.uid || getOrCreateAnonSearchUserId(),
+                      })
+                        .catch((error) => {
+                          console.error(
+                            "Projector search indexing failed:",
+                            error,
+                          );
+                        })
+                        .finally(() => {
+                          emitBackgroundActivity({
+                            type: "stop",
+                            id: "index",
+                            message: "",
+                          });
+                        }),
                     );
-                  });
+                  }),
+                );
+                if (!loadAppSettings().disableNotifications) {
+                  ignorePromise(
+                    maybeRequestNotificationPermission().catch((error) => {
+                      console.error(
+                        "Notification permission prompt failed:",
+                        error,
+                      );
+                    }),
+                  );
                 }
                 runAfterJournalSubmit(award);
                 onScoreChange(award.totalDelta, award.hint, {
