@@ -9,7 +9,7 @@ export function AccountButton() {
   const activities = useBackgroundActivities()
   const [hover, setHover] = useState(false)
 
-  const activeMessages = Object.values(activities)
+  const activeMessages = Object.entries(activities)
   const isSyncBusy = 'sync' in activities
 
   const syncStatusTone = auth?.syncError
@@ -40,9 +40,9 @@ export function AccountButton() {
 
       {hover && activeMessages.length > 0 && (
         <div className="absolute top-full mt-2 right-0 z-50 flex flex-col gap-2 pointer-events-none w-max">
-          {activeMessages.map((msg, i) => (
+          {activeMessages.map(([activity, msg]) => (
             <div
-              key={i}
+              key={activity}
               className="paper flex items-center gap-2 rounded-xl px-3 py-2 text-sm shadow-md animate-in fade-in slide-in-from-top-2"
             >
               <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse shrink-0" />

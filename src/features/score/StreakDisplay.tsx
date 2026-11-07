@@ -116,7 +116,7 @@ export function StreakDisplay({
       {flameCount > 0
         ? FLAME_OFFSETS.slice(0, flameCount).map((pos, i) => (
             <span
-              key={i}
+              key={`flame-${pos.top}-${pos.right}`}
               className={`streak-flame streak-flame--${i + 1} ${
                 reducedMotion ? '' : 'streak-flame--animated'
               }`}

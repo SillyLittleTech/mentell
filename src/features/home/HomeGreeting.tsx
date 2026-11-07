@@ -180,9 +180,9 @@ function GreetingLetter({
         {token.char}
       </span>
       {dustNonce > 0 && !reduced
-        ? DUST_GRAINS.map((grain, index) => (
+        ? DUST_GRAINS.map((grain) => (
             <span
-              key={`${dustNonce}-${index}`}
+              key={`${dustNonce}-${grain.x}-${grain.size}-${grain.drift}`}
               className="home-greeting-dust"
               style={
                 {
@@ -281,7 +281,7 @@ export function HomeGreeting({
             >
               {run.tokens[0]?.char === ' ' ? ' ' : null}
               {words.map((word, wordIndex) => (
-                <span key={`${word[0]?.key ?? wordIndex}`}>
+                <span key={word.map((token) => token.key).join('-')}>
                   {wordIndex > 0 ? ' ' : null}
                   <span className="home-greeting-word">
                     {word.map((token) => (
@@ -298,9 +298,9 @@ export function HomeGreeting({
                 ? ' '
                 : null}
               {run.isName
-                ? SPARKLES.map((spark, index) => (
+                ? SPARKLES.map((spark) => (
                     <span
-                      key={`${sparkNonce}-${index}`}
+                      key={`${sparkNonce}-${spark.left}-${spark.top}-${spark.delay}-${spark.size}`}
                       className={`home-greeting-sparkle${sparkNonce > 0 ? ' is-sparking' : ''}`}
                       style={
                         {
