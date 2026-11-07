@@ -53,8 +53,8 @@ export function ShopWeeklyProgressBarInner({
         Weekly progress
       </div>
       <p className="ink-muted mt-1 text-sm">
-        See how the week felt — positive, negative, neutral, missed, or no data —
-        with soft blends between days.
+        See how the week felt — positive, negative, neutral, missed, or no data
+        — with soft blends between days.
       </p>
 
       <div className="relative mt-5 overflow-hidden rounded-2xl border border-[var(--paper-border)]">
@@ -123,19 +123,13 @@ export function ShopWeeklyProgressBarInner({
           label="Positive"
           className={swatchClassForClass("positive")}
         />
-        <KeySwatch
-          label="Neutral"
-          className={swatchClassForClass("neutral")}
-        />
+        <KeySwatch label="Neutral" className={swatchClassForClass("neutral")} />
         <KeySwatch
           label="Negative"
           className={swatchClassForClass("negative")}
         />
         <KeySwatch label="Missed" className={swatchClassForClass("missed")} />
-        <KeySwatch
-          label="No data"
-          className={swatchClassForClass("no_data")}
-        />
+        <KeySwatch label="No data" className={swatchClassForClass("no_data")} />
       </div>
     </section>
   );

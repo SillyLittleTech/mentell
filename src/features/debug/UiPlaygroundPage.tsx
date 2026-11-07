@@ -418,8 +418,8 @@ function VizPlaygroundTab() {
       <div>
         <div className="font-paper text-xl">Weekly bar + feelings graph</div>
         <p className="ink-muted mt-1 text-sm">
-          Drive each day’s mood class without Dexie data. Same components as Shop
-          + Projector; use this to stress gradients, labels, and contrast.
+          Drive each day’s mood class without Dexie data. Same components as
+          Shop + Projector; use this to stress gradients, labels, and contrast.
         </p>
       </div>
 
