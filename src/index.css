@@ -472,70 +472,224 @@ html[data-reduced-motion="true"] .streak-focus-dim {
   }
 }
 
-/* Consistency heat (2.x) — liquid surface motion inside number glyph */
+/* Consistency heat (2.x) — tile wash + digit liquid */
+.hbcm-heat-tile {
+  border-radius: 1rem;
+  border: 1px solid var(--paper-border);
+  padding: 0.5rem 0.75rem;
+  background: var(--paper-bg);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.hbcm-heat-tile__pool {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--hbcm-tile-fill, 0) * 100%);
+  overflow: hidden;
+}
+
+.hbcm-heat-tile__liquid {
+  position: absolute;
+  left: -24%;
+  right: -24%;
+  bottom: -10px;
+  height: calc(100% + 18px);
+  min-height: 12px;
+  background: linear-gradient(
+    180deg,
+    var(--hbcm-tile-b, rgba(160, 160, 170, 0.08)) 0%,
+    var(--hbcm-tile-a, rgba(120, 120, 130, 0.12)) 70%
+  );
+  transform-origin: center bottom;
+  border-radius: 52% 48% 0 0 / 20% 18% 0 0;
+}
+
+.hbcm-tile-wave {
+  animation: hbcm-tile-wave 2.5s cubic-bezier(0.42, 0.08, 0.48, 0.92) infinite;
+  will-change: transform, border-radius;
+}
+
+.hbcm-heat-tile__surface {
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  top: -5px;
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  opacity: 0.7;
+  transform-origin: center bottom;
+}
+
+.hbcm-tile-crest {
+  animation: hbcm-tile-crest 2.5s cubic-bezier(0.42, 0.08, 0.48, 0.92) infinite;
+}
+
+@keyframes hbcm-tile-wave {
+  0% {
+    transform: translateX(-5%) scaleX(1.04) scaleY(1);
+    border-radius: 56% 44% 0 0 / 19% 15% 0 0;
+  }
+  18% {
+    transform: translateX(1%) scaleX(0.96) scaleY(1.14);
+    border-radius: 50% 50% 0 0 / 24% 22% 0 0;
+  }
+  38% {
+    transform: translateX(7%) scaleX(1.06) scaleY(0.9);
+    border-radius: 54% 46% 0 0 / 14% 16% 0 0;
+  }
+  58% {
+    transform: translateX(3%) scaleX(0.94) scaleY(1.1);
+    border-radius: 46% 54% 0 0 / 21% 19% 0 0;
+  }
+  78% {
+    transform: translateX(-4%) scaleX(1.02) scaleY(0.95);
+    border-radius: 52% 48% 0 0 / 16% 18% 0 0;
+  }
+  100% {
+    transform: translateX(-5%) scaleX(1.04) scaleY(1);
+    border-radius: 56% 44% 0 0 / 19% 15% 0 0;
+  }
+}
+
+@keyframes hbcm-tile-crest {
+  0% {
+    transform: translateX(-4%) scaleY(1) scaleX(1.05);
+    opacity: 0.55;
+  }
+  18% {
+    transform: translateX(2%) scaleY(1.35) scaleX(0.92);
+    opacity: 0.85;
+  }
+  38% {
+    transform: translateX(8%) scaleY(0.75) scaleX(1.08);
+    opacity: 0.65;
+  }
+  58% {
+    transform: translateX(2%) scaleY(1.25) scaleX(0.95);
+    opacity: 0.8;
+  }
+  78% {
+    transform: translateX(-3%) scaleY(0.85) scaleX(1.02);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(-4%) scaleY(1) scaleX(1.05);
+    opacity: 0.55;
+  }
+}
+
+.hbcm-digit-wave {
+  animation: hbcm-digit-wave 2.2s cubic-bezier(0.42, 0.08, 0.48, 0.92) infinite;
+  transform-origin: center bottom;
+  transform-box: fill-box;
+}
+
+@keyframes hbcm-digit-wave {
+  0% {
+    transform: translateX(-3px) scaleX(1.02) scaleY(1);
+  }
+  25% {
+    transform: translateX(2px) scaleX(0.97) scaleY(1.08);
+  }
+  50% {
+    transform: translateX(5px) scaleX(1.04) scaleY(0.92);
+  }
+  75% {
+    transform: translateX(-1px) scaleX(0.98) scaleY(1.06);
+  }
+  100% {
+    transform: translateX(-3px) scaleX(1.02) scaleY(1);
+  }
+}
+
+.hbcm-liq-wave--digit {
+  transform-origin: center bottom;
+}
+
+.hbcm-bubble {
+  fill: rgba(255, 255, 255, 0.55);
+  stroke: rgba(255, 255, 255, 0.35);
+  stroke-width: 0.35;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.hbcm-bubble--rise {
+  animation: hbcm-bubble-rise linear forwards;
+}
+
+.hbcm-bubble--burst {
+  animation: hbcm-bubble-burst 0.38s ease-out forwards;
+}
+
+@keyframes hbcm-bubble-rise {
+  0% {
+    transform: translateY(0) scale(0.65);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.85;
+  }
+  88% {
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateY(calc(-1 * var(--hbcm-svg-h, 28px))) scale(1.05);
+    opacity: 0;
+  }
+}
+
+@keyframes hbcm-bubble-burst {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
 .hbcm-chip--pulse {
   animation: streak-pulse 0.6s ease-out 1;
 }
 
-.hbcm-liq-wave {
-  animation: hbcm-liq-wave-x 1.35s ease-in-out infinite;
-  transform-origin: center bottom;
-}
-
-.hbcm-liq-wave--shimmer {
-  animation: hbcm-liq-wave-shimmer 1.05s ease-in-out infinite;
-  animation-delay: -0.35s;
-  transform-origin: center center;
-}
-
-@keyframes hbcm-liq-wave-x {
-  0% {
-    transform: translate(-9px, 1px) skewX(-2deg);
-  }
-  33% {
-    transform: translate(7px, -2px) skewX(1.5deg);
-  }
-  66% {
-    transform: translate(-3px, 2px) skewX(-1deg);
-  }
-  100% {
-    transform: translate(-9px, 1px) skewX(-2deg);
-  }
-}
-
-@keyframes hbcm-liq-wave-shimmer {
-  0%,
-  100% {
-    transform: translateX(-6px) scaleX(0.92);
-    opacity: 0.55;
-  }
-  50% {
-    transform: translateX(8px) scaleX(1.08);
-    opacity: 1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .hbcm-chip--pulse,
-  .hbcm-liq-wave {
+  .hbcm-tile-wave,
+  .hbcm-tile-crest,
+  .hbcm-digit-wave,
+  .hbcm-bubble--rise,
+  .hbcm-bubble--burst {
     animation: none;
   }
 }
 
 html[data-reduced-motion="true"] .hbcm-chip--pulse,
-html[data-reduced-motion="true"] .hbcm-liq-wave {
+html[data-reduced-motion="true"] .hbcm-tile-wave,
+html[data-reduced-motion="true"] .hbcm-tile-crest,
+html[data-reduced-motion="true"] .hbcm-digit-wave,
+html[data-reduced-motion="true"] .hbcm-bubble--rise,
+html[data-reduced-motion="true"] .hbcm-bubble--burst {
   animation: none;
 }
 
-/* HBCM glass digit — drawn above animated liquid */
+/* HBCM digit — high-contrast glass readout over liquid */
 .hbcm-glass-digit {
-  fill: rgba(255, 255, 255, 0.28);
-  stroke: rgba(38, 38, 46, 0.52);
+  fill: rgba(252, 250, 246, 0.92);
+  stroke: rgba(32, 32, 40, 0.72);
+  filter: drop-shadow(0 0.5px 0 rgba(255, 255, 255, 0.55));
 }
 
 html[data-theme="dark"] .hbcm-glass-digit {
-  fill: rgba(255, 255, 255, 0.16);
-  stroke: rgba(236, 236, 244, 0.38);
+  fill: rgba(28, 28, 34, 0.88);
+  stroke: rgba(236, 236, 244, 0.78);
+  filter: drop-shadow(0 0.5px 0 rgba(0, 0, 0, 0.35));
 }
 
 .streak-number {

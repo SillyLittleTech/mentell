@@ -1,52 +1,36 @@
-import { useId } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import { shouldReduceMotion } from "../../shared/motion/useMotionPrefs";
 import { MaterialIcon } from "../../components/MaterialIcon";
+import {
+  hbcmFillRatio,
+  hbcmLiquidPalette,
+  hbcmTileFillRatio,
+} from "./hbcmVisual";
 
-/** Documents `fillRatio` in this module. */
-/** Liquid height inside the digit — even steps; only 0 stays empty. */
-function fillRatio(display: number): number {
-  switch (display) {
-    case 5:
-      return 0.96;
-    case 4:
-      return 0.76;
-    case 3:
-      return 0.56;
-    case 2:
-      return 0.38;
-    case 1:
-      return 0.22;
-    default:
-      return 0;
-  }
-}
+type Bubble = {
+  id: number;
+  cx: number;
+  r: number;
+  delayMs: number;
+  durationMs: number;
+};
 
-/** Documents `liquidGradient` in this module. */
-function liquidGradient(display: number) {
-  switch (display) {
-    case 5:
-      return { a: "rgb(18,150,78)", b: "rgb(95,235,155)" };
-    case 4:
-      return { a: "rgb(95,140,42)", b: "rgb(225,210,70)" };
-    case 3:
-      return { a: "rgb(200,190,65)", b: "rgb(235,215,95)" };
-    case 2:
-      return { a: "rgb(215,110,38)", b: "rgb(245,175,88)" };
-    case 1:
-      return { a: "rgb(185,32,32)", b: "rgb(235,95,68)" };
-    default:
-      return { a: "rgba(120,120,130,0.35)", b: "rgba(160,160,170,0.2)" };
-  }
-}
-
-/** Consistency heat numeral with optional glass vessel + animated liquid fill. */
 type HbcmDisplayProps = {
   readonly hbcmDisplay: number;
   readonly pulse?: boolean;
   readonly variant?: "chip" | "inline";
 };
 
-/** Documents `HbcmDisplay` in this module. */
+let bubbleIdSeq = 0;
+
+/** Consistency heat chip: subtle liquid tile + glass numeral with occasional bubbles. */
 export function HbcmDisplay({
   hbcmDisplay,
   pulse,
@@ -57,132 +41,248 @@ export function HbcmDisplay({
   const uid = useId().replaceAll(":", "");
   const liquidClipId = `hbcm-liq-clip-${uid}`;
   const gradId = `hbcm-liq-grad-${uid}`;
+  const bubblesClipId = `hbcm-bubbles-clip-${uid}`;
 
-  const fill = fillRatio(display);
-  const { a, b } = liquidGradient(display);
+  const fill = hbcmFillRatio(display);
+  const tileFill = hbcmTileFillRatio(display);
+  const palette = hbcmLiquidPalette(display);
   const label =
     display === 0
       ? "Consistency heat empty. Next log starts filling the glass."
-      : `Consistency heat ${display} of five`;
+      : `Consistency heat ${display} of five. Tap to pop bubbles.`;
 
   const svgH = variant === "chip" ? 34 : 40;
   const svgW = variant === "chip" ? 30 : 36;
   const fontSize = variant === "chip" ? 26 : 31;
   const baselineY = svgH * 0.82;
 
-  const chipClass = [
-    "flex items-center gap-2",
-    pulse && !reduced ? "hbcm-chip--pulse" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const liqH = Math.max(0, svgH * fill * 1.14);
+  const liqH = Math.max(0, svgH * fill * 1.12);
   const liqY = svgH - liqH + 0.5;
   const surfaceY = liqY;
 
   const iconSize = variant === "chip" ? 18 : 20;
 
+  const [bubbles, setBubbles] = useState<Bubble[]>([]);
+  const [burstAll, setBurstAll] = useState(false);
+  const burstTimer = useRef<number | null>(null);
+
+  const spawnBubble = useCallback(() => {
+    if (display === 0) return;
+    const cx = svgW * (0.25 + Math.random() * 0.5);
+    const r = 0.55 + Math.random() * 1.1;
+    const b: Bubble = {
+      id: bubbleIdSeq++,
+      cx,
+      r,
+      delayMs: 0,
+      durationMs: 2200 + Math.random() * 1400,
+    };
+    setBubbles((prev) => [...prev, b].slice(-8));
+  }, [display, svgW]);
+
+  useEffect(() => {
+    if (reduced || display === 0) return;
+    const first = window.setTimeout(spawnBubble, 400 + Math.random() * 800);
+    const interval = window.setInterval(
+      () => spawnBubble(),
+      2600 + Math.random() * 2200,
+    );
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(interval);
+    };
+  }, [display, reduced, spawnBubble]);
+
+  const onTileActivate = () => {
+    if (display === 0) return;
+    setBurstAll(true);
+    if (burstTimer.current) window.clearTimeout(burstTimer.current);
+    burstTimer.current = window.setTimeout(() => {
+      setBurstAll(false);
+      setBubbles([]);
+    }, 420);
+  };
+
+  const tileStyle = {
+    "--hbcm-tile-fill": String(tileFill),
+    "--hbcm-tile-a": palette.tileDeep,
+    "--hbcm-tile-b": palette.tileBright,
+  } as CSSProperties;
+
+  const digitBoxStyle = {
+    width: svgW,
+    height: svgH,
+    "--hbcm-svg-h": `${svgH}px`,
+  } as CSSProperties;
+
+  const digit = (
+    <div
+      className="relative flex items-center justify-center"
+      style={digitBoxStyle}
+    >
+      <svg
+        width={svgW}
+        height={svgH}
+        viewBox={`0 0 ${svgW} ${svgH}`}
+        className="block overflow-visible"
+        aria-hidden
+      >
+        <defs>
+          <linearGradient id={gradId} x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stopColor={palette.deep} />
+            <stop offset="100%" stopColor={palette.bright} />
+          </linearGradient>
+          <clipPath id={liquidClipId}>
+            <text
+              x={svgW / 2}
+              y={baselineY}
+              textAnchor="middle"
+              fontFamily='Georgia, "Times New Roman", serif'
+              fontWeight="700"
+              fontSize={fontSize}
+              fontStyle="italic"
+            >
+              {display}
+            </text>
+          </clipPath>
+          <clipPath id={bubblesClipId}>
+            <rect x="0" y={svgH * 0.12} width={svgW} height={svgH * 0.88} />
+          </clipPath>
+        </defs>
+
+        <g clipPath={`url(#${liquidClipId})`}>
+          {display > 0 ? (
+            <g
+              className={
+                reduced ? undefined : "hbcm-digit-wave hbcm-liq-wave--digit"
+              }
+            >
+              <rect
+                x="-25%"
+                y={liqY - 2}
+                width="150%"
+                height={liqH + 8}
+                fill={`url(#${gradId})`}
+              />
+              <ellipse
+                cx={svgW * 0.52}
+                cy={surfaceY}
+                rx={svgW * 0.58}
+                ry={svgH * 0.06}
+                fill="rgba(255,255,255,0.32)"
+              />
+            </g>
+          ) : (
+            <rect
+              x="0"
+              y={svgH * 0.58}
+              width={svgW}
+              height={svgH * 0.42}
+              fill="rgba(150,150,160,0.09)"
+            />
+          )}
+
+          {display > 0 && !reduced ? (
+            <g clipPath={`url(#${bubblesClipId})`}>
+              {bubbles.map((b) => (
+                <circle
+                  key={b.id}
+                  className={
+                    burstAll
+                      ? "hbcm-bubble hbcm-bubble--burst"
+                      : "hbcm-bubble hbcm-bubble--rise"
+                  }
+                  cx={b.cx}
+                  cy={svgH * 0.9}
+                  r={b.r}
+                  style={{
+                    animationDuration: `${b.durationMs}ms`,
+                    animationDelay: `${b.delayMs}ms`,
+                  }}
+                  onAnimationEnd={() => {
+                    if (!burstAll) {
+                      setBubbles((prev) => prev.filter((x) => x.id !== b.id));
+                    }
+                  }}
+                />
+              ))}
+            </g>
+          ) : null}
+        </g>
+
+        <text
+          x={svgW / 2}
+          y={baselineY}
+          textAnchor="middle"
+          className="hbcm-glass-digit"
+          strokeWidth="1.35"
+          fontFamily='Georgia, "Times New Roman", serif'
+          fontWeight="700"
+          fontSize={fontSize}
+          fontStyle="italic"
+          style={{ paintOrder: "stroke fill" }}
+        >
+          {display}
+        </text>
+      </svg>
+    </div>
+  );
+
+  if (variant === "inline") {
+    return (
+      <div className="flex items-center gap-2" role="img" aria-label={label}>
+        <MaterialIcon
+          name="whatshot"
+          size={iconSize}
+          accent={false}
+          className="shrink-0 opacity-70"
+        />
+        {digit}
+        <span className="sr-only">{label}</span>
+      </div>
+    );
+  }
+
   return (
-    <div className={chipClass} role="img" aria-label={label}>
+    <button
+      type="button"
+      className={[
+        "hbcm-heat-tile focus-ring relative flex items-center gap-2 overflow-hidden",
+        pulse && !reduced ? "hbcm-chip--pulse" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      style={tileStyle}
+      aria-label={label}
+      onClick={onTileActivate}
+    >
+      <div
+        className="hbcm-heat-tile__wash pointer-events-none absolute inset-0 overflow-hidden"
+        aria-hidden
+      >
+        {tileFill > 0 ? (
+          <div className="hbcm-heat-tile__pool">
+            <div
+              className={
+                reduced
+                  ? "hbcm-heat-tile__liquid"
+                  : "hbcm-heat-tile__liquid hbcm-tile-wave"
+              }
+            />
+            {!reduced ? (
+              <div className="hbcm-heat-tile__surface hbcm-tile-crest" />
+            ) : null}
+          </div>
+        ) : null}
+      </div>
       <MaterialIcon
         name="whatshot"
         size={iconSize}
         accent={false}
-        className="shrink-0 opacity-70"
+        className="relative z-[1] shrink-0 opacity-80"
       />
-      <div
-        className="relative flex items-center justify-center"
-        style={{ width: svgW, height: svgH }}
-      >
-        <svg
-          width={svgW}
-          height={svgH}
-          viewBox={`0 0 ${svgW} ${svgH}`}
-          className="block overflow-visible"
-          aria-hidden
-        >
-          <defs>
-            <linearGradient id={gradId} x1="0%" y1="100%" x2="0%" y2="0%">
-              <stop offset="0%" stopColor={a} />
-              <stop offset="100%" stopColor={b} />
-            </linearGradient>
-            <clipPath id={liquidClipId}>
-              <text
-                x={svgW / 2}
-                y={baselineY}
-                textAnchor="middle"
-                fontFamily='Georgia, "Times New Roman", serif'
-                fontWeight="700"
-                fontSize={fontSize}
-                fontStyle="italic"
-              >
-                {display}
-              </text>
-            </clipPath>
-          </defs>
-
-          {/* Liquid fills the glyph from below; clipped to digit shape */}
-          <g clipPath={`url(#${liquidClipId})`}>
-            {display > 0 ? (
-              <>
-                <g className={reduced ? undefined : "hbcm-liq-wave"}>
-                  <rect
-                    x="-25%"
-                    y={liqY - 2}
-                    width="150%"
-                    height={liqH + 8}
-                    fill={`url(#${gradId})`}
-                  />
-                  <ellipse
-                    cx={svgW * 0.52}
-                    cy={surfaceY}
-                    rx={svgW * 0.62}
-                    ry={svgH * 0.07}
-                    fill="rgba(255,255,255,0.28)"
-                  />
-                </g>
-                {!reduced ? (
-                  <g className="hbcm-liq-wave hbcm-liq-wave--shimmer">
-                    <ellipse
-                      cx={svgW * 0.48}
-                      cy={surfaceY + 1.5}
-                      rx={svgW * 0.35}
-                      ry={svgH * 0.04}
-                      fill="rgba(255,255,255,0.35)"
-                    />
-                  </g>
-                ) : null}
-              </>
-            ) : (
-              <rect
-                x="0"
-                y={svgH * 0.55}
-                width={svgW}
-                height={svgH * 0.45}
-                fill="rgba(150,150,160,0.07)"
-              />
-            )}
-          </g>
-
-          {/* Glass numeral on top — liquid is underneath (see clipPath group above) */}
-          <text
-            x={svgW / 2}
-            y={baselineY}
-            textAnchor="middle"
-            className="hbcm-glass-digit"
-            strokeWidth="1.05"
-            fontFamily='Georgia, "Times New Roman", serif'
-            fontWeight="700"
-            fontSize={fontSize}
-            fontStyle="italic"
-            style={{ paintOrder: "stroke fill" }}
-          >
-            {display}
-          </text>
-        </svg>
-      </div>
+      <div className="relative z-[1]">{digit}</div>
       <span className="sr-only">{label}</span>
-    </div>
+    </button>
   );
-}
+};
