@@ -4,6 +4,8 @@ import type {
   ClusterCelebrationPayload,
   ComebackPayload,
 } from "./clusterCelebration";
+import { ConfettiBurst } from "./ConfettiBurst";
+import { HbcmDisplay } from "../score/HbcmDisplay";
 import {
   motionDuration,
   shouldReduceMotion,
@@ -54,8 +56,9 @@ export function CelebrationLayer() {
             exit={reduced ? undefined : { opacity: 0 }}
             transition={{ duration: motionDuration(0.2) || 0 }}
           >
+            <ConfettiBurst burstKey={cluster.at} />
             <motion.div
-              className="paper max-w-md rounded-3xl p-6 shadow-xl"
+              className="paper relative z-10 max-w-md rounded-3xl p-6 shadow-xl"
               initial={reduced ? false : { scale: 0.94 }}
               animate={{ scale: 1 }}
               exit={reduced ? undefined : { scale: 0.96 }}
@@ -68,16 +71,15 @@ export function CelebrationLayer() {
                 </span>{" "}
                 — that takes care in real life, not just calendar luck.
               </p>
-              {!reduced ? (
-                <div
-                  className="mt-4 h-16 overflow-hidden rounded-2xl border border-[var(--paper-border)] opacity-80"
-                  style={{
-                    background:
-                      "repeating-linear-gradient(90deg, rgba(42,155,88,0.35) 0 12px, rgba(214,189,64,0.35) 12px 24px, rgba(198,29,29,0.25) 24px 36px)",
-                  }}
-                  aria-hidden
-                />
-              ) : null}
+              <div className="mt-5 flex justify-center">
+                <div className="origin-center scale-[1.4]">
+                  <HbcmDisplay
+                    hbcmDisplay={cluster.hbcmDisplay}
+                    pulse={!reduced}
+                    variant="chip"
+                  />
+                </div>
+              </div>
               <button
                 type="button"
                 className="btn-primary focus-ring mt-5 w-full rounded-2xl py-3 text-sm font-semibold"
