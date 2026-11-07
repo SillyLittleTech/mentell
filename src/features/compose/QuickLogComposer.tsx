@@ -11,6 +11,7 @@ import { assessRisk, type RiskAssessment } from "../safety/riskAssessment";
 import type { EntryEmotion } from "../../db/schema";
 import { QUICK_LOG_NOTE_MAX } from "../../shared/limits/entryLimits";
 
+/** Normalized payload for a quick-log entry before persistence. */
 export type QuickLogDraft = {
   dateKey: string;
   sentiment: SentimentValue;
@@ -33,6 +34,7 @@ export type QuickLogComposerProps = {
   onSubmit: (draft: QuickLogDraft) => Promise<void>;
 };
 
+/** Short-form journal composer (sentiment + optional note). */
 export function QuickLogComposer({
   disabled,
   onSubmit,

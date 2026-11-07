@@ -36,6 +36,7 @@ function liquidGradient(display: number) {
   }
 }
 
+/** Consistency heat numeral with optional glass vessel + animated liquid fill. */
 export function HbcmDisplay({
   hbcmDisplay,
   pulse,

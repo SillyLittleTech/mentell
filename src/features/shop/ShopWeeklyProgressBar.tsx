@@ -3,6 +3,7 @@ import { LOCAL_DATA_CHANGED_EVENT } from "../../shared/sync/localDataEvents";
 import { getShopWeekDays, type ShopWeekDay } from "./shopWeeklyProgress";
 import { ShopWeeklyProgressBarInner } from "./ShopWeeklyProgressBarInner";
 
+/** Shoppe weekly feelings strip backed by Dexie week data. */
 export function ShopWeeklyProgressBar() {
   const labelId = useId();
   const [days, setDays] = useState<ShopWeekDay[] | null>(null);

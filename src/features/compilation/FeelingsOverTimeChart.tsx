@@ -51,6 +51,7 @@ function yForClass(c: FeelingDayClass, h: number) {
   }
 }
 
+/** SVG feelings-over-time chart with interactive dots (Projector + UI playground). */
 export function FeelingsOverTimeChart({
   points,
   titleId,
@@ -163,9 +164,9 @@ export function FeelingsOverTimeChart({
           fill={`url(#${gridId}-gear)`}
           opacity={0.25}
         />
-        {polySegments.map((seg, i) => (
+        {polySegments.map((seg) => (
           <path
-            key={i}
+            key={seg.d}
             d={seg.d}
             stroke={seg.stroke}
             strokeWidth={2.5}

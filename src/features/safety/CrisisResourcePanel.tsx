@@ -726,9 +726,9 @@ export function CrisisResourcePanel({
                   <p className="ink-muted mt-1 text-xs">{publicPlaceLabel}</p>
                 ) : null}
               </div>
-              {results.map((result, index) => (
+              {results.map((result) => (
                 <ResultSection
-                  key={`${result.topic}-${index}`}
+                  key={result.topic}
                   result={result}
                   place={place}
                 />

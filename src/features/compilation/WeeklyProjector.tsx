@@ -176,8 +176,8 @@ export function WeeklyProjector() {
       }
     };
 
-    refresh();
-    const id = window.setInterval(refresh, 2000);
+    void refresh();
+    const id = window.setInterval(() => void refresh(), 2000);
     return () => {
       active = false;
       window.clearInterval(id);

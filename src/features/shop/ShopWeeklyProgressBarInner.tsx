@@ -38,6 +38,7 @@ function dayLabelStyle(c: FeelingDayClass): CSSProperties {
   };
 }
 
+/** Presentational weekly feelings bar (Shoppe + UI playground). */
 export function ShopWeeklyProgressBarInner({
   days,
   labelId,

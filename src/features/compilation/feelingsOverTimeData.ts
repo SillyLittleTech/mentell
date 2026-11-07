@@ -1,3 +1,6 @@
+/**
+ * @file Loads per-day feeling classes from Dexie for the Projector chart.
+ */
 import {
   addDays,
   endOfMonth,
@@ -17,8 +20,10 @@ import {
   type FeelingDayClass,
 } from "./feelingsSemantics";
 
+/** Time window for the projector feelings-over-time chart. */
 export type FeelingsRange = "week" | "month" | "year" | "all";
 
+/** One day in the feelings-over-time series shown on the Projector. */
 export type FeelingPoint = {
   dateKey: string;
   label: string;
@@ -46,6 +51,10 @@ async function loadEntriesInRange(
   return [...a, ...b];
 }
 
+/**
+ * Loads per-day feeling classes from Dexie for the selected calendar range.
+ * Used by the weekly projector chart (week / month / year / all).
+ */
 export async function getFeelingsOverTimeSeries(
   range: FeelingsRange,
   anchorDate: Date = new Date(),
