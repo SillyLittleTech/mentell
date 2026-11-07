@@ -234,7 +234,8 @@ function collectArmSkinPathIds(xml) {
   const re = /<path\b[^>]*inkscape:label="arm(?:L|R|SgenL|SgenR)"[^>]*>/gi
   let m
   while ((m = re.exec(bodyXml)) !== null) {
-    if (shadowRanges.some(([start, end]) => m.index >= start && m.index < end)) continue
+    const pathIndex = m.index
+    if (shadowRanges.some(([start, end]) => pathIndex >= start && pathIndex < end)) continue
     const id = m[0].match(ID_RE)?.[1]
     if (id) ids.push(id)
   }
