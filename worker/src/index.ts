@@ -19,7 +19,7 @@ import { handleEmailTest } from './emailTestHandler'
 export type { Env } from './env'
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> | Response {
     const url = new URL(request.url)
     const origin = request.headers.get('Origin')
 
@@ -61,7 +61,7 @@ export default {
     }
   },
 
-  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+  scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(runPushCron(env))
   },
 }

@@ -589,7 +589,7 @@ function canPushToCloud() {
   );
 }
 
-async function pushCurrentLocalToCloud() {
+function pushCurrentLocalToCloud() {
   if (!currentUid || !canPushToCloud()) return;
   if (pushTimer) {
     clearTimeout(pushTimer);

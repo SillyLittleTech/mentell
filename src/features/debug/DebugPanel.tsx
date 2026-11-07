@@ -1067,7 +1067,7 @@ export function DebugPanel() {
                         disabled={busy}
                         className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
                         onClick={() =>
-                          void runNotifAction("foreground", async () =>
+                          void runNotifAction("foreground", () =>
                             debugForegroundNotification(),
                           )
                         }
@@ -1131,7 +1131,7 @@ export function DebugPanel() {
                         disabled={busy}
                         className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
                         onClick={() =>
-                          void runNotifAction("delayed foreground", async () =>
+                          void runNotifAction("delayed foreground", () =>
                             debugScheduleDelayedForeground(pushDelaySec),
                           )
                         }
