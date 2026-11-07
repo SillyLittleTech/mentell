@@ -108,15 +108,7 @@ function requireSeedWeekKeys(): [
   if (keys.length !== 7) {
     throw new Error("seedWeekDateKeys must return exactly 7 days");
   }
-  return [
-    keys[0],
-    keys[1],
-    keys[2],
-    keys[3],
-    keys[4],
-    keys[5],
-    keys[6],
-  ];
+  return [keys[0], keys[1], keys[2], keys[3], keys[4], keys[5], keys[6]];
 }
 
 const DEBUG_AI_TESTS = [
@@ -672,98 +664,24 @@ export function DebugPanel() {
                     "fetch",
                   ]}
                 >
-                <div className="rounded-3xl border border-[var(--paper-border)] p-3">
-                  <div className="font-mono text-xs font-bold">
-                    projector / AI search
-                  </div>
-                  <div className="mt-2 grid gap-2">
-                    <button
-                      type="button"
-                      disabled={busy}
-                      className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
-                      onClick={() => {
-                        setBusy(true);
-                        void probeProjectorSearchEndpoint()
-                          .then((r) => setSearchDebugResult(r))
-                          .finally(() => setBusy(false));
-                      }}
-                    >
-                      Check search endpoint
-                    </button>
-                    <button
-                      type="button"
-                      disabled={busy}
-                      className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
-                      onClick={() => {
-                        setBusy(true);
-                        void (async () => {
-                          try {
-                            const entries = await loadAllEntriesForSearch();
-                            const res = await requestProjectorSearch({
-                              query: "",
-                              mode: "index",
-                              entries,
-                              userId:
-                                auth?.user?.uid ||
-                                getOrCreateAnonSearchUserId(),
-                              forceIndex: true,
-                              skipRateLimit: true,
-                            });
-                            setSearchDebugResult(
-                              res.type === "error"
-                                ? res.message
-                                : res.type === "answer"
-                                  ? res.text
-                                  : `Indexed; got ${res.entries.length} entries back`,
-                            );
-                          } catch (e) {
-                            setSearchDebugResult(
-                              e instanceof Error ? e.message : String(e),
-                            );
-                          } finally {
-                            setBusy(false);
-                          }
-                        })();
-                      }}
-                    >
-                      Force index sync
-                      <div className="ink-muted text-xs">
-                        POST mode=index with all Dexie entries
-                      </div>
-                    </button>
-                    <button
-                      type="button"
-                      className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm"
-                      onClick={() => {
-                        emitProjectorDebug({
-                          action: "open-search",
-                          seed: makeMockSearchEntries(),
-                        });
-                        setOpen(false);
-                      }}
-                    >
-                      Render mock entry cards
-                    </button>
-                    <button
-                      type="button"
-                      className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm"
-                      onClick={() => {
-                        emitProjectorDebug({
-                          action: "open-search",
-                          seed: makeMockSearchAnswer(),
-                        });
-                        setOpen(false);
-                      }}
-                    >
-                      Render mock plain answer
-                    </button>
-                    <div className="grid gap-1">
-                      <input
-                        className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 text-xs"
-                        placeholder="entry ids, comma-separated"
-                        value={fetchEntryIds}
-                        onChange={(e) => setFetchEntryIds(e.target.value)}
-                      />
+                  <div className="rounded-3xl border border-[var(--paper-border)] p-3">
+                    <div className="font-mono text-xs font-bold">
+                      projector / AI search
+                    </div>
+                    <div className="mt-2 grid gap-2">
+                      <button
+                        type="button"
+                        disabled={busy}
+                        className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                        onClick={() => {
+                          setBusy(true);
+                          void probeProjectorSearchEndpoint()
+                            .then((r) => setSearchDebugResult(r))
+                            .finally(() => setBusy(false));
+                        }}
+                      >
+                        Check search endpoint
+                      </button>
                       <button
                         type="button"
                         disabled={busy}
@@ -772,39 +690,26 @@ export function DebugPanel() {
                           setBusy(true);
                           void (async () => {
                             try {
-                              const ids = fetchEntryIds
-                                .split(",")
-                                .map((s) => s.trim())
-                                .filter(Boolean);
-                              const rows = await getDb().entries.bulkGet(ids);
-                              const found = rows
-                                .filter(Boolean)
-                                .map((r) => toSearchSnapshot(r!));
-                              setFetchedEntriesPreview(
-                                found.length
-                                  ? found
-                                      .map(
-                                        (e) =>
-                                          `${e.id} ${e.dateKey} [${e.sentiment}]`,
-                                      )
-                                      .join("\n")
-                                  : "No matching local entries.",
+                              const entries = await loadAllEntriesForSearch();
+                              const res = await requestProjectorSearch({
+                                query: "",
+                                mode: "index",
+                                entries,
+                                userId:
+                                  auth?.user?.uid ||
+                                  getOrCreateAnonSearchUserId(),
+                                forceIndex: true,
+                                skipRateLimit: true,
+                              });
+                              setSearchDebugResult(
+                                res.type === "error"
+                                  ? res.message
+                                  : res.type === "answer"
+                                    ? res.text
+                                    : `Indexed; got ${res.entries.length} entries back`,
                               );
-                              if (found.length) {
-                                emitProjectorDebug({
-                                  action: "open-search",
-                                  seed: {
-                                    type: "entries",
-                                    entryIds: found.map((e) => e.id),
-                                    entries: found,
-                                    preamble:
-                                      "Debug fetch by entry IDs (local Dexie).",
-                                  },
-                                });
-                                setOpen(false);
-                              }
                             } catch (e) {
-                              setFetchedEntriesPreview(
+                              setSearchDebugResult(
                                 e instanceof Error ? e.message : String(e),
                               );
                             } finally {
@@ -813,21 +718,108 @@ export function DebugPanel() {
                           })();
                         }}
                       >
-                        Fetch by entry IDs
+                        Force index sync
+                        <div className="ink-muted text-xs">
+                          POST mode=index with all Dexie entries
+                        </div>
                       </button>
+                      <button
+                        type="button"
+                        className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm"
+                        onClick={() => {
+                          emitProjectorDebug({
+                            action: "open-search",
+                            seed: makeMockSearchEntries(),
+                          });
+                          setOpen(false);
+                        }}
+                      >
+                        Render mock entry cards
+                      </button>
+                      <button
+                        type="button"
+                        className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm"
+                        onClick={() => {
+                          emitProjectorDebug({
+                            action: "open-search",
+                            seed: makeMockSearchAnswer(),
+                          });
+                          setOpen(false);
+                        }}
+                      >
+                        Render mock plain answer
+                      </button>
+                      <div className="grid gap-1">
+                        <input
+                          className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 text-xs"
+                          placeholder="entry ids, comma-separated"
+                          value={fetchEntryIds}
+                          onChange={(e) => setFetchEntryIds(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          disabled={busy}
+                          className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                          onClick={() => {
+                            setBusy(true);
+                            void (async () => {
+                              try {
+                                const ids = fetchEntryIds
+                                  .split(",")
+                                  .map((s) => s.trim())
+                                  .filter(Boolean);
+                                const rows = await getDb().entries.bulkGet(ids);
+                                const found = rows
+                                  .filter(Boolean)
+                                  .map((r) => toSearchSnapshot(r!));
+                                setFetchedEntriesPreview(
+                                  found.length
+                                    ? found
+                                        .map(
+                                          (e) =>
+                                            `${e.id} ${e.dateKey} [${e.sentiment}]`,
+                                        )
+                                        .join("\n")
+                                    : "No matching local entries.",
+                                );
+                                if (found.length) {
+                                  emitProjectorDebug({
+                                    action: "open-search",
+                                    seed: {
+                                      type: "entries",
+                                      entryIds: found.map((e) => e.id),
+                                      entries: found,
+                                      preamble:
+                                        "Debug fetch by entry IDs (local Dexie).",
+                                    },
+                                  });
+                                  setOpen(false);
+                                }
+                              } catch (e) {
+                                setFetchedEntriesPreview(
+                                  e instanceof Error ? e.message : String(e),
+                                );
+                              } finally {
+                                setBusy(false);
+                              }
+                            })();
+                          }}
+                        >
+                          Fetch by entry IDs
+                        </button>
+                      </div>
+                      {searchDebugResult ? (
+                        <div className="ink-muted rounded-2xl border border-[var(--paper-border)] px-3 py-2 font-mono text-[10px]">
+                          {searchDebugResult}
+                        </div>
+                      ) : null}
+                      {fetchedEntriesPreview ? (
+                        <div className="ink-muted rounded-2xl border border-[var(--paper-border)] px-3 py-2 font-mono text-[10px] whitespace-pre-wrap">
+                          {fetchedEntriesPreview}
+                        </div>
+                      ) : null}
                     </div>
-                    {searchDebugResult ? (
-                      <div className="ink-muted rounded-2xl border border-[var(--paper-border)] px-3 py-2 font-mono text-[10px]">
-                        {searchDebugResult}
-                      </div>
-                    ) : null}
-                    {fetchedEntriesPreview ? (
-                      <div className="ink-muted rounded-2xl border border-[var(--paper-border)] px-3 py-2 font-mono text-[10px] whitespace-pre-wrap">
-                        {fetchedEntriesPreview}
-                      </div>
-                    ) : null}
                   </div>
-                </div>
                 </DebugFilterBlock>
 
                 <DebugFilterBlock
@@ -1703,334 +1695,337 @@ export function DebugPanel() {
                     </div>
                   </button>
 
-                <button
-                  type="button"
-                  disabled={busy}
-                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      const now = Date.now();
-                      const wk = seedWeekDateKeys(0);
-                      const mk = (
-                        dateKey: string,
-                        sentiment: "+" | "-" | "=",
-                      ) => ({
-                        id: makeId("entry"),
-                        createdAt: now,
-                        updatedAt: now,
-                        entryType: "entry" as const,
-                        dateKey,
-                        sentiment,
-                        emotion: "calm" as const,
-                        emotionNote: "",
-                        situation: `Seeded situation (${sentiment})`,
-                        details: `Seeded details for ${dateKey}.\nA little stationery vibe.`,
-                        behavioursNoted:
-                          sentiment === "-" ? "Withdrew after conflict" : "",
-                        reoccurringTheme:
-                          sentiment === "-" ? "Avoidance after hard talks" : "",
-                        flaggedTerms: [],
-                        warningLevel: "none" as const,
-                        riskScore: 0,
-                        interventionScore: 0,
-                        riskLevel: "none" as const,
-                        scoreDelta: 100,
-                        streakAtSubmit: 1,
-                      });
-                      await getDb().entries.bulkPut([
-                        mk(wk[1]!, "+"),
-                        mk(wk[3]!, "="),
-                        mk(wk[5]!, "-"),
-                      ]);
-                      await refreshInspector();
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Seed sample week
-                  <div className="ink-muted text-xs">
-                    Adds 3 entries for quick projector testing.
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      const now = Date.now();
-                      const wk = seedWeekDateKeys(0);
-                      const memories = [
-                        {
-                          dateKey: wk[0]!,
-                          emotion: "calm" as const,
-                          emotionNote: "calm after a hard interaction",
-                          situation:
-                            "Maya helped me reset after a difficult interaction",
-                          details:
-                            "After a tense interaction at lunch, Maya walked with me to the blue bench by the library. We drank mint tea, watched the rain on the windows, and I remembered I could come back to myself.",
-                        },
-                        {
-                          dateKey: wk[2]!,
-                          emotion: "happy" as const,
-                          emotionNote: "proud after a presentation",
-                          situation:
-                            "I got through the presentation with the green note cards",
-                          details:
-                            "I was nervous about the history presentation, but I used my green note cards, took one slow breath, and Ms. Rivera said my opening story made the whole room listen.",
-                        },
-                        {
-                          dateKey: wk[4]!,
-                          emotion: "calm" as const,
-                          emotionNote: "steady during a deadline",
-                          situation:
-                            "The deadline felt possible after I broke it into tiny steps",
-                          details:
-                            "The project deadline stopped feeling overwhelming when I wrote three tiny tasks on a yellow sticky note, played the rain playlist, and finished the hardest paragraph before dinner.",
-                        },
-                        {
-                          dateKey: wk[6]!,
-                          emotion: "happy" as const,
-                          emotionNote: "seen by friends",
-                          situation:
-                            "Friends remembered the strawberry cupcake",
-                          details:
-                            "Jordan and Priya surprised me with a strawberry cupcake after rehearsal. They remembered the tiny candle joke, and I felt known in a way that stayed warm all evening.",
-                        },
-                      ];
-
-                      await getDb().entries.bulkPut(
-                        memories.map((memory, index) => ({
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        const now = Date.now();
+                        const wk = seedWeekDateKeys(0);
+                        const mk = (
+                          dateKey: string,
+                          sentiment: "+" | "-" | "=",
+                        ) => ({
                           id: makeId("entry"),
-                          createdAt: now + index,
-                          updatedAt: now + index,
+                          createdAt: now,
+                          updatedAt: now,
                           entryType: "entry" as const,
-                          dateKey: memory.dateKey,
+                          dateKey,
+                          sentiment,
+                          emotion: "calm" as const,
+                          emotionNote: "",
+                          situation: `Seeded situation (${sentiment})`,
+                          details: `Seeded details for ${dateKey}.\nA little stationery vibe.`,
+                          behavioursNoted:
+                            sentiment === "-" ? "Withdrew after conflict" : "",
+                          reoccurringTheme:
+                            sentiment === "-"
+                              ? "Avoidance after hard talks"
+                              : "",
+                          flaggedTerms: [],
+                          warningLevel: "none" as const,
+                          riskScore: 0,
+                          interventionScore: 0,
+                          riskLevel: "none" as const,
+                          scoreDelta: 100,
+                          streakAtSubmit: 1,
+                        });
+                        await getDb().entries.bulkPut([
+                          mk(wk[1]!, "+"),
+                          mk(wk[3]!, "="),
+                          mk(wk[5]!, "-"),
+                        ]);
+                        await refreshInspector();
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Seed sample week
+                    <div className="ink-muted text-xs">
+                      Adds 3 entries for quick projector testing.
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        const now = Date.now();
+                        const wk = seedWeekDateKeys(0);
+                        const memories = [
+                          {
+                            dateKey: wk[0]!,
+                            emotion: "calm" as const,
+                            emotionNote: "calm after a hard interaction",
+                            situation:
+                              "Maya helped me reset after a difficult interaction",
+                            details:
+                              "After a tense interaction at lunch, Maya walked with me to the blue bench by the library. We drank mint tea, watched the rain on the windows, and I remembered I could come back to myself.",
+                          },
+                          {
+                            dateKey: wk[2]!,
+                            emotion: "happy" as const,
+                            emotionNote: "proud after a presentation",
+                            situation:
+                              "I got through the presentation with the green note cards",
+                            details:
+                              "I was nervous about the history presentation, but I used my green note cards, took one slow breath, and Ms. Rivera said my opening story made the whole room listen.",
+                          },
+                          {
+                            dateKey: wk[4]!,
+                            emotion: "calm" as const,
+                            emotionNote: "steady during a deadline",
+                            situation:
+                              "The deadline felt possible after I broke it into tiny steps",
+                            details:
+                              "The project deadline stopped feeling overwhelming when I wrote three tiny tasks on a yellow sticky note, played the rain playlist, and finished the hardest paragraph before dinner.",
+                          },
+                          {
+                            dateKey: wk[6]!,
+                            emotion: "happy" as const,
+                            emotionNote: "seen by friends",
+                            situation:
+                              "Friends remembered the strawberry cupcake",
+                            details:
+                              "Jordan and Priya surprised me with a strawberry cupcake after rehearsal. They remembered the tiny candle joke, and I felt known in a way that stayed warm all evening.",
+                          },
+                        ];
+
+                        await getDb().entries.bulkPut(
+                          memories.map((memory, index) => ({
+                            id: makeId("entry"),
+                            createdAt: now + index,
+                            updatedAt: now + index,
+                            entryType: "entry" as const,
+                            dateKey: memory.dateKey,
+                            sentiment: "+" as const,
+                            emotion: memory.emotion,
+                            emotionNote: memory.emotionNote,
+                            situation: memory.situation,
+                            details: memory.details,
+                            behavioursNoted: "",
+                            reoccurringTheme: "",
+                            flaggedTerms: [],
+                            warningLevel: "none" as const,
+                            riskScore: 0,
+                            interventionScore: -1.1,
+                            riskLevel: "none" as const,
+                            scoreDelta: 100,
+                            streakAtSubmit: 1,
+                          })),
+                        );
+                        notifyLocalDataChanged();
+                        await refreshInspector();
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Seed recall memories
+                    <div className="ink-muted text-xs">
+                      Adds detailed positive/calm entries for support-memory
+                      recall tests.
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        const now = Date.now();
+                        const wk = seedWeekDateKeys(0);
+                        await getDb().entries.put({
+                          id: makeId("entry"),
+                          createdAt: now,
+                          updatedAt: now,
+                          entryType: "entry",
+                          dateKey: wk[2]!,
+                          sentiment: "-" as const,
+                          emotion: "sad" as const,
+                          emotionNote: "",
+                          situation: "Seeded subtle risk entry",
+                          details:
+                            "I just don't think I can take it anymore. I am just going to do it.",
+                          behavioursNoted: "",
+                          reoccurringTheme: "",
+                          flaggedTerms: ["take it anymore", "going to do it"],
+                          warningLevel: "warn" as const,
+                          riskScore: 0.22,
+                          interventionScore: 1.1,
+                          riskLevel: "low" as const,
+                          scoreDelta: 100,
+                          streakAtSubmit: 1,
+                        });
+                        await refreshInspector();
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Seed subtle risk entry
+                    <div className="ink-muted text-xs">
+                      Adds a negative entry useful for AI risk modal testing.
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        const now = Date.now();
+                        const wk = seedWeekDateKeys(0);
+                        await getDb().entries.put({
+                          id: makeId("entry"),
+                          createdAt: now,
+                          updatedAt: now,
+                          entryType: "entry",
+                          dateKey: wk[4]!,
                           sentiment: "+" as const,
-                          emotion: memory.emotion,
-                          emotionNote: memory.emotionNote,
-                          situation: memory.situation,
-                          details: memory.details,
+                          emotion: "happy" as const,
+                          emotionNote: "",
+                          situation: "Seeded exce entry",
+                          details:
+                            "Today was amazing and joyful. I felt grateful, proud, hopeful, calm, loved, and excited about a wonderful win.",
                           behavioursNoted: "",
                           reoccurringTheme: "",
                           flaggedTerms: [],
                           warningLevel: "none" as const,
                           riskScore: 0,
-                          interventionScore: -1.1,
+                          interventionScore: -1.3,
                           riskLevel: "none" as const,
                           scoreDelta: 100,
                           streakAtSubmit: 1,
-                        })),
-                      );
-                      notifyLocalDataChanged();
-                      await refreshInspector();
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Seed recall memories
-                  <div className="ink-muted text-xs">
-                    Adds detailed positive/calm entries for support-memory
-                    recall tests.
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      const now = Date.now();
-                      const wk = seedWeekDateKeys(0);
-                      await getDb().entries.put({
-                        id: makeId("entry"),
-                        createdAt: now,
-                        updatedAt: now,
-                        entryType: "entry",
-                        dateKey: wk[2]!,
-                        sentiment: "-" as const,
-                        emotion: "sad" as const,
-                        emotionNote: "",
-                        situation: "Seeded subtle risk entry",
-                        details:
-                          "I just don't think I can take it anymore. I am just going to do it.",
-                        behavioursNoted: "",
-                        reoccurringTheme: "",
-                        flaggedTerms: ["take it anymore", "going to do it"],
-                        warningLevel: "warn" as const,
-                        riskScore: 0.22,
-                        interventionScore: 1.1,
-                        riskLevel: "low" as const,
-                        scoreDelta: 100,
-                        streakAtSubmit: 1,
-                      });
-                      await refreshInspector();
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Seed subtle risk entry
-                  <div className="ink-muted text-xs">
-                    Adds a negative entry useful for AI risk modal testing.
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      const now = Date.now();
-                      const wk = seedWeekDateKeys(0);
-                      await getDb().entries.put({
-                        id: makeId("entry"),
-                        createdAt: now,
-                        updatedAt: now,
-                        entryType: "entry",
-                        dateKey: wk[4]!,
-                        sentiment: "+" as const,
-                        emotion: "happy" as const,
-                        emotionNote: "",
-                        situation: "Seeded exce entry",
-                        details:
-                          "Today was amazing and joyful. I felt grateful, proud, hopeful, calm, loved, and excited about a wonderful win.",
-                        behavioursNoted: "",
-                        reoccurringTheme: "",
-                        flaggedTerms: [],
-                        warningLevel: "none" as const,
-                        riskScore: 0,
-                        interventionScore: -1.3,
-                        riskLevel: "none" as const,
-                        scoreDelta: 100,
-                        streakAtSubmit: 1,
-                      });
-                      await refreshInspector();
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Seed exce entry
-                  <div className="ink-muted text-xs">
-                    Adds a highly positive entry for celebration modal testing.
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      alert(
-                        await sendDebugEmailTest("daily", {
-                          global_name: getEffectiveGlobalName(),
-                          date: new Date().toISOString().split("T")[0],
-                        }),
-                      );
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Test Daily Email
-                  <div className="ink-muted text-xs">
-                    Sends daily reminder to your saved email.
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      alert(
-                        await sendDebugEmailTest("package", {
-                          global_name: getEffectiveGlobalName(),
-                          date: new Date().toISOString().split("T")[0],
-                          ent_count: "5",
-                          ent_rank: "⬆",
-                          ent_sum: "You had a good week.",
-                        }),
-                      );
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Test Package Email
-                  <div className="ink-muted text-xs">
-                    Sends package drop email to your saved email.
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
-                  onClick={async () => {
-                    setBusy(true);
-                    try {
-                      saveAppSettings({ emailVerified: false });
-                      const apiBase = getWorkerApiBase();
-                      if (!apiBase) {
+                        });
+                        await refreshInspector();
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Seed exce entry
+                    <div className="ink-muted text-xs">
+                      Adds a highly positive entry for celebration modal
+                      testing.
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
                         alert(
-                          "Unverified locally. VITE_PUSH_API_BASE is not set, so the worker record was not cleared.",
+                          await sendDebugEmailTest("daily", {
+                            global_name: getEffectiveGlobalName(),
+                            date: new Date().toISOString().split("T")[0],
+                          }),
                         );
-                        return;
+                      } finally {
+                        setBusy(false);
                       }
-                      const res = await fetch(`${apiBase}/email/unverify`, {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "application/json",
-                          ...(await getWorkerAuthHeaders()),
-                        },
-                        body: JSON.stringify({
-                          clientId: getOrCreatePushClientId(),
-                        }),
-                      });
-                      const text = await res.text().catch(() => "");
-                      let detail = text;
-                      if (text) {
-                        try {
-                          const parsed = JSON.parse(text) as {
-                            error?: string;
-                            existed?: boolean;
-                          };
-                          detail =
-                            parsed.error ||
-                            (parsed.existed === false
-                              ? "no worker record"
-                              : "worker record cleared");
-                        } catch {
-                          /* keep raw */
+                    }}
+                  >
+                    Test Daily Email
+                    <div className="ink-muted text-xs">
+                      Sends daily reminder to your saved email.
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        alert(
+                          await sendDebugEmailTest("package", {
+                            global_name: getEffectiveGlobalName(),
+                            date: new Date().toISOString().split("T")[0],
+                            ent_count: "5",
+                            ent_rank: "⬆",
+                            ent_sum: "You had a good week.",
+                          }),
+                        );
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Test Package Email
+                    <div className="ink-muted text-xs">
+                      Sends package drop email to your saved email.
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-left text-sm disabled:opacity-60"
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        saveAppSettings({ emailVerified: false });
+                        const apiBase = getWorkerApiBase();
+                        if (!apiBase) {
+                          alert(
+                            "Unverified locally. VITE_PUSH_API_BASE is not set, so the worker record was not cleared.",
+                          );
+                          return;
                         }
+                        const res = await fetch(`${apiBase}/email/unverify`, {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "application/json",
+                            ...(await getWorkerAuthHeaders()),
+                          },
+                          body: JSON.stringify({
+                            clientId: getOrCreatePushClientId(),
+                          }),
+                        });
+                        const text = await res.text().catch(() => "");
+                        let detail = text;
+                        if (text) {
+                          try {
+                            const parsed = JSON.parse(text) as {
+                              error?: string;
+                              existed?: boolean;
+                            };
+                            detail =
+                              parsed.error ||
+                              (parsed.existed === false
+                                ? "no worker record"
+                                : "worker record cleared");
+                          } catch {
+                            /* keep raw */
+                          }
+                        }
+                        if (!res.ok) {
+                          alert(`Unverify failed (${res.status}): ${detail}`);
+                          return;
+                        }
+                        alert(
+                          `Notification email unmarked as verified (${detail}). Save & Subscribe in Settings to send a new link.`,
+                        );
+                      } finally {
+                        setBusy(false);
                       }
-                      if (!res.ok) {
-                        alert(`Unverify failed (${res.status}): ${detail}`);
-                        return;
-                      }
-                      alert(
-                        `Notification email unmarked as verified (${detail}). Save & Subscribe in Settings to send a new link.`,
-                      );
-                    } finally {
-                      setBusy(false);
-                    }
-                  }}
-                >
-                  Unverify notification email
-                  <div className="ink-muted text-xs">
-                    Clears local + worker verified state so you can retest the
-                    link.
-                  </div>
-                </button>
+                    }}
+                  >
+                    Unverify notification email
+                    <div className="ink-muted text-xs">
+                      Clears local + worker verified state so you can retest the
+                      link.
+                    </div>
+                  </button>
                 </DebugFilterBlock>
               </div>
             </div>
