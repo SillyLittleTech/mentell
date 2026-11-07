@@ -494,6 +494,17 @@ html[data-reduced-motion="true"] [style*="hbcm-liq-wave-x"] {
   animation: none !important;
 }
 
+/* HBCM glass digit — drawn above animated liquid */
+.hbcm-glass-digit {
+  fill: rgba(255, 255, 255, 0.28);
+  stroke: rgba(38, 38, 46, 0.52);
+}
+
+html[data-theme='dark'] .hbcm-glass-digit {
+  fill: rgba(255, 255, 255, 0.16);
+  stroke: rgba(236, 236, 244, 0.38);
+}
+
 .streak-number {
   position: relative;
   display: inline-block;

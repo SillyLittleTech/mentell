@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from "react";
+import React, { useId, useMemo, useState } from "react";
+import { addDays, format, parseISO, startOfWeek } from "date-fns";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   shouldReduceMotion,
@@ -15,8 +16,30 @@ import { HbcmDisplay } from "../score/HbcmDisplay";
 import { SubmitAnimation } from "../compose/SubmitAnimation";
 import { DeskCharacterLayout } from "../character/DeskCharacterLayout";
 import { pageTransitionProps } from "../../shared/motion/pageTransition";
+import { ShopWeeklyProgressBarInner } from "../shop/ShopWeeklyProgressBarInner";
+import type { ShopWeekDay } from "../shop/shopWeeklyProgress";
+import { FeelingsOverTimeChart } from "../compilation/FeelingsOverTimeChart";
+import type { FeelingPoint } from "../compilation/feelingsOverTimeData";
+import type { FeelingDayClass } from "../compilation/feelingsSemantics";
 
-type TabId = "buttons" | "inputs" | "animations" | "score";
+type TabId = "buttons" | "inputs" | "animations" | "score" | "viz";
+
+const FEELING_CLASS_OPTIONS: FeelingDayClass[] = [
+  "positive",
+  "neutral",
+  "negative",
+  "missed",
+  "no_data",
+];
+
+function usePlaygroundWeekKeys() {
+  return useMemo(() => {
+    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+    return Array.from({ length: 7 }, (_, i) =>
+      format(addDays(start, i), "yyyy-MM-dd"),
+    );
+  }, []);
+}
 
 function DebugThemeSpinButton() {
   const reduced = shouldReduceMotion();
@@ -338,6 +361,166 @@ function AnimationsTab({
   );
 }
 
+const VIZ_DEFAULT_CLASSES: FeelingDayClass[] = [
+  "positive",
+  "neutral",
+  "negative",
+  "missed",
+  "no_data",
+  "positive",
+  "neutral",
+];
+
+function VizPlaygroundTab() {
+  const weekLabelId = useId();
+  const chartTitleId = useId();
+  const weekDateKeys = usePlaygroundWeekKeys();
+  const [classes, setClasses] = useState<FeelingDayClass[]>(() => [
+    ...VIZ_DEFAULT_CLASSES,
+  ]);
+
+  const shopDays: ShopWeekDay[] = useMemo(
+    () =>
+      weekDateKeys.map((dateKey, i) => {
+        const d = parseISO(dateKey);
+        const short = format(d, "EEE");
+        return {
+          dateKey,
+          label: short,
+          shortLabel: short,
+          feelingClass: classes[i] ?? "no_data",
+        };
+      }),
+    [weekDateKeys, classes],
+  );
+
+  const chartPoints: FeelingPoint[] = useMemo(
+    () =>
+      shopDays.map((d, i) => ({
+        dateKey: d.dateKey,
+        label: format(parseISO(d.dateKey), "MMM d"),
+        class: d.feelingClass,
+        createdAt: i,
+      })),
+    [shopDays],
+  );
+
+  function setDayClass(index: number, c: FeelingDayClass) {
+    setClasses((prev) => {
+      const next = [...prev];
+      next[index] = c;
+      return next;
+    });
+  }
+
+  return (
+    <section className="paper rounded-3xl p-6 space-y-8">
+      <div>
+        <div className="font-paper text-xl">Weekly bar + feelings graph</div>
+        <p className="ink-muted mt-1 text-sm">
+          Drive each day’s mood class without Dexie data. Same components as Shop
+          + Projector; use this to stress gradients, labels, and contrast.
+        </p>
+      </div>
+
+      <div className="rounded-3xl border border-[var(--paper-border)] p-4">
+        <div className="font-mono text-xs font-bold">presets</div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-xs font-medium"
+            onClick={() =>
+              setClasses(
+                Array.from({ length: 7 }, () => "positive" as FeelingDayClass),
+              )
+            }
+          >
+            All positive
+          </button>
+          <button
+            type="button"
+            className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-xs font-medium"
+            onClick={() =>
+              setClasses(
+                Array.from({ length: 7 }, () => "no_data" as FeelingDayClass),
+              )
+            }
+          >
+            All no data
+          </button>
+          <button
+            type="button"
+            className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-xs font-medium"
+            onClick={() =>
+              setClasses([
+                "positive",
+                "neutral",
+                "negative",
+                "positive",
+                "neutral",
+                "negative",
+                "positive",
+              ])
+            }
+          >
+            Wave +/−/=
+          </button>
+          <button
+            type="button"
+            className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-xs font-medium"
+            onClick={() => setClasses([...VIZ_DEFAULT_CLASSES])}
+          >
+            Reset demo mix
+          </button>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-[var(--paper-border)] p-4">
+        <div className="font-mono text-xs font-bold">
+          per-day class (Mon → Sun)
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+          {weekDateKeys.map((dk, i) => {
+            const short = format(parseISO(dk), "EEE");
+            return (
+              <label
+                key={dk}
+                className="grid gap-1 rounded-2xl border border-[var(--paper-border)] px-2 py-2"
+              >
+                <span className="ink-muted text-[10px] font-mono uppercase">
+                  {short}
+                </span>
+                <select
+                  className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5 text-xs"
+                  value={classes[i]}
+                  onChange={(e) =>
+                    setDayClass(i, e.target.value as FeelingDayClass)
+                  }
+                >
+                  {FEELING_CLASS_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+
+      <ShopWeeklyProgressBarInner days={shopDays} labelId={weekLabelId} />
+
+      <div>
+        <div className="font-mono text-xs font-bold mb-2">
+          Feelings over time (same classes)
+        </div>
+        <FeelingsOverTimeChart points={chartPoints} titleId={chartTitleId} />
+      </div>
+    </section>
+  );
+}
+
 export function UiPlaygroundPage() {
   // Local-only UI; we intentionally avoid mutating global theme/auth/sync state.
   const reduced = shouldReduceMotion();
@@ -357,6 +540,7 @@ export function UiPlaygroundPage() {
         { id: "inputs", label: "Toggles", icon: "tune" },
         { id: "animations", label: "Animations", icon: "auto_awesome" },
         { id: "score", label: "Score", icon: "trophy" },
+        { id: "viz", label: "Viz", icon: "calendar_view_week" },
       ] as const,
     [],
   );
@@ -607,6 +791,8 @@ export function UiPlaygroundPage() {
             </div>
           </section>
         ) : null}
+
+        {tab === "viz" ? <VizPlaygroundTab /> : null}
       </div>
 
       <ModalDemo open={modalOpen} onClose={() => setModalOpen(false)} />
