@@ -27,6 +27,7 @@ const CLASS_COLORS: Record<FeelingDayClass, { stroke: string; fill: string }> =
     },
   };
 
+/** Documents `mix` in this module. */
 function mix(a: string, b: string, t: number) {
   const pa = a.match(/\d+/g)?.map(Number) ?? [0, 0, 0];
   const pb = b.match(/\d+/g)?.map(Number) ?? [0, 0, 0];
@@ -36,6 +37,7 @@ function mix(a: string, b: string, t: number) {
   return `rgb(${r},${g},${bl})`;
 }
 
+/** Documents `yForClass` in this module. */
 function yForClass(c: FeelingDayClass, h: number) {
   switch (c) {
     case "positive":

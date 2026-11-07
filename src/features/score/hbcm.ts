@@ -29,6 +29,7 @@ export function hbcmDisplayValue(raw: number): number {
   );
 }
 
+/** Documents `parseDateKey` in this module. */
 function parseDateKey(key: string) {
   return parseISO(stripDateKey(key));
 }

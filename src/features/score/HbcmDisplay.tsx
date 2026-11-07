@@ -2,6 +2,7 @@ import { useId } from "react";
 import { shouldReduceMotion } from "../../shared/motion/useMotionPrefs";
 import { MaterialIcon } from "../../components/MaterialIcon";
 
+/** Documents `fillRatio` in this module. */
 function fillRatio(display: number): number {
   switch (display) {
     case 5:
@@ -19,6 +20,7 @@ function fillRatio(display: number): number {
   }
 }
 
+/** Documents `liquidGradient` in this module. */
 function liquidGradient(display: number) {
   switch (display) {
     case 5:
@@ -43,6 +45,7 @@ type HbcmDisplayProps = {
   readonly variant?: "chip" | "inline";
 };
 
+/** Documents `HbcmDisplay` in this module. */
 export function HbcmDisplay({
   hbcmDisplay,
   pulse,

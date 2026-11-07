@@ -8,6 +8,7 @@ import {
   swatchClassForClass,
 } from "./weeklyProgressColors";
 
+/** Documents `segmentGradient` in this module. */
 function segmentGradient(a: FeelingDayClass, b: FeelingDayClass) {
   const color = (c: FeelingDayClass) => `rgb(${pastelSegmentRgb(c)})`;
   return `linear-gradient(90deg, ${color(a)} 0%, ${color(b)} 100%)`;
@@ -136,6 +137,7 @@ export function ShopWeeklyProgressBarInner({
   );
 }
 
+/** Documents `KeySwatch` in this module. */
 function KeySwatch({
   label,
   className,

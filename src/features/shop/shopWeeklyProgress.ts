@@ -20,6 +20,7 @@ export type ShopWeekDay = {
   feelingClass: FeelingDayClass;
 };
 
+/** Documents `toDateKey` in this module. */
 function toDateKey(d: Date) {
   return format(d, "yyyy-MM-dd");
 }

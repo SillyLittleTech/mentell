@@ -80,6 +80,7 @@ type ScoreChangeOptions = {
   deferOverlay?: boolean;
 };
 
+/** Documents `App` in this module. */
 function App() {
   const location = useLocation();
   const shareRouteActive = location.pathname.startsWith("/share/");
@@ -311,6 +312,7 @@ function App() {
   );
 }
 
+/** Documents `TopBar` in this module. */
 function TopBar({
   score,
   incomingHint,
@@ -387,6 +389,7 @@ function TopBar({
   );
 }
 
+/** Documents `TopBarMobileControls` in this module. */
 function TopBarMobileControls({
   disablePoints,
   scoreTicker,
@@ -433,6 +436,7 @@ function TopBarMobileControls({
   );
 }
 
+/** Documents `PaperSection` in this module. */
 function PaperSection({
   title,
   subtitle,
@@ -451,6 +455,7 @@ function PaperSection({
   );
 }
 
+/** Documents `HomePlaceholder` in this module. */
 function HomePlaceholder({
   onScoreChange,
   onSubmitAnimationDone,
@@ -475,6 +480,7 @@ function HomePlaceholder({
     !auth?.user &&
     !settings.syncPromptDismissed;
 
+  /** Documents `onBlockedComposerInteraction` in this module. */
   function onBlockedComposerInteraction() {
     if (composerLocked) setShakeBanner((k) => k + 1);
   }
@@ -725,6 +731,7 @@ function HomePlaceholder({
   );
 }
 
+/** Documents `WeekPlaceholder` in this module. */
 function WeekPlaceholder() {
   return (
     <DeskCharacterLayout>
@@ -733,6 +740,7 @@ function WeekPlaceholder() {
   );
 }
 
+/** Documents `NotesPlaceholder` in this module. */
 function NotesPlaceholder() {
   return (
     <DeskCharacterLayout>
@@ -744,6 +752,7 @@ function NotesPlaceholder() {
   );
 }
 
+/** Documents `ShopPlaceholder` in this module. */
 function ShopPlaceholder({
   onScoreChange,
 }: {
@@ -760,6 +769,7 @@ function ShopPlaceholder({
   );
 }
 
+/** Documents `ArchivePlaceholder` in this module. */
 function ArchivePlaceholder() {
   return (
     <PaperSection

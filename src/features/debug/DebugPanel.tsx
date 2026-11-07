@@ -143,6 +143,7 @@ const DEBUG_AI_TESTS = [
   },
 ];
 
+/** Documents `sendDebugEmailTest` in this module. */
 async function sendDebugEmailTest(
   template: "daily" | "package",
   variables: Record<string, string>,
@@ -262,6 +263,7 @@ export function DebugPanel() {
     recentPackages: Array<{ kind: string; periodKey: string; opened: boolean }>;
   } | null>(null);
 
+  /** Documents `refreshInspector` in this module. */
   async function refreshInspector() {
     const database = getDb();
     const [entries, notes, stickies, packages] = await Promise.all([
@@ -305,10 +307,12 @@ export function DebugPanel() {
     });
   }
 
+  /** Documents `refreshNotifications` in this module. */
   async function refreshNotifications() {
     setNotifSnap(await getNotificationDebugSnapshot());
   }
 
+  /** Documents `ensureLatestEntryWeeklyPackage` in this module. */
   async function ensureLatestEntryWeeklyPackage() {
     const latestEntry = await getDb().entries.orderBy("dateKey").last();
     const periodKey = latestEntry
@@ -317,6 +321,7 @@ export function DebugPanel() {
     await ensurePackage("weekly", periodKey);
   }
 
+  /** Documents `checkAiEndpoint` in this module. */
   async function checkAiEndpoint() {
     const endpoint = import.meta.env.VITE_WEEKLY_AI_ENDPOINT;
     if (typeof endpoint !== "string" || !endpoint.trim()) {
@@ -348,6 +353,7 @@ export function DebugPanel() {
     }
   }
 
+  /** Documents `fillAiTest` in this module. */
   function fillAiTest(test: (typeof DEBUG_AI_TESTS)[number]) {
     window.dispatchEvent(
       new CustomEvent("mentell:debug-ai-test-fill", {
@@ -364,6 +370,7 @@ export function DebugPanel() {
     setOpen(false);
   }
 
+  /** Documents `runRiskProbe` in this module. */
   async function runRiskProbe() {
     setBusy(true);
     setRiskProbeResult("Running risk workflow…");
@@ -422,6 +429,7 @@ export function DebugPanel() {
     return () => window.clearInterval(id);
   }, [open, notifSnap]);
 
+  /** Documents `runNotifAction` in this module. */
   async function runNotifAction(
     label: string,
     fn: () => Promise<{ ok: boolean; detail: string; status?: number }>,

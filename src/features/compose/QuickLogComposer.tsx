@@ -43,6 +43,7 @@ export function QuickLogComposer(props: Readonly<QuickLogComposerProps>) {
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
 
+  /** Documents `handleSubmit` in this module. */
   async function handleSubmit() {
     if (disabled || busy) return;
     setBusy(true);

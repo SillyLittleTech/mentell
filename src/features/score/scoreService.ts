@@ -93,6 +93,7 @@ export type ScoreSyncPayload = {
   streakRestore?: unknown;
 };
 
+/** Documents `getFloat` in this module. */
 function getFloat(key: string, fallback: number) {
   const raw = localStorage.getItem(key);
   if (!raw) return fallback;
@@ -100,10 +101,12 @@ function getFloat(key: string, fallback: number) {
   return Number.isFinite(n) ? n : fallback;
 }
 
+/** Documents `setFloat` in this module. */
 function setFloat(key: string, value: number) {
   localStorage.setItem(key, String(value));
 }
 
+/** Documents `getInt` in this module. */
 function getInt(key: string, fallback: number) {
   const raw = localStorage.getItem(key);
   if (!raw) return fallback;
@@ -111,10 +114,12 @@ function getInt(key: string, fallback: number) {
   return Number.isFinite(n) ? Math.trunc(n) : fallback;
 }
 
+/** Documents `setInt` in this module. */
 function setInt(key: string, value: number) {
   localStorage.setItem(key, String(Math.trunc(value)));
 }
 
+/** Documents `migrateLegacyStreakIfNeeded` in this module. */
 function migrateLegacyStreakIfNeeded() {
   if (localStorage.getItem(HBCM_MIGRATED_KEY) === "1") return;
 
@@ -141,10 +146,12 @@ function migrateLegacyStreakIfNeeded() {
   localStorage.setItem(HBCM_MIGRATED_KEY, "1");
 }
 
+/** Documents `dailyLogMultiplier` in this module. */
 function dailyLogMultiplier(logsTodayBefore: number) {
   return Math.pow(DAILY_LOG_DECAY, logsTodayBefore);
 }
 
+/** Documents `buildAwardHint` in this module. */
 function buildAwardHint(
   logsTodayBefore: number,
   dailyMultiplier: number,
@@ -322,6 +329,43 @@ export function getScoreSnapshot(): ScoreSnapshot {
   };
 }
 
+/** Documents `applyHbcmFromSyncPayload` in this module. */
+function applyHbcmFromSyncPayload(payload: ScoreSyncPayload): boolean {
+  if (typeof payload.hbcmRaw === "number") {
+    const next = clampHbcm(payload.hbcmRaw);
+    if (getFloat(HBCM_RAW_KEY, 0) === next) return false;
+    setFloat(HBCM_RAW_KEY, next);
+    return true;
+  }
+  if (typeof payload.streak === "number") {
+    const next = migrateStreakToHbcmRaw(payload.streak);
+    if (getFloat(HBCM_RAW_KEY, 0) === next) return false;
+    setFloat(HBCM_RAW_KEY, next);
+    return true;
+  }
+  return false;
+}
+
+/** Documents `applyLastScoreDayFromSyncPayload` in this module. */
+function applyLastScoreDayFromSyncPayload(payload: ScoreSyncPayload): boolean {
+  if (payload.lastDay === null || typeof payload.lastDay !== "string") {
+    return false;
+  }
+  if (!payload.lastDay) return false;
+  const current = localStorage.getItem(LAST_SCORE_DAY_KEY);
+  if (current && payload.lastDay <= current) return false;
+  localStorage.setItem(LAST_SCORE_DAY_KEY, payload.lastDay);
+  return true;
+}
+
+/** Documents `emitScoreSnapshotApplied` in this module. */
+function emitScoreSnapshotApplied(): void {
+  notifyLocalDataChanged();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(SCORE_CHANGED_EVENT));
+  }
+}
+
 /** Apply a score document from cloud sync or recovery. */
 export function applyScoreSnapshotFromSync(
   payload: ScoreSyncPayload,
@@ -338,29 +382,8 @@ export function applyScoreSnapshotFromSync(
     changed = true;
   }
 
-  if (typeof payload.hbcmRaw === "number") {
-    const next = clampHbcm(payload.hbcmRaw);
-    if (getFloat(HBCM_RAW_KEY, 0) !== next) {
-      setFloat(HBCM_RAW_KEY, next);
-      changed = true;
-    }
-  } else if (typeof payload.streak === "number") {
-    const next = migrateStreakToHbcmRaw(payload.streak);
-    if (getFloat(HBCM_RAW_KEY, 0) !== next) {
-      setFloat(HBCM_RAW_KEY, next);
-      changed = true;
-    }
-  }
-
-  if (payload.lastDay === null) {
-    // preserve local last score day
-  } else if (typeof payload.lastDay === "string" && payload.lastDay) {
-    const current = localStorage.getItem(LAST_SCORE_DAY_KEY);
-    if (!current || payload.lastDay > current) {
-      localStorage.setItem(LAST_SCORE_DAY_KEY, payload.lastDay);
-      changed = true;
-    }
-  }
+  if (applyHbcmFromSyncPayload(payload)) changed = true;
+  if (applyLastScoreDayFromSyncPayload(payload)) changed = true;
 
   const nextUpdatedAt = String(Math.trunc(updatedAt));
   if (localStorage.getItem(SCORE_UPDATED_AT_KEY) !== nextUpdatedAt) {
@@ -368,12 +391,7 @@ export function applyScoreSnapshotFromSync(
     changed = true;
   }
 
-  if (changed) {
-    notifyLocalDataChanged();
-    if (typeof window !== "undefined") {
-      window.dispatchEvent(new CustomEvent(SCORE_CHANGED_EVENT));
-    }
-  }
+  if (changed) emitScoreSnapshotApplied();
 }
 
 /** `spendScore` — see module for behavior. */
@@ -414,6 +432,7 @@ export function spendScore(spent: number): SpendScoreResult {
   return { ok: true, spent: clean, nextTotal };
 }
 
+/** Documents `packageDelta` in this module. */
 function packageDelta(kind: "weekly" | "monthly" | "yearly") {
   if (kind === "yearly") return 12000;
   if (kind === "monthly") return 3000;

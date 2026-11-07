@@ -1,14 +1,17 @@
 import { isDebugMode } from "../debug/debugFlags";
 import { isTauri } from "../platform/runtime";
 
+/** Documents `envFlag` in this module. */
 function envFlag(name: string) {
   return import.meta.env[name] === "1";
 }
 
+/** Documents `hasFirebaseConfig` in this module. */
 function hasFirebaseConfig() {
   return Boolean(import.meta.env.VITE_FIREBASE_PROJECT_ID?.trim());
 }
 
+/** Documents `hasDebugFirebaseToken` in this module. */
 function hasDebugFirebaseToken() {
   return Boolean(import.meta.env.VITE_DEBUG_FIREBASE_CUSTOM_TOKEN?.trim());
 }

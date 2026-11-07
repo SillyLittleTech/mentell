@@ -67,6 +67,7 @@ export type ProjectorSearchResult =
 
 type RateState = { timestamps: number[] };
 
+/** Documents `normalizeEnvToken` in this module. */
 function normalizeEnvToken(raw: string | undefined) {
   if (!raw) return undefined;
   const t = raw.trim();
@@ -93,6 +94,7 @@ export function projectorSearchEnabled() {
   );
 }
 
+/** Documents `localMatchEntries` in this module. */
 function localMatchEntries(entries: ProjectorSearchEntry[], query: string) {
   const q = query.toLowerCase();
   return entries.filter(
@@ -180,6 +182,7 @@ export async function buildFeelingsOverTimeSearchDigest() {
   return points.map((p) => ({ dateKey: p.dateKey, class: p.class }));
 }
 
+/** Documents `readRateState` in this module. */
 function readRateState(): RateState {
   try {
     const raw = localStorage.getItem(RATE_KEY);
@@ -196,10 +199,12 @@ function readRateState(): RateState {
   }
 }
 
+/** Documents `writeRateState` in this module. */
 function writeRateState(state: RateState) {
   localStorage.setItem(RATE_KEY, JSON.stringify(state));
 }
 
+/** Documents `consumeRateAllowance` in this module. */
 function consumeRateAllowance(now: number) {
   if (getSkipSearchRateLimit()) return { ok: true as const };
   const state = readRateState();

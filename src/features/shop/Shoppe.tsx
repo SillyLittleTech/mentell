@@ -37,6 +37,7 @@ const CAT_COST = 250;
 type CatApiRow = { id?: string; url?: string };
 type EquippableType = "theme" | "stamp" | "cursor";
 
+/** Documents `ThemePreview` in this module. */
 function ThemePreview({ item }: { item: ThemeItem }) {
   return (
     <div className="mt-3 rounded-xl border border-[var(--paper-border)] p-2">
@@ -81,6 +82,7 @@ function ThemePreview({ item }: { item: ThemeItem }) {
   );
 }
 
+/** Documents `CursorHoverPreview` in this module. */
 function CursorHoverPreview({ item }: { item: CursorItem }) {
   const defaultCursor = renderCursorCssValue(item, "default");
   const pointerCursor = renderCursorCssValue(item, "pointer") ?? defaultCursor;
@@ -114,6 +116,7 @@ function CursorHoverPreview({ item }: { item: CursorItem }) {
   );
 }
 
+/** Documents `previewAccessoryItem` in this module. */
 function previewAccessoryItem(
   item: CharacterAccessoryItem,
 ): CharacterAccessoryItem {
@@ -137,6 +140,7 @@ function previewAccessoryItem(
   };
 }
 
+/** Documents `useOnceVisible` in this module. */
 function useOnceVisible() {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -159,6 +163,7 @@ function useOnceVisible() {
   return { ref, visible };
 }
 
+/** Documents `CharacterAccessoryPreview` in this module. */
 function CharacterAccessoryPreview({ item }: { item: CharacterAccessoryItem }) {
   const previewItem = previewAccessoryItem(item);
   const { ref, visible } = useOnceVisible();
@@ -192,6 +197,7 @@ function CharacterAccessoryPreview({ item }: { item: CharacterAccessoryItem }) {
   );
 }
 
+/** Documents `ShopItemPreview` in this module. */
 function ShopItemPreview({
   item,
   preview,
@@ -257,6 +263,7 @@ export function Shoppe({
     return () => window.removeEventListener(SCORE_CHANGED_EVENT, refreshScore);
   }, []);
 
+  /** Documents `itemPreview` in this module. */
   function itemPreview(item: ShopCatalogItem) {
     if (item.type === "stamp") return renderStampPreviewForItem(item);
     if (item.type === "theme" || item.type === "cursor") return null;
@@ -265,16 +272,19 @@ export function Shoppe({
     return item.preview;
   }
 
+  /** Documents `itemOwned` in this module. */
   function itemOwned(itemId: string) {
     return inventory.ownedItemIds.includes(itemId);
   }
 
+  /** Documents `equippedId` in this module. */
   function equippedId(type: EquippableType) {
     if (type === "theme") return inventory.equipped.themeId;
     if (type === "stamp") return inventory.equipped.stampId;
     return inventory.equipped.cursorId;
   }
 
+  /** Documents `itemTypeLabel` in this module. */
   function itemTypeLabel(item: ShopCatalogItem) {
     if (item.type === "theme") return "Theme";
     if (item.type === "stamp") return "Stamp";
@@ -294,6 +304,7 @@ export function Shoppe({
     return "Image";
   }
 
+  /** Documents `catalogHint` in this module. */
   function catalogHint(item: ShopCatalogItem) {
     if (item.type === "theme")
       return "Applies different desk/paper styling in light + dark mode.";
@@ -307,6 +318,7 @@ export function Shoppe({
     return "Collectible image item for future gallery drops.";
   }
 
+  /** Documents `canEquip` in this module. */
   function canEquip(
     item: ShopCatalogItem,
   ): item is Extract<ShopCatalogItem, { type: EquippableType }> {
@@ -315,6 +327,7 @@ export function Shoppe({
     );
   }
 
+  /** Documents `buyCatPhoto` in this module. */
   async function buyCatPhoto() {
     if (busy || !pointsOn) return;
     setBusy(true);
@@ -366,6 +379,7 @@ export function Shoppe({
     }
   }
 
+  /** Documents `buyShopItem` in this module. */
   async function buyShopItem(item: ShopCatalogItem) {
     if (busy || busyItemId || !pointsOn) return;
     setError(null);
@@ -411,6 +425,7 @@ export function Shoppe({
     }
   }
 
+  /** Documents `toggleEquip` in this module. */
   function toggleEquip(
     item: Extract<ShopCatalogItem, { type: EquippableType }>,
   ) {
