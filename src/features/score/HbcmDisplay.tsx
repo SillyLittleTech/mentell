@@ -285,4 +285,4 @@ export function HbcmDisplay({
       <span className="sr-only">{label}</span>
     </button>
   );
-}
+};
