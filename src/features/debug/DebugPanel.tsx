@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { addDays, format, startOfWeek } from "date-fns";
 import { useNavigate } from "react-router-dom";
 import { getDb } from "../../db/schema";
@@ -157,6 +157,36 @@ async function sendDebugEmailTest(
   }
 }
 
+function normalizeDebugFilterQuery(q: string): string[] {
+  return q
+    .toLowerCase()
+    .split(/[\s,/]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function debugSectionMatches(query: string, keywords: string[]): boolean {
+  const terms = normalizeDebugFilterQuery(query);
+  if (terms.length === 0) return true;
+  const hay = keywords.map((k) => k.toLowerCase());
+  return terms.every((t) =>
+    hay.some((h) => h.includes(t) || t.includes(h)),
+  );
+}
+
+function DebugFilterBlock({
+  query,
+  keywords,
+  children,
+}: {
+  query: string;
+  keywords: string[];
+  children: ReactNode;
+}) {
+  if (!debugSectionMatches(query, keywords)) return null;
+  return <>{children}</>;
+}
+
 export function DebugPanel() {
   const enabled = useMemo(() => isDebugMode(), []);
   const navigate = useNavigate();
@@ -187,6 +217,7 @@ export function DebugPanel() {
   const [riskProbeText, setRiskProbeText] = useState("death");
   const [riskProbeResult, setRiskProbeResult] = useState<string | null>(null);
   const [pushDelaySec, setPushDelaySec] = useState(30);
+  const [sectionQuery, setSectionQuery] = useState("");
   const [inspector, setInspector] = useState<{
     entries: number;
     notes: number;
@@ -439,9 +470,45 @@ export function DebugPanel() {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+              <div className="sticky top-0 z-[5] -mx-4 mb-3 border-b border-[var(--paper-border)] bg-[var(--paper-bg)] px-4 pb-3 pt-0">
+                <label
+                  htmlFor="debug-section-filter"
+                  className="font-mono text-[10px] font-bold text-[var(--ink)]"
+                >
+                  filter sections
+                </label>
+                <input
+                  id="debug-section-filter"
+                  type="search"
+                  enterKeyHint="search"
+                  autoComplete="off"
+                  placeholder="e.g. push, seed, score"
+                  value={sectionQuery}
+                  onChange={(e) => setSectionQuery(e.target.value)}
+                  className="focus-ring mt-1 w-full rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 font-mono text-xs"
+                />
+              </div>
               <div className="grid gap-2">
-                {isAuthDebugPanelEnabled() ? <DebugAuthSection /> : null}
+                {isAuthDebugPanelEnabled() ? (
+                  <DebugFilterBlock
+                    query={sectionQuery}
+                    keywords={[
+                      "auth",
+                      "firebase",
+                      "deep link",
+                      "deeplink",
+                      "email",
+                      "callback",
+                    ]}
+                  >
+                    <DebugAuthSection />
+                  </DebugFilterBlock>
+                ) : null}
 
+                <DebugFilterBlock
+                  query={sectionQuery}
+                  keywords={["playground", "ui lab", "animation", "button"]}
+                >
                 <div className="rounded-3xl border border-[var(--paper-border)] p-3">
                   <div className="font-mono text-xs font-bold">playground</div>
                   <div className="mt-2 grid gap-2">
@@ -460,7 +527,23 @@ export function DebugPanel() {
                     </button>
                   </div>
                 </div>
+                </DebugFilterBlock>
 
+                <DebugFilterBlock
+                  query={sectionQuery}
+                  keywords={[
+                    "ui toggles",
+                    "slow",
+                    "slow-mo",
+                    "package",
+                    "force",
+                    "ai",
+                    "cache",
+                    "search",
+                    "rate",
+                    "endpoint",
+                  ]}
+                >
                 <div className="rounded-3xl border border-[var(--paper-border)] p-3">
                   <div className="font-mono text-xs font-bold">ui toggles</div>
                   <div className="mt-2 grid gap-2">
@@ -537,7 +620,19 @@ export function DebugPanel() {
                     ) : null}
                   </div>
                 </div>
+                </DebugFilterBlock>
 
+                <DebugFilterBlock
+                  query={sectionQuery}
+                  keywords={[
+                    "projector",
+                    "search",
+                    "ai search",
+                    "index",
+                    "entry",
+                    "fetch",
+                  ]}
+                >
                 <div className="rounded-3xl border border-[var(--paper-border)] p-3">
                   <div className="font-mono text-xs font-bold">
                     projector / AI search
@@ -694,7 +789,20 @@ export function DebugPanel() {
                     ) : null}
                   </div>
                 </div>
+                </DebugFilterBlock>
 
+                <DebugFilterBlock
+                  query={sectionQuery}
+                  keywords={[
+                    "ai",
+                    "response",
+                    "sentinel",
+                    "crisis",
+                    "support",
+                    "exec",
+                    "composer",
+                  ]}
+                >
                 <div className="rounded-3xl border border-[var(--paper-border)] p-3">
                   <div className="font-mono text-xs font-bold">
                     AI response tests
@@ -718,9 +826,28 @@ export function DebugPanel() {
                     ))}
                   </div>
                 </div>
+                </DebugFilterBlock>
 
-                <DebugLocalResourcesSection />
+                <DebugFilterBlock
+                  query={sectionQuery}
+                  keywords={[
+                    "local resources",
+                    "location",
+                    "latitude",
+                    "longitude",
+                    "zip",
+                    "gps",
+                    "crisis",
+                    "override",
+                  ]}
+                >
+                  <DebugLocalResourcesSection />
+                </DebugFilterBlock>
 
+                <DebugFilterBlock
+                  query={sectionQuery}
+                  keywords={["risk", "workflow", "probe", "sentiment", "worker"]}
+                >
                 <div className="rounded-3xl border border-[var(--paper-border)] p-3">
                   <div className="font-mono text-xs font-bold">
                     risk workflow probe
@@ -765,7 +892,21 @@ export function DebugPanel() {
                     ) : null}
                   </div>
                 </div>
+                </DebugFilterBlock>
 
+                <DebugFilterBlock
+                  query={sectionQuery}
+                  keywords={[
+                    "notification",
+                    "push",
+                    "vapid",
+                    "sw",
+                    "service worker",
+                    "permission",
+                    "subscribe",
+                    "email",
+                  ]}
+                >
                 <div className="rounded-3xl border border-[var(--paper-border)] p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-mono text-xs font-bold">
@@ -1029,7 +1170,12 @@ export function DebugPanel() {
                     </button>
                   </div>
                 </div>
+                </DebugFilterBlock>
 
+                <DebugFilterBlock
+                  query={sectionQuery}
+                  keywords={["package", "weekly", "monthly", "yearly", "batch", "truck"]}
+                >
                 <div className="rounded-3xl border border-[var(--paper-border)] p-3">
                   <div className="font-mono text-xs font-bold">packages</div>
                   <div className="mt-2 grid gap-2">
@@ -1119,7 +1265,23 @@ export function DebugPanel() {
                     </button>
                   </div>
                 </div>
+                </DebugFilterBlock>
 
+                <DebugFilterBlock
+                  query={sectionQuery}
+                  keywords={[
+                    "score",
+                    "trophy",
+                    "consistency",
+                    "heat",
+                    "hbcm",
+                    "streak",
+                    "missed day",
+                    "celebration",
+                    "cluster",
+                    "comeback",
+                  ]}
+                >
                 <div className="rounded-3xl border border-[var(--paper-border)] p-3">
                   <div className="font-mono text-xs font-bold">
                     score / consistency heat
@@ -1247,7 +1409,12 @@ export function DebugPanel() {
                     </button>
                   </div>
                 </div>
+                </DebugFilterBlock>
 
+                <DebugFilterBlock
+                  query={sectionQuery}
+                  keywords={["network", "online", "offline"]}
+                >
                 <div className="rounded-3xl border border-[var(--paper-border)] p-3">
                   <div className="font-mono text-xs font-bold">
                     network state
@@ -1269,7 +1436,20 @@ export function DebugPanel() {
                     </button>
                   </div>
                 </div>
+                </DebugFilterBlock>
 
+                <DebugFilterBlock
+                  query={sectionQuery}
+                  keywords={[
+                    "storage",
+                    "inspector",
+                    "dexie",
+                    "indexeddb",
+                    "entries",
+                    "stickies",
+                    "recent",
+                  ]}
+                >
                 <div className="rounded-3xl border border-[var(--paper-border)] p-3">
                   <div className="font-mono text-xs font-bold">
                     storage inspector
@@ -1343,7 +1523,26 @@ export function DebugPanel() {
                     )}
                   </div>
                 </div>
+                </DebugFilterBlock>
 
+                <DebugFilterBlock
+                  query={sectionQuery}
+                  keywords={[
+                    "reset",
+                    "clear",
+                    "cache",
+                    "seed",
+                    "sample",
+                    "email",
+                    "unverify",
+                    "risk",
+                    "exce",
+                    "recall",
+                    "local data",
+                    "score only",
+                    "cat",
+                  ]}
+                >
                 <button
                   type="button"
                   disabled={busy}
@@ -1776,6 +1975,7 @@ export function DebugPanel() {
                     link.
                   </div>
                 </button>
+                </DebugFilterBlock>
               </div>
             </div>
           </div>

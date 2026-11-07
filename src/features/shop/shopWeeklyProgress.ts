@@ -70,7 +70,7 @@ export async function getShopWeekDays(
     days.push({
       dateKey,
       label: format(d, "EEE"),
-      shortLabel: format(d, "EEEEE"),
+      shortLabel: format(d, "EEE"),
       feelingClass,
     });
   }

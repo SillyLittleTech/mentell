@@ -13,7 +13,7 @@ function fillRatio(display: number): number {
     case 2:
       return 0.26;
     case 1:
-      return 0.1;
+      return 0.11;
     default:
       return 0;
   }
@@ -32,7 +32,7 @@ function liquidGradient(display: number) {
     case 1:
       return { a: "rgb(185,32,32)", b: "rgb(235,95,68)" };
     default:
-      return { a: "rgba(130,130,138,0.2)", b: "rgba(170,170,178,0.12)" };
+      return { a: "rgba(120,120,130,0.35)", b: "rgba(160,160,170,0.2)" };
   }
 }
 
@@ -48,8 +48,8 @@ export function HbcmDisplay({
   const reduced = shouldReduceMotion();
   const display = Math.min(5, Math.max(0, Math.round(hbcmDisplay)));
   const uid = useId().replace(/:/g, "");
-  const clipId = `hbcm-clip-${uid}`;
-  const gradId = `hbcm-liq-${uid}`;
+  const liquidClipId = `hbcm-liq-clip-${uid}`;
+  const gradId = `hbcm-liq-grad-${uid}`;
 
   const fill = fillRatio(display);
   const { a, b } = liquidGradient(display);
@@ -58,43 +58,48 @@ export function HbcmDisplay({
       ? "Consistency heat empty. Next log starts filling the glass."
       : `Consistency heat ${display} of five`;
 
-  const svgH = variant === "chip" ? 48 : 54;
-  const svgW = variant === "chip" ? 52 : 58;
-  const fontSize = variant === "chip" ? 34 : 40;
-  const baselineY = svgH * 0.78;
+  const svgH = variant === "chip" ? 34 : 40;
+  const svgW = variant === "chip" ? 30 : 36;
+  const fontSize = variant === "chip" ? 26 : 31;
+  const baselineY = svgH * 0.82;
 
   const waveStyle = useMemo(
     () =>
       reduced
         ? undefined
-        : { animation: "hbcm-liq-wave-x 2.8s ease-in-out infinite" },
+        : ({ animation: "hbcm-liq-wave-x 2.6s ease-in-out infinite" } as const),
     [reduced],
   );
 
   const chipClass = [
-    variant === "chip"
-      ? "rounded-2xl border border-[var(--paper-border)] px-3 py-2"
-      : "",
     "flex items-center gap-2",
     pulse && !reduced ? "hbcm-chip--pulse" : "",
   ]
     .filter(Boolean)
     .join(" ");
 
+  const liqH = Math.max(0, svgH * fill * 1.08);
+  const liqY = svgH - liqH + 1;
+
+  const iconSize = variant === "chip" ? 18 : 20;
+
   return (
     <div className={chipClass} role="img" aria-label={label}>
       <MaterialIcon
         name="whatshot"
-        size={variant === "chip" ? 18 : 20}
+        size={iconSize}
         accent={false}
-        className="shrink-0 opacity-75"
+        className="shrink-0 opacity-70"
       />
-      <div className="relative" style={{ width: svgW, height: svgH }}>
+      <div
+        className="relative flex items-center justify-center"
+        style={{ width: svgW, height: svgH }}
+      >
         <svg
           width={svgW}
           height={svgH}
           viewBox={`0 0 ${svgW} ${svgH}`}
-          className="overflow-visible text-[var(--paper-ink)] dark:text-white"
+          className="block overflow-visible"
           aria-hidden
         >
           <defs>
@@ -102,7 +107,7 @@ export function HbcmDisplay({
               <stop offset="0%" stopColor={a} />
               <stop offset="100%" stopColor={b} />
             </linearGradient>
-            <clipPath id={clipId}>
+            <clipPath id={liquidClipId}>
               <text
                 x={svgW / 2}
                 y={baselineY}
@@ -117,58 +122,42 @@ export function HbcmDisplay({
             </clipPath>
           </defs>
 
-          <g clipPath={`url(#${clipId})`}>
+          {/* Liquid fills the glyph from below; clipped to digit shape */}
+          <g clipPath={`url(#${liquidClipId})`}>
             {display > 0 ? (
               <g style={waveStyle}>
                 <rect
-                  x="-8%"
-                  y={svgH * (1 - fill)}
-                  width="116%"
-                  height={svgH * fill + 8}
+                  x="-15%"
+                  y={liqY}
+                  width="130%"
+                  height={liqH + 4}
                   fill={`url(#${gradId})`}
                 />
                 <ellipse
-                  cx={svgW * 0.5}
-                  cy={svgH * (1 - fill)}
-                  rx={svgW * 0.52}
-                  ry={svgH * 0.04}
-                  fill="rgba(255,255,255,0.2)"
+                  cx={svgW * 0.52}
+                  cy={liqY}
+                  rx={svgW * 0.55}
+                  ry={svgH * 0.045}
+                  fill="rgba(255,255,255,0.22)"
                 />
               </g>
             ) : (
-              <>
-                <rect
-                  x="0"
-                  y="0"
-                  width={svgW}
-                  height={svgH}
-                  fill="rgba(155,155,165,0.08)"
-                />
-                <path
-                  d={`M ${svgW * 0.12} ${svgH * 0.22} Q ${svgW * 0.5} ${svgH * 0.14} ${svgW * 0.88} ${svgH * 0.24}`}
-                  fill="none"
-                  stroke="rgba(0,0,0,0.2)"
-                  strokeWidth="0.45"
-                  className="dark:stroke-[rgba(255,255,255,0.28)]"
-                />
-                <path
-                  d={`M ${svgW * 0.18} ${svgH * 0.9} Q ${svgW * 0.5} ${svgH * 0.97} ${svgW * 0.82} ${svgH * 0.88}`}
-                  fill="none"
-                  stroke="rgba(0,0,0,0.16)"
-                  strokeWidth="0.38"
-                  className="dark:stroke-[rgba(255,255,255,0.22)]"
-                />
-              </>
+              <rect
+                x="0"
+                y={svgH * 0.55}
+                width={svgW}
+                height={svgH * 0.45}
+                fill="rgba(150,150,160,0.07)"
+              />
             )}
           </g>
 
+          {/* Glass numeral on top — liquid is underneath (see clipPath group above) */}
           <text
             x={svgW / 2}
             y={baselineY}
             textAnchor="middle"
-            fill="currentColor"
-            className="opacity-95 dark:[stroke:rgba(248,248,252,0.35)]"
-            stroke="rgba(30,30,38,0.42)"
+            className="hbcm-glass-digit"
             strokeWidth="1.05"
             fontFamily='Georgia, "Times New Roman", serif'
             fontWeight="700"

@@ -1,29 +1,67 @@
 import type { FeelingDayClass } from "../compilation/feelingsSemantics";
 
-/** Match Shoppe bar / issue palette */
-export const FEELING_RGB: Record<
-  Exclude<FeelingDayClass, "missed" | "no_data">,
-  string
-> = {
-  positive: "42,155,88",
-  neutral: "214,189,64",
-  negative: "198,29,29",
+/**
+ * Pastel palette for weekly bar (bar fill / legend).
+ * Borders are slightly more saturated for label contrast.
+ */
+
+const PASTEL_SEGMENT: Record<FeelingDayClass, string> = {
+  positive: "168, 232, 201",
+  neutral: "246, 236, 160",
+  negative: "255, 196, 196",
+  missed: "52, 52, 56",
+  no_data: "222, 224, 232",
 };
 
-export const MISSED_RGB = "22,22,22";
-export const NO_DATA_RGB = "190,190,195";
+const PASTEL_FILL: Record<FeelingDayClass, string> = {
+  positive: "235, 252, 243",
+  neutral: "255, 252, 225",
+  negative: "255, 238, 238",
+  missed: "240, 240, 242",
+  no_data: "248, 249, 252",
+};
 
+const PASTEL_BORDER: Record<FeelingDayClass, string> = {
+  positive: "74, 168, 120",
+  neutral: "198, 175, 80",
+  negative: "198, 90, 90",
+  missed: "24, 24, 28",
+  no_data: "120, 122, 132",
+};
+
+export function pastelSegmentRgb(c: FeelingDayClass): string {
+  return PASTEL_SEGMENT[c];
+}
+
+export function pastelFillRgb(c: FeelingDayClass): string {
+  return PASTEL_FILL[c];
+}
+
+export function pastelBorderRgb(c: FeelingDayClass): string {
+  return PASTEL_BORDER[c];
+}
+
+/** @deprecated use pastelSegmentRgb */
 export function rgbForFeelingClass(c: FeelingDayClass): string {
+  return pastelSegmentRgb(c);
+}
+
+/** Same family as weekly bar — for projector chart dots/lines */
+export function chartRgbForClass(c: FeelingDayClass): string {
+  return `rgb(${pastelSegmentRgb(c)})`;
+}
+
+export function swatchClassForClass(c: FeelingDayClass): string {
   switch (c) {
     case "positive":
-      return FEELING_RGB.positive;
+      return "bg-[rgb(168,232,201)]";
     case "neutral":
-      return FEELING_RGB.neutral;
+      return "bg-[rgb(246,236,160)]";
     case "negative":
-      return FEELING_RGB.negative;
+      return "bg-[rgb(255,196,196)]";
     case "missed":
-      return MISSED_RGB;
+      return "bg-[rgb(52,52,56)]";
     default:
-      return NO_DATA_RGB;
+      return "bg-[rgb(222,224,232)]";
   }
 }

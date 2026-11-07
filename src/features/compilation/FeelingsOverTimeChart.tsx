@@ -1,14 +1,30 @@
 import { useCallback, useId, useMemo, useState } from "react";
 import type { FeelingPoint } from "./feelingsOverTimeData";
 import type { FeelingDayClass } from "./feelingsSemantics";
+import { chartRgbForClass } from "../shop/weeklyProgressColors";
 
 const CLASS_COLORS: Record<FeelingDayClass, { stroke: string; fill: string }> =
   {
-    positive: { stroke: "rgb(42, 155, 88)", fill: "rgb(42, 155, 88)" },
-    neutral: { stroke: "rgb(214, 189, 64)", fill: "rgb(214, 189, 64)" },
-    negative: { stroke: "rgb(198, 29, 29)", fill: "rgb(198, 29, 29)" },
-    missed: { stroke: "rgb(24, 24, 24)", fill: "rgb(24, 24, 24)" },
-    no_data: { stroke: "rgb(200, 200, 205)", fill: "rgb(230, 230, 235)" },
+    positive: {
+      stroke: chartRgbForClass("positive"),
+      fill: chartRgbForClass("positive"),
+    },
+    neutral: {
+      stroke: chartRgbForClass("neutral"),
+      fill: chartRgbForClass("neutral"),
+    },
+    negative: {
+      stroke: chartRgbForClass("negative"),
+      fill: chartRgbForClass("negative"),
+    },
+    missed: {
+      stroke: chartRgbForClass("missed"),
+      fill: chartRgbForClass("missed"),
+    },
+    no_data: {
+      stroke: chartRgbForClass("no_data"),
+      fill: chartRgbForClass("no_data"),
+    },
   };
 
 function mix(a: string, b: string, t: number) {
