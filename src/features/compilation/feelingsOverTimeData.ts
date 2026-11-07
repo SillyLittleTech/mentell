@@ -30,6 +30,12 @@ export type FeelingPoint = {
   class: FeelingDayClass;
   createdAt: number;
   note?: string;
+  entryId?: string;
+  sentiment?: EntryRow["sentiment"];
+  emotion?: EntryRow["emotion"];
+  emotionNote?: string;
+  situation?: string;
+  entryType?: EntryRow["entryType"];
 };
 
 /** Documents `toKey` in this module. */
@@ -122,6 +128,12 @@ export async function getFeelingsOverTimeSeries(
         agg?.entryType === "quick_log"
           ? agg.quickLogNote?.trim() || undefined
           : undefined,
+      entryId: agg?.id,
+      sentiment: agg?.sentiment,
+      emotion: agg?.emotion,
+      emotionNote: agg?.emotionNote?.trim() || undefined,
+      situation: agg?.situation?.trim() || undefined,
+      entryType: agg?.entryType,
     });
   }
 

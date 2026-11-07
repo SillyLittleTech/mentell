@@ -1,7 +1,19 @@
-import { useCallback, useId, useMemo, useState } from "react";
+import {
+  useCallback,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import type { FeelingPoint } from "./feelingsOverTimeData";
 import type { FeelingDayClass } from "./feelingsSemantics";
 import { chartRgbForClass } from "../shop/weeklyProgressColors";
+import {
+  emotionTooltipLine,
+  feelingClassLabel,
+  sentimentTooltipLabel,
+} from "./feelingsChartTooltip";
 
 const CLASS_COLORS: Record<FeelingDayClass, { stroke: string; fill: string }> =
   {
@@ -26,6 +38,9 @@ const CLASS_COLORS: Record<FeelingDayClass, { stroke: string; fill: string }> =
       fill: chartRgbForClass("no_data"),
     },
   };
+
+const TOOLTIP_OFFSET = 14;
+const TOOLTIP_WIDTH = 240;
 
 /** Documents `mix` in this module. */
 function mix(a: string, b: string, t: number) {
@@ -53,16 +68,23 @@ function yForClass(c: FeelingDayClass, h: number) {
   }
 }
 
+type TooltipPos = { x: number; y: number };
+
 /** SVG feelings-over-time chart with interactive dots (Projector + UI playground). */
 export function FeelingsOverTimeChart({
   points,
   titleId,
+  onPointClick,
 }: {
   points: FeelingPoint[];
   titleId: string;
+  /** Opens projector entry preview when the day has a journal or quick log. */
+  onPointClick?: (point: FeelingPoint) => void;
 }) {
   const gridId = useId();
-  const [active, setActive] = useState<number | null>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const [tooltipAt, setTooltipAt] = useState<TooltipPos | null>(null);
 
   const { polySegments, dotPts, w, h } = useMemo(() => {
     const width = 560;
@@ -106,19 +128,46 @@ export function FeelingsOverTimeChart({
   }, [points]);
 
   const describePoint = useCallback((p: FeelingPoint) => {
-    const kind =
-      p.class === "positive"
-        ? "Positive"
-        : p.class === "negative"
-          ? "Difficult"
-          : p.class === "neutral"
-            ? "Mixed or steady"
-            : p.class === "missed"
-              ? "Missed day"
-              : "No data";
-    const note = p.note ? ` · ${p.note}` : "";
-    return `${p.dateKey}: ${kind}${note}`;
+    const kind = feelingClassLabel(p.class);
+    const sent = sentimentTooltipLabel(p.sentiment);
+    const parts = [p.label || p.dateKey, kind];
+    if (sent) parts.push(sent);
+    if (p.situation) parts.push(p.situation);
+    return parts.join(" · ");
   }, []);
+
+  const clampTooltip = useCallback((clientX: number, clientY: number) => {
+    const margin = 8;
+    const maxX = window.innerWidth - TOOLTIP_WIDTH - margin;
+    let x = clientX + TOOLTIP_OFFSET;
+    let y = clientY + TOOLTIP_OFFSET;
+    if (x > maxX) x = clientX - TOOLTIP_WIDTH - TOOLTIP_OFFSET;
+    if (y > window.innerHeight - 120) y = clientY - 110;
+    return { x: Math.max(margin, x), y: Math.max(margin, y) };
+  }, []);
+
+  const onWrapMove = useCallback(
+    (e: ReactMouseEvent) => {
+      if (hovered === null) return;
+      setTooltipAt(clampTooltip(e.clientX, e.clientY));
+    },
+    [clampTooltip, hovered],
+  );
+
+  const activate = useCallback(
+    (index: number, clientX: number, clientY: number) => {
+      setHovered(index);
+      setTooltipAt(clampTooltip(clientX, clientY));
+    },
+    [clampTooltip],
+  );
+
+  const deactivate = useCallback(() => {
+    setHovered(null);
+    setTooltipAt(null);
+  }, []);
+
+  const hoveredPoint = hovered !== null ? points[hovered] : null;
 
   if (!points.length) {
     return (
@@ -134,9 +183,12 @@ export function FeelingsOverTimeChart({
 
   return (
     <div
-      className="rounded-2xl border border-[var(--paper-border)] p-3"
+      ref={wrapRef}
+      className="relative rounded-2xl border border-[var(--paper-border)] p-3"
       role="region"
       aria-labelledby={titleId}
+      onMouseMove={onWrapMove}
+      onMouseLeave={deactivate}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}
@@ -178,7 +230,8 @@ export function FeelingsOverTimeChart({
         ))}
         {dotPts.map(({ cx, cy, p, i }) => {
           const col = CLASS_COLORS[p.class];
-          const focus = active === i;
+          const focus = hovered === i;
+          const clickable = Boolean(p.entryId && onPointClick);
           return (
             <g key={p.dateKey}>
               <circle
@@ -188,23 +241,79 @@ export function FeelingsOverTimeChart({
                 fill={col.fill}
                 stroke="var(--paper-bg)"
                 strokeWidth={2}
-                className="cursor-pointer focus:outline-none"
+                className={
+                  clickable
+                    ? "cursor-pointer focus:outline-none"
+                    : "focus:outline-none"
+                }
                 tabIndex={0}
-                role="button"
+                role={clickable ? "button" : undefined}
                 aria-label={describePoint(p)}
-                onFocus={() => setActive(i)}
-                onBlur={() => setActive(null)}
-                onMouseEnter={() => setActive(i)}
-                onMouseLeave={() => setActive(null)}
+                onFocus={(e) => {
+                  const rect = (
+                    e.target as SVGCircleElement
+                  ).getBoundingClientRect();
+                  activate(i, rect.left + rect.width / 2, rect.top);
+                }}
+                onBlur={deactivate}
+                onMouseEnter={(e) => activate(i, e.clientX, e.clientY)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (p.entryId && onPointClick) onPointClick(p);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    if (p.entryId && onPointClick) onPointClick(p);
+                  }
+                }}
               />
             </g>
           );
         })}
       </svg>
-      {active !== null && points[active] ? (
-        <div className="mt-2 rounded-xl border border-[var(--paper-border)] bg-[var(--paper-bg)] px-3 py-2 text-sm">
-          <div className="font-medium">{points[active].dateKey}</div>
-          <div className="ink-muted">{describePoint(points[active])}</div>
+
+      {hoveredPoint && tooltipAt ? (
+        <div
+          className="pointer-events-none fixed z-50 w-[min(92vw,15rem)] rounded-xl border border-[var(--paper-border)] bg-[var(--paper-bg)] px-3 py-2 text-sm shadow-lg"
+          style={{ left: tooltipAt.x, top: tooltipAt.y }}
+          role="tooltip"
+        >
+          <div className="font-medium">{hoveredPoint.label}</div>
+          <div className="ink-muted text-xs">{hoveredPoint.dateKey}</div>
+          <dl className="mt-2 space-y-1 text-xs">
+            <div className="flex gap-2">
+              <dt className="ink-muted shrink-0">Day</dt>
+              <dd>{feelingClassLabel(hoveredPoint.class)}</dd>
+            </div>
+            {sentimentTooltipLabel(hoveredPoint.sentiment) ? (
+              <div className="flex gap-2">
+                <dt className="ink-muted shrink-0">Sentiment</dt>
+                <dd>{sentimentTooltipLabel(hoveredPoint.sentiment)}</dd>
+              </div>
+            ) : null}
+            {emotionTooltipLine(hoveredPoint) ? (
+              <div className="flex gap-2">
+                <dt className="ink-muted shrink-0">Emotion</dt>
+                <dd className="min-w-0 break-words">
+                  {emotionTooltipLine(hoveredPoint)}
+                </dd>
+              </div>
+            ) : null}
+            {hoveredPoint.situation ? (
+              <div className="flex gap-2">
+                <dt className="ink-muted shrink-0">Situation</dt>
+                <dd className="min-w-0 line-clamp-3 break-words">
+                  {hoveredPoint.situation}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+          {hoveredPoint.entryId && onPointClick ? (
+            <div className="ink-muted mt-2 border-t border-[var(--paper-border)] pt-2 text-[11px]">
+              Click to open entry
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

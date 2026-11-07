@@ -9,7 +9,7 @@ import {
   type WeekCursor,
   type WeeklyStats,
 } from "./weeklyStats";
-import type { EntryRow } from "../../db/schema";
+import { getDb, type EntryRow } from "../../db/schema";
 import { getScoreSnapshot } from "../score/scoreService";
 import { HbcmDisplay } from "../score/HbcmDisplay";
 import { SCORE_CHANGED_EVENT } from "../score/scoreEvents";
@@ -107,6 +107,9 @@ export function WeeklyProjector() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [feelingsRange, setFeelingsRange] = useState<FeelingsRange>("week");
   const [feelingsPoints, setFeelingsPoints] = useState<FeelingPoint[]>([]);
+  const [chartEntryCache, setChartEntryCache] = useState<
+    Map<string, EntryRow>
+  >(() => new Map());
   const feelingsTitleId = "feelings-over-time-heading";
   const aiEnabled = weeklyAiSummaryEnabled();
   const searchEnabled = projectorSearchEnabled();
@@ -226,9 +229,33 @@ export function WeeklyProjector() {
   }, [stats, visibleOlderWeeks]);
 
   const selected = selectedId
-    ? (allEntriesForPreview.get(selectedId) ?? null)
+    ? (allEntriesForPreview.get(selectedId) ??
+      chartEntryCache.get(selectedId) ??
+      null)
     : null;
-  useBodyScrollLock(Boolean(selected && delivered));
+  useBodyScrollLock(Boolean(selected));
+
+  const openChartPoint = useCallback(
+    async (point: FeelingPoint) => {
+      if (!point.entryId) return;
+      const known =
+        allEntriesForPreview.get(point.entryId) ??
+        chartEntryCache.get(point.entryId);
+      if (known) {
+        setSelectedId(point.entryId);
+        return;
+      }
+      const row = await getDb().entries.get(point.entryId);
+      if (!row) return;
+      setChartEntryCache((prev) => {
+        const next = new Map(prev);
+        next.set(row.id, row);
+        return next;
+      });
+      setSelectedId(row.id);
+    },
+    [allEntriesForPreview, chartEntryCache],
+  );
 
   /** Documents `handleGenerate` in this module. */
   async function handleGenerate() {
@@ -387,6 +414,9 @@ export function WeeklyProjector() {
           <FeelingsOverTimeChart
             points={feelingsPoints}
             titleId={feelingsTitleId}
+            onPointClick={(p) => {
+              ignorePromise(openChartPoint(p));
+            }}
           />
         </div>
       </div>
@@ -654,7 +684,7 @@ export function WeeklyProjector() {
       </div>
 
       <AnimatePresence>
-        {selected && delivered ? (
+        {selected ? (
           <motion.div
             className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4 sm:p-6"
             initial={shouldReduceMotion() ? false : { opacity: 0 }}
