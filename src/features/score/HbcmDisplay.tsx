@@ -26,7 +26,7 @@ type HbcmDisplayProps = {
   readonly hbcmDisplay: number;
   readonly pulse?: boolean;
   readonly variant?: "chip" | "inline";
-};
+}
 
 let bubbleIdSeq = 0;
 
