@@ -28,7 +28,9 @@ export function HbcmTileWaves({
       >
         <g
           className={
-            reduced ? undefined : "hbcm-tile-waves__layer hbcm-tile-waves__layer--a"
+            reduced
+              ? undefined
+              : "hbcm-tile-waves__layer hbcm-tile-waves__layer--a"
           }
         >
           <path
@@ -38,7 +40,9 @@ export function HbcmTileWaves({
         </g>
         <g
           className={
-            reduced ? undefined : "hbcm-tile-waves__layer hbcm-tile-waves__layer--b"
+            reduced
+              ? undefined
+              : "hbcm-tile-waves__layer hbcm-tile-waves__layer--b"
           }
         >
           <path
@@ -48,7 +52,9 @@ export function HbcmTileWaves({
         </g>
         <g
           className={
-            reduced ? undefined : "hbcm-tile-waves__layer hbcm-tile-waves__layer--c"
+            reduced
+              ? undefined
+              : "hbcm-tile-waves__layer hbcm-tile-waves__layer--c"
           }
         >
           <path
@@ -57,9 +63,7 @@ export function HbcmTileWaves({
           />
         </g>
       </svg>
-      {!reduced ? (
-        <div className="hbcm-tile-waves__sheen" aria-hidden />
-      ) : null}
+      {!reduced ? <div className="hbcm-tile-waves__sheen" aria-hidden /> : null}
     </div>
   );
 }
