@@ -1,16 +1,19 @@
-import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import type { EntryRow } from '../../db/schema'
-import { MaterialIcon } from '../../components/MaterialIcon'
-import { useBodyScrollLock } from '../../shared/motion/useBodyScrollLock'
-import { motionDuration, shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
-import { useAuthOptional } from '../../shared/firebase/authContext'
-import { ProjectorEntriesCarousel } from './ProjectorEntriesCarousel'
-import { useOnlineStatus } from '../../shared/offline/useOnlineStatus'
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { EntryRow } from "../../db/schema";
+import { MaterialIcon } from "../../components/MaterialIcon";
+import { useBodyScrollLock } from "../../shared/motion/useBodyScrollLock";
+import {
+  motionDuration,
+  shouldReduceMotion,
+} from "../../shared/motion/useMotionPrefs";
+import { useAuthOptional } from "../../shared/firebase/authContext";
+import { ProjectorEntriesCarousel } from "./ProjectorEntriesCarousel";
+import { useOnlineStatus } from "../../shared/offline/useOnlineStatus";
 import {
   ProjectorEntryDetail,
   ProjectorEntrySlide,
-} from './ProjectorEntrySlide'
+} from "./ProjectorEntrySlide";
 import {
   getOrCreateAnonSearchUserId,
   requestProjectorSearch,
@@ -18,210 +21,253 @@ import {
   type ProjectorSearchEntry,
   type ProjectorSearchMessage,
   type ProjectorSearchResult,
-} from './projectorSearch'
+} from "./projectorSearch";
 import {
   downloadSearchChat,
   type SearchExportItem,
-} from './projectorSearchExport'
+} from "./projectorSearchExport";
 
-type BusyKind = 'search' | 'followup' | null
+type BusyKind = "search" | "followup" | null;
 
 type ThreadItem =
-  | { id: string; kind: 'message'; role: 'user' | 'assistant'; content: string }
-  | { id: string; kind: 'entries'; entries: ProjectorSearchEntry[] }
+  | { id: string; kind: "message"; role: "user" | "assistant"; content: string }
+  | { id: string; kind: "entries"; entries: ProjectorSearchEntry[] };
 
 function newId() {
-  return crypto.randomUUID()
+  return crypto.randomUUID();
 }
 
 function statusLabel(
   busy: BusyKind,
   indexStatus: ProjectorIndexStatus | undefined,
 ): string | null {
-  if (busy === 'search') return 'Searching…'
-  if (busy === 'followup') return 'Asking follow-up…'
-  if (!indexStatus || indexStatus === 'idle') return null
-  if (indexStatus === 'synced') return 'Cloud index updating — local matches included now.'
-  if (indexStatus === 'skipped') return 'Cloud index up to date.'
-  if (indexStatus === 'failed') return 'Cloud index unavailable — showing local matches.'
-  return null
+  if (busy === "search") return "Searching…";
+  if (busy === "followup") return "Asking follow-up…";
+  if (!indexStatus || indexStatus === "idle") return null;
+  if (indexStatus === "synced")
+    return "Cloud index updating — local matches included now.";
+  if (indexStatus === "skipped") return "Cloud index up to date.";
+  if (indexStatus === "failed")
+    return "Cloud index unavailable — showing local matches.";
+  return null;
 }
 
 function threadFromResult(res: ProjectorSearchResult): ThreadItem[] {
-  if (res.type === 'answer') {
-    return [{ id: newId(), kind: 'message', role: 'assistant', content: res.text }]
+  if (res.type === "answer") {
+    return [
+      { id: newId(), kind: "message", role: "assistant", content: res.text },
+    ];
   }
-  if (res.type === 'entries') {
-    const items: ThreadItem[] = []
+  if (res.type === "entries") {
+    const items: ThreadItem[] = [];
     if (res.preamble?.trim()) {
-      items.push({ id: newId(), kind: 'message', role: 'assistant', content: res.preamble })
+      items.push({
+        id: newId(),
+        kind: "message",
+        role: "assistant",
+        content: res.preamble,
+      });
     }
     if (res.entries.length > 0) {
-      items.push({ id: newId(), kind: 'entries', entries: res.entries })
+      items.push({ id: newId(), kind: "entries", entries: res.entries });
     }
-    return items
+    return items;
   }
-  return []
+  return [];
 }
 
 function apiMessagesFromThread(thread: ThreadItem[]): ProjectorSearchMessage[] {
   return thread
-    .filter((item): item is Extract<ThreadItem, { kind: 'message' }> => item.kind === 'message')
-    .map((item) => ({ role: item.role, content: item.content }))
+    .filter(
+      (item): item is Extract<ThreadItem, { kind: "message" }> =>
+        item.kind === "message",
+    )
+    .map((item) => ({ role: item.role, content: item.content }));
 }
 
 function exportItemsFromThread(thread: ThreadItem[]): SearchExportItem[] {
   return thread.map((item) => {
-    if (item.kind === 'message') {
-      return { kind: 'message', role: item.role, content: item.content }
+    if (item.kind === "message") {
+      return { kind: "message", role: item.role, content: item.content };
     }
     return {
-      kind: 'entries',
+      kind: "entries",
       count: item.entries.length,
       labels: item.entries.map(
-        (e) => `${e.dateKey} [${e.sentiment}] ${e.situation || '(no situation)'}`,
+        (e) =>
+          `${e.dateKey} [${e.sentiment}] ${e.situation || "(no situation)"}`,
       ),
-    }
-  })
+    };
+  });
 }
 
 function hasAssistantResults(thread: ThreadItem[]) {
   return thread.some(
     (item) =>
-      (item.kind === 'message' && item.role === 'assistant') || item.kind === 'entries',
-  )
+      (item.kind === "message" && item.role === "assistant") ||
+      item.kind === "entries",
+  );
 }
 
-function ChatBubble({ role, children }: { role: 'user' | 'assistant'; children: ReactNode }) {
+function ChatBubble({
+  role,
+  children,
+}: {
+  role: "user" | "assistant";
+  children: ReactNode;
+}) {
   return (
-    <div className={`chat-bubble ${role === 'user' ? 'chat-bubble--user' : 'chat-bubble--assistant'}`}>
+    <div
+      className={`chat-bubble ${role === "user" ? "chat-bubble--user" : "chat-bubble--assistant"}`}
+    >
       {children}
     </div>
-  )
+  );
 }
 
 function projectorCloseConfirmEnabled() {
-  return import.meta.env.VITE_ENABLE_PJS_CLOSECONF === '1'
+  return import.meta.env.VITE_ENABLE_PJS_CLOSECONF === "1";
 }
 
 export type ProjectorSearchModalProps = {
-  open: boolean
-  onClose: () => void
+  open: boolean;
+  onClose: () => void;
   /** Debug: seed results without network */
-  debugSeed?: ProjectorSearchResult | null
-}
+  debugSeed?: ProjectorSearchResult | null;
+};
 
-export function ProjectorSearchModal({ open, onClose, debugSeed }: ProjectorSearchModalProps) {
-  if (!open) return null
+export function ProjectorSearchModal({
+  open,
+  onClose,
+  debugSeed,
+}: ProjectorSearchModalProps) {
+  if (!open) return null;
   return (
     <ProjectorSearchModalInner
-      key={debugSeed ? `seed-${debugSeed.type}` : 'live'}
+      key={debugSeed ? `seed-${debugSeed.type}` : "live"}
       onClose={onClose}
       debugSeed={debugSeed ?? null}
     />
-  )
+  );
 }
 
 function ProjectorSearchModalInner({
   onClose,
   debugSeed,
 }: {
-  onClose: () => void
-  debugSeed: ProjectorSearchResult | null
+  onClose: () => void;
+  debugSeed: ProjectorSearchResult | null;
 }) {
-  const auth = useAuthOptional()
-  const isOnline = useOnlineStatus()
-  const [query, setQuery] = useState('')
-  const [busy, setBusy] = useState<BusyKind>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [indexStatus, setIndexStatus] = useState<ProjectorIndexStatus | undefined>(undefined)
-  const [followUp, setFollowUp] = useState('')
+  const auth = useAuthOptional();
+  const isOnline = useOnlineStatus();
+  const [query, setQuery] = useState("");
+  const [busy, setBusy] = useState<BusyKind>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [indexStatus, setIndexStatus] = useState<
+    ProjectorIndexStatus | undefined
+  >(undefined);
+  const [followUp, setFollowUp] = useState("");
   const [thread, setThread] = useState<ThreadItem[]>(() => {
-    if (!debugSeed || debugSeed.type === 'error') return []
-    return threadFromResult(debugSeed)
-  })
-  const [searchStarted, setSearchStarted] = useState(() => Boolean(debugSeed && debugSeed.type !== 'error'))
-  const [selected, setSelected] = useState<ProjectorSearchEntry | EntryRow | null>(null)
-  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false)
-  const threadRef = useRef<HTMLDivElement>(null)
+    if (!debugSeed || debugSeed.type === "error") return [];
+    return threadFromResult(debugSeed);
+  });
+  const [searchStarted, setSearchStarted] = useState(() =>
+    Boolean(debugSeed && debugSeed.type !== "error"),
+  );
+  const [selected, setSelected] = useState<
+    ProjectorSearchEntry | EntryRow | null
+  >(null);
+  const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const threadRef = useRef<HTMLDivElement>(null);
 
-  const hasConversation = thread.length > 0
-  const canSaveChat = hasAssistantResults(thread)
-  const userMessageCount = thread.filter((t) => t.kind === 'message' && t.role === 'user').length
-  const hasFollowUps = userMessageCount > 1
-  const label = statusLabel(busy, indexStatus)
+  const hasConversation = thread.length > 0;
+  const canSaveChat = hasAssistantResults(thread);
+  const userMessageCount = thread.filter(
+    (t) => t.kind === "message" && t.role === "user",
+  ).length;
+  const hasFollowUps = userMessageCount > 1;
+  const label = statusLabel(busy, indexStatus);
 
-  useBodyScrollLock(true)
+  useBodyScrollLock(true);
 
   useEffect(() => {
-    const el = threadRef.current
-    if (!el) return
-    el.scrollTop = el.scrollHeight
-  }, [thread, busy])
+    const el = threadRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [thread, busy]);
 
   function requestClose() {
     if (projectorCloseConfirmEnabled() && hasFollowUps) {
-      setConfirmCloseOpen(true)
-      return
+      setConfirmCloseOpen(true);
+      return;
     }
-    onClose()
+    onClose();
   }
 
   async function runSearch(nextQuery: string) {
-    const q = nextQuery.trim()
-    if (!q) return
-    setBusy('search')
-    setError(null)
-    setSearchStarted(true)
-    setIndexStatus(undefined)
-    setThread([{ id: newId(), kind: 'message', role: 'user', content: q }])
+    const q = nextQuery.trim();
+    if (!q) return;
+    setBusy("search");
+    setError(null);
+    setSearchStarted(true);
+    setIndexStatus(undefined);
+    setThread([{ id: newId(), kind: "message", role: "user", content: q }]);
     try {
-      const userId = auth?.user?.uid || getOrCreateAnonSearchUserId()
-      const res = await requestProjectorSearch({ query: q, mode: 'search', userId })
-      if (res.type !== 'error') setIndexStatus(res.indexStatus)
-      if (res.type === 'error') {
-        setError(res.message)
-        setIndexStatus(res.indexStatus)
-        return
+      const userId = auth?.user?.uid || getOrCreateAnonSearchUserId();
+      const res = await requestProjectorSearch({
+        query: q,
+        mode: "search",
+        userId,
+      });
+      if (res.type !== "error") setIndexStatus(res.indexStatus);
+      if (res.type === "error") {
+        setError(res.message);
+        setIndexStatus(res.indexStatus);
+        return;
       }
-      setThread((prev) => [...prev, ...threadFromResult(res)])
+      setThread((prev) => [...prev, ...threadFromResult(res)]);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Search failed.'
-      setError(message)
+      const message = e instanceof Error ? e.message : "Search failed.";
+      setError(message);
     } finally {
-      setBusy(null)
+      setBusy(null);
     }
   }
 
   async function runFollowUp() {
-    const q = followUp.trim()
-    if (!q) return
-    setBusy('followup')
-    setError(null)
-    const userItem: ThreadItem = { id: newId(), kind: 'message', role: 'user', content: q }
-    const nextThread = [...thread, userItem]
-    setThread(nextThread)
-    setFollowUp('')
+    const q = followUp.trim();
+    if (!q) return;
+    setBusy("followup");
+    setError(null);
+    const userItem: ThreadItem = {
+      id: newId(),
+      kind: "message",
+      role: "user",
+      content: q,
+    };
+    const nextThread = [...thread, userItem];
+    setThread(nextThread);
+    setFollowUp("");
     try {
-      const userId = auth?.user?.uid || getOrCreateAnonSearchUserId()
+      const userId = auth?.user?.uid || getOrCreateAnonSearchUserId();
       const res = await requestProjectorSearch({
         query: q,
-        mode: 'chat',
+        mode: "chat",
         messages: apiMessagesFromThread(nextThread),
         userId,
-      })
-      if (res.type !== 'error') setIndexStatus(res.indexStatus)
-      if (res.type === 'error') {
-        setError(res.message)
-        setIndexStatus(res.indexStatus)
-        return
+      });
+      if (res.type !== "error") setIndexStatus(res.indexStatus);
+      if (res.type === "error") {
+        setError(res.message);
+        setIndexStatus(res.indexStatus);
+        return;
       }
-      setThread((prev) => [...prev, ...threadFromResult(res)])
+      setThread((prev) => [...prev, ...threadFromResult(res)]);
     } catch (e) {
-      const message = e instanceof Error ? e.message : 'Follow-up failed.'
-      setError(message)
+      const message = e instanceof Error ? e.message : "Follow-up failed.";
+      setError(message);
     } finally {
-      setBusy(null)
+      setBusy(null);
     }
   }
 
@@ -254,7 +300,9 @@ function ProjectorSearchModalInner({
                 <button
                   type="button"
                   className="focus-ring inline-flex items-center justify-center rounded-2xl border border-[var(--paper-border)] p-2"
-                  onClick={() => downloadSearchChat(exportItemsFromThread(thread))}
+                  onClick={() =>
+                    downloadSearchChat(exportItemsFromThread(thread))
+                  }
                   aria-label="Save chat as HTML and log"
                   title="Save chat (.html + .log)"
                 >
@@ -276,9 +324,13 @@ function ProjectorSearchModalInner({
               className="ink-muted flex shrink-0 items-center gap-2 border-b border-[var(--paper-border)] px-5 py-2.5 text-sm"
               role="status"
             >
-              {busy || indexStatus === 'synced' ? (
-                <MaterialIcon name="sync" size={16} className={busy ? 'animate-spin' : undefined} />
-              ) : indexStatus === 'failed' ? (
+              {busy || indexStatus === "synced" ? (
+                <MaterialIcon
+                  name="sync"
+                  size={16}
+                  className={busy ? "animate-spin" : undefined}
+                />
+              ) : indexStatus === "failed" ? (
                 <MaterialIcon name="cloud_off" size={16} />
               ) : (
                 <MaterialIcon name="cloud_done" size={16} />
@@ -292,25 +344,27 @@ function ProjectorSearchModalInner({
               <form
                 className="flex gap-2"
                 onSubmit={(e) => {
-                  e.preventDefault()
-                  void runSearch(query)
+                  e.preventDefault();
+                  void runSearch(query);
                 }}
               >
                 <input
                   className="focus-ring min-w-0 flex-1 rounded-2xl border border-[var(--paper-border)] bg-transparent px-4 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder={isOnline ? "Search or ask…" : "Offline: Search disabled"}
+                  placeholder={
+                    isOnline ? "Search or ask…" : "Offline: Search disabled"
+                  }
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   disabled={Boolean(busy) || !isOnline}
                   aria-label="Search journals"
-                  title={!isOnline ? 'Internet connection required' : undefined}
+                  title={!isOnline ? "Internet connection required" : undefined}
                 />
                 <button
                   type="submit"
                   className="btn-primary focus-ring inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={Boolean(busy) || !query.trim() || !isOnline}
                   aria-label="Run search"
-                  title={!isOnline ? 'Internet connection required' : undefined}
+                  title={!isOnline ? "Internet connection required" : undefined}
                 >
                   <MaterialIcon name="search" size={22} accent={false} />
                 </button>
@@ -318,7 +372,10 @@ function ProjectorSearchModalInner({
             </div>
           ) : null}
 
-          <div ref={threadRef} className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain p-5">
+          <div
+            ref={threadRef}
+            className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overscroll-contain p-5"
+          >
             {error ? (
               <div className="rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm text-[var(--danger)]">
                 {error}
@@ -326,12 +383,12 @@ function ProjectorSearchModalInner({
             ) : null}
 
             {thread.map((item) => {
-              if (item.kind === 'message') {
+              if (item.kind === "message") {
                 return (
                   <ChatBubble key={item.id} role={item.role}>
                     {item.content}
                   </ChatBubble>
-                )
+                );
               }
               if (item.entries.length > 2) {
                 return (
@@ -340,7 +397,7 @@ function ProjectorSearchModalInner({
                     entries={item.entries}
                     onSelect={(entry) => setSelected(entry)}
                   />
-                )
+                );
               } else {
                 return (
                   <div key={item.id} className="grid gap-3">
@@ -352,7 +409,7 @@ function ProjectorSearchModalInner({
                       />
                     ))}
                   </div>
-                )
+                );
               }
             })}
           </div>
@@ -362,25 +419,29 @@ function ProjectorSearchModalInner({
               <form
                 className="flex gap-2"
                 onSubmit={(e) => {
-                  e.preventDefault()
-                  void runFollowUp()
+                  e.preventDefault();
+                  void runFollowUp();
                 }}
               >
                 <input
                   className="focus-ring min-w-0 flex-1 rounded-full border border-[var(--paper-border)] bg-transparent px-4 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder={isOnline ? "Ask a follow-up…" : "Offline: Follow-up disabled"}
+                  placeholder={
+                    isOnline
+                      ? "Ask a follow-up…"
+                      : "Offline: Follow-up disabled"
+                  }
                   value={followUp}
                   onChange={(e) => setFollowUp(e.target.value)}
                   disabled={Boolean(busy) || !isOnline}
                   aria-label="Follow-up question"
-                  title={!isOnline ? 'Internet connection required' : undefined}
+                  title={!isOnline ? "Internet connection required" : undefined}
                 />
                 <button
                   type="submit"
                   className="btn-primary focus-ring inline-flex items-center justify-center rounded-full px-3.5 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                   disabled={Boolean(busy) || !followUp.trim() || !isOnline}
                   aria-label="Send follow-up"
-                  title={!isOnline ? 'Internet connection required' : undefined}
+                  title={!isOnline ? "Internet connection required" : undefined}
                 >
                   <MaterialIcon name="send" size={18} accent={false} />
                 </button>
@@ -406,8 +467,8 @@ function ProjectorSearchModalInner({
               >
                 <div className="font-paper text-xl">Close this search?</div>
                 <p className="ink-muted mt-2 text-sm leading-relaxed">
-                  Are you sure you wish to close this search? It contains follow-up messages that will
-                  be lost.
+                  Are you sure you wish to close this search? It contains
+                  follow-up messages that will be lost.
                 </p>
                 <div className="mt-5 flex flex-wrap justify-end gap-2">
                   <button
@@ -448,9 +509,12 @@ function ProjectorSearchModalInner({
                 <div className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--paper-border)] p-6 pb-4">
                   <div>
                     <div className="font-paper text-2xl">
-                      Slide preview <span className="font-mono">[{selected.sentiment}]</span>
+                      Slide preview{" "}
+                      <span className="font-mono">[{selected.sentiment}]</span>
                     </div>
-                    <div className="ink-muted mt-1 text-sm">{selected.dateKey}</div>
+                    <div className="ink-muted mt-1 text-sm">
+                      {selected.dateKey}
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -469,5 +533,5 @@ function ProjectorSearchModalInner({
         </AnimatePresence>
       </motion.div>
     </AnimatePresence>
-  )
+  );
 }
