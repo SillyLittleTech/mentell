@@ -508,7 +508,12 @@ html[data-reduced-motion="true"] .streak-focus-dim {
   background: linear-gradient(
     180deg,
     var(--hbcm-tile-b, rgba(160, 160, 170, 0.08)) 0%,
-    color-mix(in srgb, var(--hbcm-tile-a, rgba(120, 120, 130, 0.12)) 82%, rgba(0, 0, 0, 0.08) 18%) 100%
+    color-mix(
+        in srgb,
+        var(--hbcm-tile-a, rgba(120, 120, 130, 0.12)) 82%,
+        rgba(0, 0, 0, 0.08) 18%
+      )
+      100%
   );
   transform-origin: center bottom;
   border-radius: 52% 48% 0 0 / 20% 18% 0 0;
