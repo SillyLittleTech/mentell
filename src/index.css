@@ -478,18 +478,40 @@ html[data-reduced-motion="true"] .streak-focus-dim {
 }
 
 .hbcm-liq-wave {
-  animation: hbcm-liq-wave-x 2.6s ease-in-out infinite;
+  animation: hbcm-liq-wave-x 1.35s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+.hbcm-liq-wave--shimmer {
+  animation: hbcm-liq-wave-shimmer 1.05s ease-in-out infinite;
+  animation-delay: -0.35s;
+  transform-origin: center center;
 }
 
 @keyframes hbcm-liq-wave-x {
   0% {
-    transform: translateX(-4px);
+    transform: translate(-9px, 1px) skewX(-2deg);
   }
-  50% {
-    transform: translateX(4px);
+  33% {
+    transform: translate(7px, -2px) skewX(1.5deg);
+  }
+  66% {
+    transform: translate(-3px, 2px) skewX(-1deg);
   }
   100% {
-    transform: translateX(-4px);
+    transform: translate(-9px, 1px) skewX(-2deg);
+  }
+}
+
+@keyframes hbcm-liq-wave-shimmer {
+  0%,
+  100% {
+    transform: translateX(-6px) scaleX(0.92);
+    opacity: 0.55;
+  }
+  50% {
+    transform: translateX(8px) scaleX(1.08);
+    opacity: 1;
   }
 }
 

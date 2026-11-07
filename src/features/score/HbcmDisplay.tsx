@@ -3,18 +3,19 @@ import { shouldReduceMotion } from "../../shared/motion/useMotionPrefs";
 import { MaterialIcon } from "../../components/MaterialIcon";
 
 /** Documents `fillRatio` in this module. */
+/** Liquid height inside the digit — even steps; only 0 stays empty. */
 function fillRatio(display: number): number {
   switch (display) {
     case 5:
-      return 0.88;
+      return 0.96;
     case 4:
-      return 0.72;
+      return 0.76;
     case 3:
-      return 0.5;
+      return 0.56;
     case 2:
-      return 0.26;
+      return 0.38;
     case 1:
-      return 0.11;
+      return 0.22;
     default:
       return 0;
   }
@@ -24,9 +25,9 @@ function fillRatio(display: number): number {
 function liquidGradient(display: number) {
   switch (display) {
     case 5:
-      return { a: "rgb(34,165,95)", b: "rgb(130,225,160)" };
+      return { a: "rgb(18,150,78)", b: "rgb(95,235,155)" };
     case 4:
-      return { a: "rgb(42,155,88)", b: "rgb(205,215,85)" };
+      return { a: "rgb(95,140,42)", b: "rgb(225,210,70)" };
     case 3:
       return { a: "rgb(200,190,65)", b: "rgb(235,215,95)" };
     case 2:
@@ -76,8 +77,9 @@ export function HbcmDisplay({
     .filter(Boolean)
     .join(" ");
 
-  const liqH = Math.max(0, svgH * fill * 1.08);
-  const liqY = svgH - liqH + 1;
+  const liqH = Math.max(0, svgH * fill * 1.14);
+  const liqY = svgH - liqH + 0.5;
+  const surfaceY = liqY;
 
   const iconSize = variant === "chip" ? 18 : 20;
 
@@ -123,22 +125,35 @@ export function HbcmDisplay({
           {/* Liquid fills the glyph from below; clipped to digit shape */}
           <g clipPath={`url(#${liquidClipId})`}>
             {display > 0 ? (
-              <g className={reduced ? undefined : "hbcm-liq-wave"}>
-                <rect
-                  x="-15%"
-                  y={liqY}
-                  width="130%"
-                  height={liqH + 4}
-                  fill={`url(#${gradId})`}
-                />
-                <ellipse
-                  cx={svgW * 0.52}
-                  cy={liqY}
-                  rx={svgW * 0.55}
-                  ry={svgH * 0.045}
-                  fill="rgba(255,255,255,0.22)"
-                />
-              </g>
+              <>
+                <g className={reduced ? undefined : "hbcm-liq-wave"}>
+                  <rect
+                    x="-25%"
+                    y={liqY - 2}
+                    width="150%"
+                    height={liqH + 8}
+                    fill={`url(#${gradId})`}
+                  />
+                  <ellipse
+                    cx={svgW * 0.52}
+                    cy={surfaceY}
+                    rx={svgW * 0.62}
+                    ry={svgH * 0.07}
+                    fill="rgba(255,255,255,0.28)"
+                  />
+                </g>
+                {!reduced ? (
+                  <g className="hbcm-liq-wave hbcm-liq-wave--shimmer">
+                    <ellipse
+                      cx={svgW * 0.48}
+                      cy={surfaceY + 1.5}
+                      rx={svgW * 0.35}
+                      ry={svgH * 0.04}
+                      fill="rgba(255,255,255,0.35)"
+                    />
+                  </g>
+                ) : null}
+              </>
             ) : (
               <rect
                 x="0"
