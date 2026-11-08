@@ -9,17 +9,10 @@ import {
   type WeekCursor,
   type WeeklyStats,
 } from "./weeklyStats";
-import { getDb, type EntryRow } from "../../db/schema";
+import type { EntryRow } from "../../db/schema";
 import { getScoreSnapshot } from "../score/scoreService";
-import { HbcmDisplay } from "../score/HbcmDisplay";
+import { StreakDisplay } from "../score/StreakDisplay";
 import { SCORE_CHANGED_EVENT } from "../score/scoreEvents";
-import { FeelingsOverTimeChart } from "./FeelingsOverTimeChart";
-import {
-  getFeelingsOverTimeSeries,
-  type FeelingsRange,
-  type FeelingPoint,
-} from "./feelingsOverTimeData";
-import { ignorePromise } from "../../shared/promise/ignorePromise";
 import { useBodyScrollLock } from "../../shared/motion/useBodyScrollLock";
 import {
   motionDuration,
@@ -37,7 +30,6 @@ import {
 import { loadAiProfile, profileFingerprint, type AiProfile } from "./aiProfile";
 import { clearWeeklyAiCache, getCachedWeeklySummary } from "./weeklyAiCache";
 import { OfflineDeviceSyncSection } from "../settings/OfflineDeviceSyncSection";
-import { LOCAL_DATA_CHANGED_EVENT } from "../../shared/sync/localDataEvents";
 import { WeeklyAiSettings, WeeklyAiSettingsButton } from "./WeeklyAiSettings";
 import {
   buildRawReportHtml,
@@ -60,7 +52,6 @@ import {
   type ProjectorDebugDetail,
 } from "../debug/projectorDebug";
 
-/** Documents `profileActiveHint` in this module. */
 function profileActiveHint(profile: AiProfile) {
   if (profile.about.trim()) {
     const snippet = profile.about.trim().slice(0, 60);
@@ -72,7 +63,6 @@ function profileActiveHint(profile: AiProfile) {
   return null;
 }
 
-/** Public type `OlderWeekBatch` for Mentell 2.x. */
 export type OlderWeekBatch = {
   weekKey: string;
   startDateKey: string;
@@ -80,7 +70,6 @@ export type OlderWeekBatch = {
   entries: EntryRow[];
 };
 
-/** `WeeklyProjector` — see module for behavior. */
 export function WeeklyProjector() {
   const todayKey = useMemo(() => dateKeyForLocalDay(new Date()), []);
   const [stats, setStats] = useState<WeeklyStats | null>(null);
@@ -105,12 +94,6 @@ export function WeeklyProjector() {
   const [paginationCursor, setPaginationCursor] = useState<WeekCursor>(null);
   const [hasMoreWeeks, setHasMoreWeeks] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [feelingsRange, setFeelingsRange] = useState<FeelingsRange>("week");
-  const [feelingsPoints, setFeelingsPoints] = useState<FeelingPoint[]>([]);
-  const [chartEntryCache, setChartEntryCache] = useState<Map<string, EntryRow>>(
-    () => new Map(),
-  );
-  const feelingsTitleId = "feelings-over-time-heading";
   const aiEnabled = weeklyAiSummaryEnabled();
   const searchEnabled = projectorSearchEnabled();
   const isOnline = useOnlineStatus();
@@ -183,8 +166,8 @@ export function WeeklyProjector() {
       }
     };
 
-    ignorePromise(refresh());
-    const id = window.setInterval(() => ignorePromise(refresh()), 2000);
+    refresh();
+    const id = window.setInterval(refresh, 2000);
     return () => {
       active = false;
       window.clearInterval(id);
@@ -196,25 +179,6 @@ export function WeeklyProjector() {
     window.addEventListener(SCORE_CHANGED_EVENT, onScore);
     return () => window.removeEventListener(SCORE_CHANGED_EVENT, onScore);
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    const refresh = async () => {
-      try {
-        const { points } = await getFeelingsOverTimeSeries(feelingsRange);
-        if (!cancelled) setFeelingsPoints(points);
-      } catch {
-        if (!cancelled) setFeelingsPoints([]);
-      }
-    };
-    ignorePromise(refresh());
-    const onData = () => ignorePromise(refresh());
-    window.addEventListener(LOCAL_DATA_CHANGED_EVENT, onData);
-    return () => {
-      cancelled = true;
-      window.removeEventListener(LOCAL_DATA_CHANGED_EVENT, onData);
-    };
-  }, [feelingsRange]);
 
   // Reset older weeks when primary week changes
   // (handled via olderAnchorWeek mismatch — no effect needed)
@@ -229,35 +193,10 @@ export function WeeklyProjector() {
   }, [stats, visibleOlderWeeks]);
 
   const selected = selectedId
-    ? (allEntriesForPreview.get(selectedId) ??
-      chartEntryCache.get(selectedId) ??
-      null)
+    ? (allEntriesForPreview.get(selectedId) ?? null)
     : null;
-  useBodyScrollLock(Boolean(selected));
+  useBodyScrollLock(Boolean(selected && delivered));
 
-  const openChartPoint = useCallback(
-    async (point: FeelingPoint) => {
-      if (!point.entryId) return;
-      const known =
-        allEntriesForPreview.get(point.entryId) ??
-        chartEntryCache.get(point.entryId);
-      if (known) {
-        setSelectedId(point.entryId);
-        return;
-      }
-      const row = await getDb().entries.get(point.entryId);
-      if (!row) return;
-      setChartEntryCache((prev) => {
-        const next = new Map(prev);
-        next.set(row.id, row);
-        return next;
-      });
-      setSelectedId(row.id);
-    },
-    [allEntriesForPreview, chartEntryCache],
-  );
-
-  /** Documents `handleGenerate` in this module. */
   async function handleGenerate() {
     if (!stats) return;
     setSummaryBusy(true);
@@ -281,7 +220,6 @@ export function WeeklyProjector() {
     }
   }
 
-  /** Documents `handleRawDownload` in this module. */
   async function handleRawDownload() {
     setRawBusy(true);
     try {
@@ -305,7 +243,6 @@ export function WeeklyProjector() {
     }
   }
 
-  /** Documents `handleShowMore` in this module. */
   async function handleShowMore() {
     if (!stats || loadingMore || !hasMoreWeeks) return;
     const cursorForWeek =
@@ -376,47 +313,10 @@ export function WeeklyProjector() {
           <ProjectorCard title="Entries logged" value={stats.total} />
           <ProjectorCard title="Warnings flagged" value={stats.warnings} />
           <ProjectorCard title="Current score" value={score.total} />
-          <div className="paper flex flex-col justify-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 sm:gap-3">
-            <div className="ink-muted text-xs sm:text-sm">Consistency heat</div>
-            <HbcmDisplay
-              hbcmDisplay={score.hbcmDisplay}
-              logStreak={score.logStreak}
-              variant="inline"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="paper rounded-3xl p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div id={feelingsTitleId} className="font-paper text-xl">
-            Feelings over time
-          </div>
-          <select
-            className="focus-ring rounded-2xl border border-[var(--paper-border)] bg-transparent px-3 py-2 text-sm"
-            aria-label="Feelings chart range"
-            value={feelingsRange}
-            onChange={(e) => setFeelingsRange(e.target.value as FeelingsRange)}
-          >
-            <option value="week">This week</option>
-            <option value="month">This month</option>
-            <option value="year">This year</option>
-            <option value="all">All time</option>
-          </select>
-        </div>
-        <p className="ink-muted mt-1 text-sm">
-          Plot entries in order: difficult days in red, steady or mixed in
-          yellow, brighter days in green, quiet gaps in black, and empty days in
-          white — with soft blends between points. Quick logs shape the line but
-          stay out of journal search.
-        </p>
-        <div className="mt-4">
-          <FeelingsOverTimeChart
-            points={feelingsPoints}
-            titleId={feelingsTitleId}
-            onPointClick={(p) => {
-              ignorePromise(openChartPoint(p));
-            }}
+          <StreakDisplay
+            streak={score.streak}
+            variant="card"
+            reducedMotion={shouldReduceMotion()}
           />
         </div>
       </div>
@@ -684,16 +584,16 @@ export function WeeklyProjector() {
       </div>
 
       <AnimatePresence>
-        {selected ? (
+        {selected && delivered ? (
           <motion.div
-            className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 p-4 sm:p-6"
+            className="fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-black/35 p-4 sm:p-6"
             initial={shouldReduceMotion() ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={shouldReduceMotion() ? undefined : { opacity: 0 }}
             onClick={() => setSelectedId(null)}
           >
             <motion.div
-              className="paper flex max-h-[min(90dvh,42rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl"
+              className="paper my-auto flex max-h-[min(90dvh,42rem)] w-full max-w-2xl flex-col overflow-hidden rounded-3xl"
               initial={shouldReduceMotion() ? false : { scale: 0.96, y: 18 }}
               animate={{ scale: 1, y: 0 }}
               exit={shouldReduceMotion() ? undefined : { scale: 0.98, y: 10 }}
@@ -731,7 +631,6 @@ export function WeeklyProjector() {
   );
 }
 
-/** Documents `ModeToggle` in this module. */
 function ModeToggle({
   mode,
   onChange,
@@ -763,7 +662,6 @@ function ModeToggle({
   );
 }
 
-/** Documents `StatChip` in this module. */
 function StatChip({
   label,
   children,
@@ -779,7 +677,6 @@ function StatChip({
   );
 }
 
-/** Documents `ProjectorCard` in this module. */
 function ProjectorCard({ title, value }: { title: string; value: number }) {
   return (
     <div className="rounded-3xl border border-[var(--paper-border)] p-4 sm:p-5">

@@ -10,7 +10,7 @@ import {
 } from "./features/score/scoreService";
 import { waitForSync } from "./shared/sync/syncService";
 import { upsertEntryFromDraft } from "./features/entries/entryService";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { WeeklyProjector } from "./features/compilation/WeeklyProjector";
 import { PackageAlert } from "./features/packages/PackageAlert";
 import { Notepad } from "./features/notes/Notepad";
@@ -35,6 +35,7 @@ import { publicUrl } from "./shared/publicUrl";
 import { SCORE_CHANGED_EVENT } from "./features/score/scoreEvents";
 import { ShareDashboardPage } from "./features/share/ShareDashboardPage";
 import { CryptSharePage } from "./features/share/CryptSharePage";
+import { SyncOnboardingBanner } from "./features/settings/SyncOnboardingBanner";
 import { VerifyEmailPage } from "./features/settings/VerifyEmailPage";
 import { AppLegalFooter } from "./components/AppLegalFooter";
 import { PrivacyPolicyPage } from "./features/legal/PrivacyPolicyPage";
@@ -63,24 +64,28 @@ import {
   requestProjectorSearch,
 } from "./features/compilation/projectorSearch";
 import { emitBackgroundActivity } from "./shared/backgroundActivity";
+import { scrollToTop } from "./shared/motion/scroll";
+import { motionDuration } from "./shared/motion/useMotionPrefs";
 import { SidebarNav } from "./components/shell/SidebarNav";
 import { BottomNav } from "./components/shell/BottomNav";
 import { RightRail } from "./components/shell/RightRail";
 import { DeskSpotlight } from "./components/shell/DeskSpotlight";
 import { ThemeToggleButton } from "./components/ThemeToggleButton";
 import { HomeGreeting } from "./features/home/HomeGreeting";
-import { ComposerLockShell } from "./features/compose/ComposerLockShell";
-import { QuickLogComposer } from "./features/compose/QuickLogComposer";
-import { CelebrationLayer } from "./features/celebrations/CelebrationLayer";
-import { runAfterJournalSubmit } from "./features/celebrations/clusterCelebration";
-import { ignorePromise } from "./shared/promise/ignorePromise";
-import { MaterialIcon } from "./components/MaterialIcon";
 
+type StreakOutcomeAnimation =
+  | { kind: "break"; key: number; from: number }
+  | {
+      kind: "freeze";
+      key: number;
+      previousFreezes: number;
+      nextFreezes: number;
+    };
 type ScoreChangeOptions = {
   deferOverlay?: boolean;
+  streakOutcome?: StreakOutcomeAnimation;
 };
 
-/** Documents `App` in this module. */
 function App() {
   const location = useLocation();
   const shareRouteActive = location.pathname.startsWith("/share/");
@@ -90,7 +95,12 @@ function App() {
   const [pendingOverlay, setPendingOverlay] = useState<{
     delta: number;
     hint: string | null;
+    streakOutcome?: StreakOutcomeAnimation;
   } | null>(null);
+  const [streakOutcome, setStreakOutcome] =
+    useState<StreakOutcomeAnimation | null>(null);
+  const [streakFocusActive, setStreakFocusActive] = useState(false);
+  const streakOutcomeTimer = useRef<number | null>(null);
 
   useEffect(() => {
     void runPackageDeliveryAndNotify();
@@ -138,6 +148,23 @@ function App() {
     return () => window.removeEventListener(SCORE_CHANGED_EVENT, refresh);
   }, []);
 
+  useEffect(() => {
+    if (!streakOutcome) return;
+    const timeout = window.setTimeout(() => {
+      setStreakOutcome(null);
+      setStreakFocusActive(false);
+    }, 1500);
+    return () => window.clearTimeout(timeout);
+  }, [streakOutcome]);
+
+  useEffect(() => {
+    return () => {
+      if (streakOutcomeTimer.current !== null) {
+        window.clearTimeout(streakOutcomeTimer.current);
+      }
+    };
+  }, []);
+
   const handleScoreChange = (
     delta: number,
     hint: string | null,
@@ -146,8 +173,11 @@ function App() {
     setScore(getScoreSnapshot());
     if (delta === 0) return;
     if (options?.deferOverlay) {
-      setPendingOverlay({ delta, hint });
+      setPendingOverlay({ delta, hint, streakOutcome: options.streakOutcome });
       return;
+    }
+    if (options?.streakOutcome) {
+      setStreakOutcome(options.streakOutcome);
     }
     setIncomingDelta(delta);
     setIncomingHint(hint);
@@ -156,6 +186,22 @@ function App() {
   const showPendingScoreOverlay = () => {
     if (!pendingOverlay) return;
     const nextOverlay = pendingOverlay;
+    if (nextOverlay.streakOutcome) {
+      if (streakOutcomeTimer.current !== null) {
+        window.clearTimeout(streakOutcomeTimer.current);
+      }
+      scrollToTop();
+      setStreakFocusActive(true);
+      const delay = motionDuration(420) || 0;
+      streakOutcomeTimer.current = window.setTimeout(() => {
+        setStreakOutcome(nextOverlay.streakOutcome ?? null);
+        setIncomingDelta(nextOverlay.delta);
+        setIncomingHint(nextOverlay.hint);
+        streakOutcomeTimer.current = null;
+      }, delay);
+      setPendingOverlay(null);
+      return;
+    }
     setIncomingDelta(nextOverlay.delta);
     setIncomingHint(nextOverlay.hint);
     setPendingOverlay(null);
@@ -230,10 +276,16 @@ function App() {
               <TopBar
                 score={score}
                 incomingHint={incomingHint}
+                streakOutcome={streakOutcome}
+                focusActive={streakFocusActive}
                 onPackageAward={handleScoreChange}
               />
 
-              <main className="relative mt-6 w-full max-w-4xl overflow-visible">
+              <main
+                className={`relative mt-6 w-full max-w-4xl overflow-visible ${
+                  streakFocusActive ? "streak-focus-dim" : ""
+                }`}
+              >
                 <AnimatedRoutes>
                   <Route
                     path="/"
@@ -289,7 +341,7 @@ function App() {
         {!shareRouteActive ? <BottomNav /> : null}
         {!shareRouteActive ? (
           <>
-            <div>
+            <div className={streakFocusActive ? "streak-focus-dim" : ""}>
               <AppLegalFooter />
             </div>
             <AnimatePresence>
@@ -303,7 +355,6 @@ function App() {
                 />
               ) : null}
             </AnimatePresence>
-            <CelebrationLayer />
             <DebugPanel />
           </>
         ) : null}
@@ -312,14 +363,17 @@ function App() {
   );
 }
 
-/** Documents `TopBar` in this module. */
 function TopBar({
   score,
   incomingHint,
+  streakOutcome,
+  focusActive,
   onPackageAward,
 }: {
   score: ReturnType<typeof getScoreSnapshot>;
   incomingHint: string | null;
+  streakOutcome: StreakOutcomeAnimation | null;
+  focusActive: boolean;
   onPackageAward: (delta: number, hint: string | null) => void;
 }) {
   const { mode, toggle } = useTheme();
@@ -327,117 +381,106 @@ function TopBar({
   const location = useLocation();
   const onHome = location.pathname === "/";
   const pageContext = location.pathname.split("/")[1] || "home";
-  const scoreTicker = (
-    <ScoreTicker
-      total={score.total}
-      hbcmDisplay={score.hbcmDisplay}
-      logStreak={score.logStreak}
-      hbcmPulse={Boolean(
-        incomingHint?.toLowerCase().includes("consistency heat"),
-      )}
-      hint={incomingHint}
-    />
-  );
 
   return (
-    <header className="w-full space-y-3 overflow-visible">
-      <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-start">
-        <div className="flex min-w-0 flex-wrap items-start gap-3">
-          <div className="relative z-0 hidden min-h-[5rem] min-w-0 flex-1 items-center overflow-visible md:flex">
-            <HomeGreeting
-              variant="desktop"
-              autoPlay={onHome}
-              context={pageContext}
-            />
-          </div>
-          <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3 md:hidden">
-            <img
-              alt=""
-              src={publicUrl("/asset/mentell-icon.png")}
-              className="h-10 w-10 shrink-0 select-none object-contain"
-              draggable={false}
-            />
-            <div className="min-w-0">
-              <div className="font-paper text-2xl tracking-tight truncate">
-                Mentell
-              </div>
-              <div className="ink-muted text-sm truncate">
-                local-first stationery journal
+    <>
+      <header
+        className={`w-full space-y-3 overflow-visible ${focusActive ? "streak-focus-target" : ""}`}
+      >
+        <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-start">
+          <div className="flex min-w-0 flex-wrap items-start gap-3">
+            <div className="relative z-0 hidden min-h-[5rem] min-w-0 flex-1 items-center overflow-visible md:flex">
+              <HomeGreeting
+                variant="desktop"
+                autoPlay={onHome}
+                context={pageContext}
+              />
+            </div>
+            <div className="paper flex items-center gap-3 rounded-2xl px-4 py-3 md:hidden">
+              <img
+                alt=""
+                src={publicUrl("/asset/mentell-icon.png")}
+                className="h-10 w-10 shrink-0 select-none object-contain"
+                draggable={false}
+              />
+              <div className="min-w-0">
+                <div className="font-paper text-2xl tracking-tight truncate">
+                  Mentell
+                </div>
+                <div className="ink-muted text-sm truncate">
+                  local-first stationery journal
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <div className="relative z-10 hidden min-h-[5rem] items-center justify-center md:flex md:justify-self-center">
-          <PackageAlert onAward={onPackageAward} placement="inline" size="lg" />
-        </div>
+          <div className="relative z-10 hidden min-h-[5rem] items-center justify-center md:flex md:justify-self-center">
+            <PackageAlert
+              onAward={onPackageAward}
+              placement="inline"
+              size="lg"
+            />
+          </div>
 
-        <div className="flex items-start justify-between gap-3 md:justify-end md:justify-self-end">
-          <TopBarMobileControls
-            disablePoints={settings.disablePoints}
-            scoreTicker={scoreTicker}
-            onPackageAward={onPackageAward}
-            mode={mode}
-            onToggleTheme={toggle}
-          />
+          <div className="flex items-start justify-between gap-3 md:justify-end md:justify-self-end">
+            <div className="grid flex-1 grid-cols-[1fr_auto] items-center gap-3 md:hidden">
+              {!settings.disablePoints ? (
+                <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
+                  <ScoreTicker
+                    total={score.total}
+                    streak={score.streak}
+                    streakFreezes={score.streakFreezes}
+                    hint={incomingHint}
+                    streakOutcome={streakOutcome}
+                  />
+                  <MobileHeaderMascot />
+                </div>
+              ) : (
+                <div className="paper flex items-center rounded-2xl px-2 py-1">
+                  <MobileHeaderMascot />
+                </div>
+              )}
+              <AccountButton />
+              <div className="flex min-h-[3rem] items-center justify-between gap-3">
+                <Link
+                  to="/feedback"
+                  className="paper focus-ring flex h-11 w-11 items-center justify-center rounded-full transition"
+                  aria-label="Open feedback form"
+                  title="Feedback form"
+                >
+                  <SpeechBubbleIcon className="h-5 w-5" />
+                </Link>
+                <PackageAlert
+                  onAward={onPackageAward}
+                  placement="inline"
+                  size="sm"
+                />
+              </div>
+              <ThemeToggleButton
+                mode={mode}
+                onToggle={toggle}
+                className="rounded-full"
+              />
+            </div>
 
-          <div className="hidden md:flex">
-            {!settings.disablePoints ? scoreTicker : null}
+            <div className="hidden md:flex">
+              {!settings.disablePoints ? (
+                <ScoreTicker
+                  total={score.total}
+                  streak={score.streak}
+                  streakFreezes={score.streakFreezes}
+                  hint={incomingHint}
+                  streakOutcome={streakOutcome}
+                />
+              ) : null}
+            </div>
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   );
 }
 
-/** Documents `TopBarMobileControls` in this module. */
-function TopBarMobileControls({
-  disablePoints,
-  scoreTicker,
-  onPackageAward,
-  mode,
-  onToggleTheme,
-}: {
-  disablePoints: boolean;
-  scoreTicker: React.ReactNode;
-  onPackageAward: (delta: number, hint: string | null) => void;
-  mode: "light" | "dark";
-  onToggleTheme: () => void;
-}) {
-  return (
-    <div className="grid flex-1 grid-cols-[1fr_auto] items-center gap-3 md:hidden">
-      {!disablePoints ? (
-        <div className="paper flex flex-wrap items-center gap-2 rounded-2xl px-3 py-2">
-          {scoreTicker}
-          <MobileHeaderMascot />
-        </div>
-      ) : (
-        <div className="paper flex items-center rounded-2xl px-2 py-1">
-          <MobileHeaderMascot />
-        </div>
-      )}
-      <AccountButton />
-      <div className="flex min-h-[3rem] items-center justify-between gap-3">
-        <Link
-          to="/feedback"
-          className="paper focus-ring flex h-11 w-11 items-center justify-center rounded-full transition"
-          aria-label="Open feedback form"
-          title="Feedback form"
-        >
-          <SpeechBubbleIcon className="h-5 w-5" />
-        </Link>
-        <PackageAlert onAward={onPackageAward} placement="inline" size="sm" />
-      </div>
-      <ThemeToggleButton
-        mode={mode}
-        onToggle={onToggleTheme}
-        className="rounded-full"
-      />
-    </div>
-  );
-}
-
-/** Documents `PaperSection` in this module. */
 function PaperSection({
   title,
   subtitle,
@@ -456,7 +499,6 @@ function PaperSection({
   );
 }
 
-/** Documents `HomePlaceholder` in this module. */
 function HomePlaceholder({
   onScoreChange,
   onSubmitAnimationDone,
@@ -468,9 +510,6 @@ function HomePlaceholder({
   ) => void;
   onSubmitAnimationDone: () => void;
 }) {
-  const [composeMode, setComposeMode] = useState<"select" | "quick" | "entry">(
-    "select",
-  );
   const [submitting, setSubmitting] = useState(false);
   const [shakeBanner, setShakeBanner] = useState(0);
   const { settings } = useAppSettings();
@@ -481,7 +520,6 @@ function HomePlaceholder({
     !auth?.user &&
     !settings.syncPromptDismissed;
 
-  /** Documents `onBlockedComposerInteraction` in this module. */
   function onBlockedComposerInteraction() {
     if (composerLocked) setShakeBanner((k) => k + 1);
   }
@@ -490,201 +528,107 @@ function HomePlaceholder({
     <PaperSection
       title={
         <>
-          <span className="hidden md:inline">Log today</span>
+          <span className="hidden md:inline">Draft a letter</span>
           <span className="md:hidden">
-            <HomeGreeting variant="mobile" fallback="Log today" />
+            <HomeGreeting variant="mobile" fallback="Draft a letter" />
           </span>
         </>
       }
-      subtitle="Choose a quick sentiment log or a full letter entry."
+      subtitle="Draft it like stationery — then review and submit."
     >
       <DeskCharacterLayout>
-        <ComposerLockShell
-          locked={composerLocked}
-          shakeKey={shakeBanner}
-          onBlockedInteraction={onBlockedComposerInteraction}
+        <div
+          className="relative"
+          onPointerDownCapture={
+            composerLocked ? onBlockedComposerInteraction : undefined
+          }
         >
-          {composeMode !== "select" ? (
-            <div className="mb-4">
-              <button
-                type="button"
-                className="focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold"
-                onClick={() => setComposeMode("select")}
-              >
-                <MaterialIcon name="arrow_back" accent={false} size={18} />
-                Back
-              </button>
+          {composerLocked ? (
+            <div className="absolute inset-x-0 top-32 z-20 sm:top-36">
+              <SyncOnboardingBanner shakeKey={shakeBanner} mode="overlay" />
             </div>
           ) : null}
-
-          {composeMode === "select" ? (
+          {composerLocked ? (
             <div
-              className={`grid gap-4 md:grid-cols-2 ${composerLocked ? "opacity-50" : ""}`}
-            >
-              <button
-                type="button"
-                className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
-                onClick={() => setComposeMode("quick")}
-              >
-                <div className="flex items-center gap-3">
-                  <MaterialIcon name="schedule" accent={false} size={28} />
-                  <div className="font-paper text-xl">Quick log</div>
-                </div>
-                <p className="ink-muted mt-2 text-sm">
-                  Sentiment only, optional short note — fast check-in.
-                </p>
-              </button>
-              <button
-                type="button"
-                className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
-                onClick={() => setComposeMode("entry")}
-              >
-                <div className="flex items-center gap-3">
-                  <MaterialIcon name="edit_note" accent={false} size={28} />
-                  <div className="font-paper text-xl">Entry</div>
-                </div>
-                <p className="ink-muted mt-2 text-sm">
-                  Full letter flow — same as before, with review and AI search
-                  indexing.
-                </p>
-              </button>
-            </div>
-          ) : null}
-
-          {composeMode === "quick" ? (
-            <QuickLogComposer
-              disabled={composerLocked}
-              onSubmit={async (draft) => {
-                await waitForSync();
-                const submitDateKey = dateKeyForLocalDay(new Date());
-                const award = await awardForSubmission(submitDateKey);
-                const row = await upsertEntryFromDraft({
-                  dateKey: submitDateKey,
-                  entryType: "quick_log",
-                  sentiment: draft.sentiment,
-                  emotion: draft.emotion,
-                  emotionNote: "",
-                  situation: "Quick log",
-                  details: "",
-                  behavioursNoted: "",
-                  reoccurringTheme: "",
-                  quickLogNote: draft.quickLogNote,
-                  flaggedTerms: draft.flaggedTerms,
-                  warningLevel: draft.warningLevel,
-                  riskScore: draft.riskScore,
-                  interventionScore: draft.interventionScore,
-                  riskLevel: draft.riskLevel,
-                  scoreDelta: award.totalDelta,
-                  streakAtSubmit: 0,
-                  hbcmAtSubmit: award.hbcmDisplay,
-                });
-                await runPackageDeliveryAndNotify();
-                emitBackgroundActivity({
-                  type: "start",
-                  id: "sync",
-                  message: "Syncing to cloud...",
-                });
-                ignorePromise(
-                  pushLocalChangesNow().finally(() => {
-                    emitBackgroundActivity({
-                      type: "stop",
-                      id: "sync",
-                      message: "",
-                    });
-                  }),
-                );
-                runAfterJournalSubmit(award);
-                onScoreChange(award.totalDelta, award.hint, {
-                  deferOverlay: true,
-                });
-                setSubmitting(true);
-                return row.id;
-              }}
+              className="absolute inset-0 z-10 cursor-not-allowed"
+              aria-hidden
+              onFocus={onBlockedComposerInteraction}
             />
           ) : null}
+          <LetterComposer
+            disabled={composerLocked}
+            onSubmit={async (drafts) => {
+              await waitForSync();
+              const submitDateKey = dateKeyForLocalDay(new Date());
+              const award = await awardForSubmission(submitDateKey);
 
-          {composeMode === "entry" ? (
-            <LetterComposer
-              disabled={composerLocked}
-              onSubmit={async (drafts) => {
-                await waitForSync();
-                const submitDateKey = dateKeyForLocalDay(new Date());
-                const award = await awardForSubmission(submitDateKey);
+              await Promise.all(
+                drafts.map((draft) =>
+                  upsertEntryFromDraft({
+                    ...draft,
+                    dateKey: draft.dateKey,
+                    scoreDelta: award.totalDelta,
+                    streakAtSubmit: award.nextStreak,
+                  }),
+                ),
+              );
 
-                await Promise.all(
-                  drafts.map((draft) =>
-                    upsertEntryFromDraft({
-                      ...draft,
-                      entryType: "entry",
-                      dateKey: draft.dateKey,
-                      scoreDelta: award.totalDelta,
-                      streakAtSubmit: 0,
-                      hbcmAtSubmit: award.hbcmDisplay,
-                    }),
-                  ),
-                );
-
-                await runPackageDeliveryAndNotify();
+              await runPackageDeliveryAndNotify();
+              emitBackgroundActivity({
+                type: "start",
+                id: "sync",
+                message: "Syncing to cloud...",
+              });
+              pushLocalChangesNow().finally(() => {
+                emitBackgroundActivity({
+                  type: "stop",
+                  id: "sync",
+                  message: "",
+                });
                 emitBackgroundActivity({
                   type: "start",
-                  id: "sync",
-                  message: "Syncing to cloud...",
+                  id: "index",
+                  message: "Indexing for AI search...",
                 });
-                ignorePromise(
-                  pushLocalChangesNow().finally(() => {
+                requestProjectorSearch({
+                  query: "",
+                  mode: "index",
+                  forceIndex: true,
+                  userId: auth?.user?.uid || getOrCreateAnonSearchUserId(),
+                })
+                  .catch(() => {})
+                  .finally(() => {
                     emitBackgroundActivity({
                       type: "stop",
-                      id: "sync",
-                      message: "",
-                    });
-                    emitBackgroundActivity({
-                      type: "start",
                       id: "index",
-                      message: "Indexing for AI search...",
+                      message: "",
                     });
-                    ignorePromise(
-                      requestProjectorSearch({
-                        query: "",
-                        mode: "index",
-                        forceIndex: true,
-                        userId:
-                          auth?.user?.uid || getOrCreateAnonSearchUserId(),
-                      })
-                        .catch((error) => {
-                          console.error(
-                            "Projector search indexing failed:",
-                            error,
-                          );
-                        })
-                        .finally(() => {
-                          emitBackgroundActivity({
-                            type: "stop",
-                            id: "index",
-                            message: "",
-                          });
-                        }),
-                    );
-                  }),
-                );
-                if (!loadAppSettings().disableNotifications) {
-                  ignorePromise(
-                    maybeRequestNotificationPermission().catch((error) => {
-                      console.error(
-                        "Notification permission prompt failed:",
-                        error,
-                      );
-                    }),
-                  );
-                }
-                runAfterJournalSubmit(award);
-                onScoreChange(award.totalDelta, award.hint, {
-                  deferOverlay: true,
-                });
-                setSubmitting(true);
-              }}
-            />
-          ) : null}
-        </ComposerLockShell>
+                  });
+              });
+              if (!loadAppSettings().disableNotifications) {
+                void maybeRequestNotificationPermission();
+              }
+              onScoreChange(award.totalDelta, award.hint, {
+                deferOverlay: true,
+                streakOutcome: award.freezeConsumed
+                  ? {
+                      kind: "freeze",
+                      key: Date.now(),
+                      previousFreezes: award.previousStreakFreezes,
+                      nextFreezes: award.nextStreakFreezes,
+                    }
+                  : award.streakBroken
+                    ? {
+                        kind: "break",
+                        key: Date.now(),
+                        from: award.previousStreak,
+                      }
+                    : undefined,
+              });
+              setSubmitting(true);
+            }}
+          />
+        </div>
 
         <SubmitAnimation
           key={submitting ? "submit-open" : "submit-closed"}
@@ -699,7 +643,6 @@ function HomePlaceholder({
   );
 }
 
-/** Documents `WeekPlaceholder` in this module. */
 function WeekPlaceholder() {
   return (
     <DeskCharacterLayout>
@@ -708,7 +651,6 @@ function WeekPlaceholder() {
   );
 }
 
-/** Documents `NotesPlaceholder` in this module. */
 function NotesPlaceholder() {
   return (
     <DeskCharacterLayout>
@@ -720,7 +662,6 @@ function NotesPlaceholder() {
   );
 }
 
-/** Documents `ShopPlaceholder` in this module. */
 function ShopPlaceholder({
   onScoreChange,
 }: {
@@ -737,7 +678,6 @@ function ShopPlaceholder({
   );
 }
 
-/** Documents `ArchivePlaceholder` in this module. */
 function ArchivePlaceholder() {
   return (
     <PaperSection

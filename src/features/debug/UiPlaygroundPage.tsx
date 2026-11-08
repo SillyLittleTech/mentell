@@ -1,5 +1,4 @@
-import React, { useId, useMemo, useState } from "react";
-import { addDays, format, parseISO, startOfWeek } from "date-fns";
+import React, { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   shouldReduceMotion,
@@ -12,37 +11,13 @@ import {
 } from "../../components/SentimentPills";
 import { ScoreTicker } from "../score/ScoreTicker";
 import { ScoreBurst } from "../score/ScoreBurst";
-import { HbcmDisplay } from "../score/HbcmDisplay";
+import { StreakDisplay } from "../score/StreakDisplay";
 import { SubmitAnimation } from "../compose/SubmitAnimation";
 import { DeskCharacterLayout } from "../character/DeskCharacterLayout";
 import { pageTransitionProps } from "../../shared/motion/pageTransition";
-import { ShopWeeklyProgressBarInner } from "../shop/ShopWeeklyProgressBarInner";
-import type { ShopWeekDay } from "../shop/shopWeeklyProgress";
-import { FeelingsOverTimeChart } from "../compilation/FeelingsOverTimeChart";
-import type { FeelingPoint } from "../compilation/feelingsOverTimeData";
-import type { FeelingDayClass } from "../compilation/feelingsSemantics";
 
-type TabId = "buttons" | "inputs" | "animations" | "score" | "viz";
+type TabId = "buttons" | "inputs" | "animations" | "score";
 
-const FEELING_CLASS_OPTIONS: FeelingDayClass[] = [
-  "positive",
-  "neutral",
-  "negative",
-  "missed",
-  "no_data",
-];
-
-/** Documents `usePlaygroundWeekKeys` in this module. */
-function usePlaygroundWeekKeys() {
-  return useMemo(() => {
-    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
-    return Array.from({ length: 7 }, (_, i) =>
-      format(addDays(start, i), "yyyy-MM-dd"),
-    );
-  }, []);
-}
-
-/** Documents `DebugThemeSpinButton` in this module. */
 function DebugThemeSpinButton() {
   const reduced = shouldReduceMotion();
   const [spinning, setSpinning] = useState(false);
@@ -73,7 +48,6 @@ function DebugThemeSpinButton() {
   );
 }
 
-/** Documents `ModalDemo` in this module. */
 function ModalDemo({ open, onClose }: { open: boolean; onClose: () => void }) {
   const reduced = shouldReduceMotion();
 
@@ -139,23 +113,20 @@ function ModalDemo({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
-/** Documents `AnimationsTab` in this module. */
 function AnimationsTab({
+  reduced,
   onOpenModal,
   scoreTotal,
   setScoreTotal,
-  hbcm,
-  setHbcm,
-  logStreak,
-  setLogStreak,
+  streak,
+  setStreak,
 }: {
+  reduced: boolean;
   onOpenModal: () => void;
   scoreTotal: number;
   setScoreTotal: React.Dispatch<React.SetStateAction<number>>;
-  hbcm: number;
-  setHbcm: React.Dispatch<React.SetStateAction<number>>;
-  logStreak: number;
-  setLogStreak: React.Dispatch<React.SetStateAction<number>>;
+  streak: number;
+  setStreak: React.Dispatch<React.SetStateAction<number>>;
 }) {
   const [submitOpen, setSubmitOpen] = useState(false);
   const [scoreBurst, setScoreBurst] = useState<{
@@ -164,6 +135,7 @@ function AnimationsTab({
   } | null>(null);
   const [pageKey, setPageKey] = useState(0);
   const [buttonBounce, setButtonBounce] = useState(false);
+  const [breakKey, setBreakKey] = useState(0);
 
   return (
     <section className="paper rounded-3xl p-6">
@@ -230,51 +202,34 @@ function AnimationsTab({
           </div>
         </div>
 
-        {/* Consistency heat chip */}
+        {/* Streak break */}
         <div className="rounded-3xl border border-[var(--paper-border)] p-5">
-          <div className="font-medium">Consistency heat chip</div>
+          <div className="font-medium">Streak break</div>
           <div className="ink-muted mt-1 text-sm">
-            Heat 0–5 (fill) vs hidden log streak (fire only).
+            Crack + zero animation on the streak chip.
           </div>
           <div className="mt-3">
-            <HbcmDisplay
-              hbcmDisplay={hbcm}
-              logStreak={logStreak}
+            <StreakDisplay
+              streak={0}
+              reducedMotion={reduced}
               pulse={false}
               variant="chip"
+              outcomeAnimation={
+                breakKey
+                  ? { kind: "break", key: breakKey, from: streak }
+                  : undefined
+              }
             />
-            <div className="mt-2 flex flex-wrap gap-2">
-              <span className="ink-muted self-center text-xs">Heat</span>
-              <button
-                type="button"
-                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
-                onClick={() => setHbcm((h) => Math.max(0, h - 1))}
-              >
-                −
-              </button>
-              <button
-                type="button"
-                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
-                onClick={() => setHbcm((h) => Math.min(5, h + 1))}
-              >
-                +
-              </button>
-              <span className="ink-muted self-center text-xs">Log streak</span>
-              <button
-                type="button"
-                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
-                onClick={() => setLogStreak((s) => Math.max(0, s - 1))}
-              >
-                −
-              </button>
-              <button
-                type="button"
-                className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
-                onClick={() => setLogStreak((s) => s + 1)}
-              >
-                +
-              </button>
-            </div>
+            <button
+              type="button"
+              className="focus-ring mt-2 rounded-2xl border border-[var(--paper-border)] px-4 py-3 text-sm font-medium"
+              onClick={() => {
+                setBreakKey(Date.now());
+                setStreak(0);
+              }}
+            >
+              Break streak
+            </button>
           </div>
         </div>
 
@@ -390,169 +345,6 @@ function AnimationsTab({
   );
 }
 
-const VIZ_DEFAULT_CLASSES: FeelingDayClass[] = [
-  "positive",
-  "neutral",
-  "negative",
-  "missed",
-  "no_data",
-  "positive",
-  "neutral",
-];
-
-/** Documents `VizPlaygroundTab` in this module. */
-function VizPlaygroundTab() {
-  const weekLabelId = useId();
-  const chartTitleId = useId();
-  const weekDateKeys = usePlaygroundWeekKeys();
-  const [classes, setClasses] = useState<FeelingDayClass[]>(() => [
-    ...VIZ_DEFAULT_CLASSES,
-  ]);
-
-  const shopDays: ShopWeekDay[] = useMemo(
-    () =>
-      weekDateKeys.map((dateKey, i) => {
-        const d = parseISO(dateKey);
-        const short = format(d, "EEE");
-        return {
-          dateKey,
-          label: short,
-          shortLabel: short,
-          feelingClass: classes[i] ?? "no_data",
-        };
-      }),
-    [weekDateKeys, classes],
-  );
-
-  const chartPoints: FeelingPoint[] = useMemo(
-    () =>
-      shopDays.map((d, i) => ({
-        dateKey: d.dateKey,
-        label: format(parseISO(d.dateKey), "MMM d"),
-        class: d.feelingClass,
-        createdAt: i,
-      })),
-    [shopDays],
-  );
-
-  /** Documents `setDayClass` in this module. */
-  function setDayClass(index: number, c: FeelingDayClass) {
-    setClasses((prev) => {
-      const next = [...prev];
-      next[index] = c;
-      return next;
-    });
-  }
-
-  return (
-    <section className="paper rounded-3xl p-6 space-y-8">
-      <div>
-        <div className="font-paper text-xl">Weekly bar + feelings graph</div>
-        <p className="ink-muted mt-1 text-sm">
-          Drive each day’s mood class without Dexie data. Same components as
-          Shop + Projector; use this to stress gradients, labels, and contrast.
-        </p>
-      </div>
-
-      <div className="rounded-3xl border border-[var(--paper-border)] p-4">
-        <div className="font-mono text-xs font-bold">presets</div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-xs font-medium"
-            onClick={() =>
-              setClasses(
-                Array.from({ length: 7 }, () => "positive" as FeelingDayClass),
-              )
-            }
-          >
-            All positive
-          </button>
-          <button
-            type="button"
-            className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-xs font-medium"
-            onClick={() =>
-              setClasses(
-                Array.from({ length: 7 }, () => "no_data" as FeelingDayClass),
-              )
-            }
-          >
-            All no data
-          </button>
-          <button
-            type="button"
-            className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-xs font-medium"
-            onClick={() =>
-              setClasses([
-                "positive",
-                "neutral",
-                "negative",
-                "positive",
-                "neutral",
-                "negative",
-                "positive",
-              ])
-            }
-          >
-            Wave +/−/=
-          </button>
-          <button
-            type="button"
-            className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-xs font-medium"
-            onClick={() => setClasses([...VIZ_DEFAULT_CLASSES])}
-          >
-            Reset demo mix
-          </button>
-        </div>
-      </div>
-
-      <div className="rounded-3xl border border-[var(--paper-border)] p-4">
-        <div className="font-mono text-xs font-bold">
-          per-day class (Mon → Sun)
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
-          {weekDateKeys.map((dk, i) => {
-            const short = format(parseISO(dk), "EEE");
-            return (
-              <label
-                key={dk}
-                className="grid gap-1 rounded-2xl border border-[var(--paper-border)] px-2 py-2"
-              >
-                <span className="ink-muted text-[10px] font-mono uppercase">
-                  {short}
-                </span>
-                <select
-                  className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5 text-xs"
-                  value={classes[i]}
-                  onChange={(e) =>
-                    setDayClass(i, e.target.value as FeelingDayClass)
-                  }
-                >
-                  {FEELING_CLASS_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            );
-          })}
-        </div>
-      </div>
-
-      <ShopWeeklyProgressBarInner days={shopDays} labelId={weekLabelId} />
-
-      <div>
-        <div className="font-mono text-xs font-bold mb-2">
-          Feelings over time (same classes)
-        </div>
-        <FeelingsOverTimeChart points={chartPoints} titleId={chartTitleId} />
-      </div>
-    </section>
-  );
-}
-
-/** `UiPlaygroundPage` — see module for behavior. */
 export function UiPlaygroundPage() {
   // Local-only UI; we intentionally avoid mutating global theme/auth/sync state.
   const reduced = shouldReduceMotion();
@@ -563,8 +355,7 @@ export function UiPlaygroundPage() {
   const [modalOpen, setModalOpen] = useState(false);
 
   const [scoreTotal, setScoreTotal] = useState(2000);
-  const [hbcmDemo, setHbcmDemo] = useState(3);
-  const [logStreakDemo, setLogStreakDemo] = useState(12);
+  const [streak, setStreak] = useState(2);
 
   const tabButtons = useMemo(
     () =>
@@ -573,7 +364,6 @@ export function UiPlaygroundPage() {
         { id: "inputs", label: "Toggles", icon: "tune" },
         { id: "animations", label: "Animations", icon: "auto_awesome" },
         { id: "score", label: "Score", icon: "trophy" },
-        { id: "viz", label: "Viz", icon: "calendar_view_week" },
       ] as const,
     [],
   );
@@ -691,12 +481,12 @@ export function UiPlaygroundPage() {
               </div>
               <div className="rounded-2xl border border-[var(--paper-border)] p-4">
                 <div className="font-mono text-xs uppercase opacity-70">
-                  Heat chip
+                  Streak chip
                 </div>
                 <div className="mt-2">
-                  <HbcmDisplay
-                    hbcmDisplay={hbcmDemo}
-                    logStreak={logStreakDemo}
+                  <StreakDisplay
+                    streak={streak}
+                    reducedMotion={reduced}
                     pulse={false}
                     variant="chip"
                   />
@@ -705,14 +495,14 @@ export function UiPlaygroundPage() {
                   <button
                     type="button"
                     className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
-                    onClick={() => setHbcmDemo((s) => Math.max(0, s - 1))}
+                    onClick={() => setStreak((s) => Math.max(0, s - 1))}
                   >
                     -
                   </button>
                   <button
                     type="button"
                     className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm"
-                    onClick={() => setHbcmDemo((s) => Math.min(5, s + 1))}
+                    onClick={() => setStreak((s) => Math.min(9, s + 1))}
                   >
                     +
                   </button>
@@ -773,13 +563,12 @@ export function UiPlaygroundPage() {
 
         {tab === "animations" ? (
           <AnimationsTab
+            reduced={reduced}
             onOpenModal={() => setModalOpen(true)}
             scoreTotal={scoreTotal}
             setScoreTotal={setScoreTotal}
-            hbcm={hbcmDemo}
-            setHbcm={setHbcmDemo}
-            logStreak={logStreakDemo}
-            setLogStreak={setLogStreakDemo}
+            streak={streak}
+            setStreak={setStreak}
           />
         ) : null}
 
@@ -821,15 +610,13 @@ export function UiPlaygroundPage() {
             <div className="mt-4">
               <ScoreTicker
                 total={scoreTotal}
-                hbcmDisplay={hbcmDemo}
-                logStreak={logStreakDemo}
+                streak={streak}
+                streakFreezes={0}
                 hint={null}
               />
             </div>
           </section>
         ) : null}
-
-        {tab === "viz" ? <VizPlaygroundTab /> : null}
       </div>
 
       <ModalDemo open={modalOpen} onClose={() => setModalOpen(false)} />

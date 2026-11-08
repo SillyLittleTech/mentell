@@ -42,10 +42,10 @@ function neutral(
   };
 }
 
-function loadClassifier(): Promise<Classifier> {
+async function loadClassifier(): Promise<Classifier> {
   if (!classifierPromise) {
     classifierPromise = import("@xenova/transformers").then(
-      ({ env, pipeline }) => {
+      async ({ env, pipeline }) => {
         env.allowLocalModels = false;
         env.useBrowserCache = true;
         return pipeline("sentiment-analysis", MODEL, {

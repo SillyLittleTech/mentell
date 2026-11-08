@@ -1,20 +1,40 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useLayoutEffect, useRef, useState } from "react";
 import { motionDuration } from "../../shared/motion/useMotionPrefs";
+import { StreakFlame } from "./StreakFlame";
 import { shouldReduceMotion } from "../../shared/motion/useMotionPrefs";
+import { StreakFreezeBadge } from "./StreakFreezeBadge";
 import { MaterialIcon } from "../../components/MaterialIcon";
-import { HbcmDisplay } from "./HbcmDisplay";
 
-/** `ScoreTicker` — see module for behavior. */
-export function ScoreTicker(props: {
+export function ScoreTicker({
+  total,
+  streak,
+  streakFreezes,
+  hint,
+  streakOutcome,
+}: {
   total: number;
-  hbcmDisplay: number;
-  logStreak: number;
-  hbcmPulse?: boolean;
+  streak: number;
+  streakFreezes?: number;
   hint: string | null;
+  streakOutcome?:
+    | { kind: "break"; key: number; from: number }
+    | {
+        kind: "freeze";
+        key: number;
+        previousFreezes: number;
+        nextFreezes: number;
+      }
+    | null;
 }) {
-  const { total, hbcmDisplay, logStreak, hbcmPulse } = props;
   const reduced = shouldReduceMotion();
+  const streakPulse = Boolean(hint?.toLowerCase().includes("streak"));
+  const freezeAnimation =
+    streakOutcome?.kind === "freeze" ? streakOutcome : null;
+  const visibleFreezes =
+    freezeAnimation && !reduced
+      ? Math.max(streakFreezes ?? 0, freezeAnimation.previousFreezes)
+      : streakFreezes;
 
   const prevTotalRef = useRef(total);
   const [direction, setDirection] = useState<"increase" | "decrease">(
@@ -63,17 +83,22 @@ export function ScoreTicker(props: {
       </motion.div>
 
       <motion.div
-        className="inline-flex"
         whileHover={reduced ? undefined : { y: -1.5 }}
         transition={{ duration: motionDuration(0.16) || 0 }}
       >
-        <HbcmDisplay
-          hbcmDisplay={hbcmDisplay}
-          logStreak={logStreak}
-          pulse={hbcmPulse}
-          variant="chip"
+        <StreakFlame
+          streak={streak}
+          reducedMotion={reduced}
+          pulse={streakPulse}
+          outcomeAnimation={streakOutcome}
         />
       </motion.div>
+      {visibleFreezes !== undefined && visibleFreezes > 0 ? (
+        <StreakFreezeBadge
+          count={visibleFreezes}
+          consumeAnimation={freezeAnimation}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,29 +1,17 @@
 import Dexie, { type Table } from "dexie";
 import { dexieDatabaseName } from "../shared/storage/storageScope";
 
-/** IndexedDB / validation export `EntrySentiment`. */
 export type EntrySentiment = "+" | "-" | "=";
-/** IndexedDB / validation export `WarningLevel`. */
 export type WarningLevel = "none" | "warn";
-/** IndexedDB / validation export `RiskLevel`. */
 export type RiskLevel = "none" | "low" | "elevated" | "crisis";
-/** IndexedDB / validation export `EntryEmotion`. */
 export type EntryEmotion =
   "happy" | "calm" | "anxious" | "sad" | "angry" | "other";
 
-/** Full journal flow (AI-searchable). */
-export type EntryKindJournal = "entry";
-/** Sentiment-only quick log (excluded from projector AI search index). */
-export type EntryKindQuickLog = "quick_log";
-
-/** IndexedDB / validation export `EntryRow`. */
 export type EntryRow = {
   id: string;
   createdAt: number;
   updatedAt: number;
   dateKey: string; // YYYY-MM-DD in local time
-  /** Discriminator: full entry vs quick_log (defaults to entry for legacy rows). */
-  entryType?: EntryKindJournal | EntryKindQuickLog;
   sentiment: EntrySentiment;
   emotion: EntryEmotion;
   emotionNote: string;
@@ -33,23 +21,16 @@ export type EntryRow = {
   behavioursNoted: string;
   /** Free-text label for a reoccurring interaction theme/type. */
   reoccurringTheme: string;
-  /** Optional short note for quick_log only. */
-  quickLogNote?: string;
   flaggedTerms: string[];
   warningLevel: WarningLevel;
   riskScore: number;
   interventionScore: number;
   riskLevel: RiskLevel;
   scoreDelta: number;
-  /** @deprecated 1.x streak; retained for migration / export. */
   streakAtSubmit: number;
-  /** HBCM display value (0–5) at submit time. */
-  hbcmAtSubmit?: number;
 };
 
-/** IndexedDB / validation export `NoteTag`. */
 export type NoteTag = "self" | "therapist" | "other";
-/** IndexedDB / validation export `NoteRow`. */
 export type NoteRow = {
   id: string;
   createdAt: number;
@@ -59,10 +40,8 @@ export type NoteRow = {
   tag: NoteTag;
 };
 
-/** IndexedDB / validation export `StickyCoordSpace`. */
 export type StickyCoordSpace = "viewport" | "board";
 
-/** IndexedDB / validation export `StickyRow`. */
 export type StickyRow = {
   id: string;
   createdAt: number;
@@ -75,9 +54,7 @@ export type StickyRow = {
   coordSpace?: StickyCoordSpace;
 };
 
-/** IndexedDB / validation export `PackageKind`. */
 export type PackageKind = "weekly" | "monthly" | "yearly";
-/** IndexedDB / validation export `PackageRow`. */
 export type PackageRow = {
   id: string;
   kind: PackageKind;
@@ -96,7 +73,6 @@ export type CharacterAppearanceRow = {
   toggles: Record<string, string>;
 };
 
-/** IndexedDB / validation export `MentellDB`. */
 export class MentellDB extends Dexie {
   entries!: Table<EntryRow, string>;
   notes!: Table<NoteRow, string>;
@@ -241,41 +217,12 @@ export class MentellDB extends Dexie {
               row.reoccurringTheme = "";
           });
       });
-
-    // v9: 2.x entry kinds (quick_log) + HBCM at submit
-    this.version(9)
-      .stores({
-        entries:
-          "&id, dateKey, createdAt, updatedAt, sentiment, warningLevel, riskLevel, entryType",
-        notes: "&id, createdAt, updatedAt, tag",
-        stickies: "&id, createdAt, updatedAt, zIndex",
-        packages: "&id, kind, periodKey, createdAt, updatedAt, openedAt",
-        characterAppearance: "&id, updatedAt",
-      })
-      .upgrade(async (tx) => {
-        await tx
-          .table("entries")
-          .toCollection()
-          .modify((row: Partial<EntryRow>) => {
-            if (!row.entryType) row.entryType = "entry";
-            if (typeof row.quickLogNote !== "string") row.quickLogNote = "";
-            if (typeof row.hbcmAtSubmit !== "number") {
-              const legacyStreak =
-                typeof row.streakAtSubmit === "number" ? row.streakAtSubmit : 0;
-              row.hbcmAtSubmit = Math.min(
-                5,
-                Math.max(0, Math.ceil(legacyStreak * 0.85)),
-              );
-            }
-          });
-      });
   }
 }
 
 let dbInstance: MentellDB | null = null;
 let dbInstanceName: string | null = null;
 
-/** IndexedDB / validation export `getDb`. */
 export function getDb() {
   const name = dexieDatabaseName();
   if (!dbInstance || dbInstanceName !== name) {

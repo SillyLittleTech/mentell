@@ -44,7 +44,7 @@ export function getWorkerApiBase() {
   return pushApiBase();
 }
 
-export function getWorkerAuthHeaders(): Promise<Record<string, string>> {
+export async function getWorkerAuthHeaders(): Promise<Record<string, string>> {
   return authHeader();
 }
 

@@ -16,7 +16,7 @@ console.log(`Syncing version to: ${version}`)
 const packageJsonPath = path.join(rootDir, 'package.json')
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
 packageJson.version = version
-fs.writeFileSync(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`)
+fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n')
 console.log('Updated package.json')
 
 // Run npm i --package-lock-only to update package-lock.json based on new package.json

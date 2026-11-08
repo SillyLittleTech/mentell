@@ -65,10 +65,10 @@ function clamp01(value: number) {
   return Math.min(1, Math.max(0, Number.isFinite(value) ? value : 0));
 }
 
-function loadClassifier(): Promise<ZeroShotClassifier> {
+async function loadClassifier(): Promise<ZeroShotClassifier> {
   if (!classifierPromise) {
     classifierPromise = import("@xenova/transformers").then(
-      ({ env, pipeline }) => {
+      async ({ env, pipeline }) => {
         env.allowLocalModels = false;
         env.useBrowserCache = true;
         return pipeline("zero-shot-classification", MODEL, {

@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
-import { getScoreSnapshot, spendScore } from "../score/scoreService";
+import {
+  buyStreakFreeze,
+  buyStreakRestore,
+  getScoreSnapshot,
+  spendScore,
+  STREAK_FREEZE_COST,
+  STREAK_FREEZE_MAX,
+  STREAK_RESTORE_COST,
+  type StreakRestoreCandidate,
+} from "../score/scoreService";
 import {
   addCollectedCat,
   loadCatCollection,
   type CollectedCat,
 } from "./catCollection";
-import { ShopWeeklyProgressBar } from "./ShopWeeklyProgressBar";
+import { WeekTimelineCard } from "./WeekTimelineCard";
 import { MentellCharacter } from "../character/MentellCharacter";
 import { defaultCharacterAppearance } from "../character/characterAppearance";
 import { useAppSettings } from "../../shared/settings/useAppSettings";
@@ -30,6 +39,7 @@ import {
 } from "./shopCatalog";
 import { renderCursorCssValue } from "./shopCursorAsset";
 import { renderStampPreviewForItem } from "./shopStampAsset";
+import { StreakFreezeBadge } from "../score/StreakFreezeBadge";
 import { Throbber } from "../../components/Throbber";
 
 const CAT_COST = 250;
@@ -37,7 +47,6 @@ const CAT_COST = 250;
 type CatApiRow = { id?: string; url?: string };
 type EquippableType = "theme" | "stamp" | "cursor";
 
-/** Documents `ThemePreview` in this module. */
 function ThemePreview({ item }: { item: ThemeItem }) {
   return (
     <div className="mt-3 rounded-xl border border-[var(--paper-border)] p-2">
@@ -82,7 +91,6 @@ function ThemePreview({ item }: { item: ThemeItem }) {
   );
 }
 
-/** Documents `CursorHoverPreview` in this module. */
 function CursorHoverPreview({ item }: { item: CursorItem }) {
   const defaultCursor = renderCursorCssValue(item, "default");
   const pointerCursor = renderCursorCssValue(item, "pointer") ?? defaultCursor;
@@ -116,7 +124,6 @@ function CursorHoverPreview({ item }: { item: CursorItem }) {
   );
 }
 
-/** Documents `previewAccessoryItem` in this module. */
 function previewAccessoryItem(
   item: CharacterAccessoryItem,
 ): CharacterAccessoryItem {
@@ -140,7 +147,6 @@ function previewAccessoryItem(
   };
 }
 
-/** Documents `useOnceVisible` in this module. */
 function useOnceVisible() {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -163,7 +169,6 @@ function useOnceVisible() {
   return { ref, visible };
 }
 
-/** Documents `CharacterAccessoryPreview` in this module. */
 function CharacterAccessoryPreview({ item }: { item: CharacterAccessoryItem }) {
   const previewItem = previewAccessoryItem(item);
   const { ref, visible } = useOnceVisible();
@@ -197,7 +202,6 @@ function CharacterAccessoryPreview({ item }: { item: CharacterAccessoryItem }) {
   );
 }
 
-/** Documents `ShopItemPreview` in this module. */
 function ShopItemPreview({
   item,
   preview,
@@ -220,7 +224,6 @@ function ShopItemPreview({
   );
 }
 
-/** `Shoppe` — see module for behavior. */
 export function Shoppe({
   onScoreChange,
 }: {
@@ -243,6 +246,13 @@ export function Shoppe({
   );
   const [selectedCat, setSelectedCat] = useState<CollectedCat | null>(null);
   const [balance, setBalance] = useState(() => getScoreSnapshot().total);
+  const [freezeCount, setFreezeCount] = useState(
+    () => getScoreSnapshot().streakFreezes,
+  );
+  const [restoreCandidate, setRestoreCandidate] =
+    useState<StreakRestoreCandidate | null>(
+      () => getScoreSnapshot().streakRestore,
+    );
   const [shelvesWarm, setShelvesWarm] = useState(false);
 
   useEffect(() => {
@@ -258,12 +268,13 @@ export function Shoppe({
     const refreshScore = () => {
       const next = getScoreSnapshot();
       setBalance(next.total);
+      setFreezeCount(next.streakFreezes);
+      setRestoreCandidate(next.streakRestore);
     };
     window.addEventListener(SCORE_CHANGED_EVENT, refreshScore);
     return () => window.removeEventListener(SCORE_CHANGED_EVENT, refreshScore);
   }, []);
 
-  /** Documents `itemPreview` in this module. */
   function itemPreview(item: ShopCatalogItem) {
     if (item.type === "stamp") return renderStampPreviewForItem(item);
     if (item.type === "theme" || item.type === "cursor") return null;
@@ -272,19 +283,16 @@ export function Shoppe({
     return item.preview;
   }
 
-  /** Documents `itemOwned` in this module. */
   function itemOwned(itemId: string) {
     return inventory.ownedItemIds.includes(itemId);
   }
 
-  /** Documents `equippedId` in this module. */
   function equippedId(type: EquippableType) {
     if (type === "theme") return inventory.equipped.themeId;
     if (type === "stamp") return inventory.equipped.stampId;
     return inventory.equipped.cursorId;
   }
 
-  /** Documents `itemTypeLabel` in this module. */
   function itemTypeLabel(item: ShopCatalogItem) {
     if (item.type === "theme") return "Theme";
     if (item.type === "stamp") return "Stamp";
@@ -304,7 +312,6 @@ export function Shoppe({
     return "Image";
   }
 
-  /** Documents `catalogHint` in this module. */
   function catalogHint(item: ShopCatalogItem) {
     if (item.type === "theme")
       return "Applies different desk/paper styling in light + dark mode.";
@@ -318,7 +325,6 @@ export function Shoppe({
     return "Collectible image item for future gallery drops.";
   }
 
-  /** Documents `canEquip` in this module. */
   function canEquip(
     item: ShopCatalogItem,
   ): item is Extract<ShopCatalogItem, { type: EquippableType }> {
@@ -327,7 +333,6 @@ export function Shoppe({
     );
   }
 
-  /** Documents `buyCatPhoto` in this module. */
   async function buyCatPhoto() {
     if (busy || !pointsOn) return;
     setBusy(true);
@@ -371,7 +376,7 @@ export function Shoppe({
       setBalance(getScoreSnapshot().total);
       onScoreChange(-CAT_COST, "Cat photo collected");
       setStatus("Mystery cat collected.");
-      await pushLocalChangesNow();
+      void pushLocalChangesNow();
     } catch {
       setError("Failed to reach cat photo service.");
     } finally {
@@ -379,7 +384,59 @@ export function Shoppe({
     }
   }
 
-  /** Documents `buyShopItem` in this module. */
+  function buyFreeze() {
+    if (busy || !pointsOn) return;
+    setError(null);
+    setStatus(null);
+    const result = buyStreakFreeze();
+    setBalance(result.nextTotal);
+    setFreezeCount(result.nextFreezes);
+    if (!result.ok) {
+      if (result.reason === "max") {
+        setError(`You can hold up to ${STREAK_FREEZE_MAX} streak freezes.`);
+      } else if (result.reason === "insufficient") {
+        setError(
+          `You need ${STREAK_FREEZE_COST - result.nextTotal} more points for a streak freeze.`,
+        );
+      } else {
+        setError("Cannot buy a streak freeze while points are disabled.");
+      }
+      return;
+    }
+    onScoreChange(-STREAK_FREEZE_COST, "Streak freeze stocked");
+    setStatus(
+      `Streak freeze stocked (${result.nextFreezes}/${STREAK_FREEZE_MAX}).`,
+    );
+    void pushLocalChangesNow();
+  }
+
+  function buyRestore() {
+    if (busy || !pointsOn) return;
+    setError(null);
+    setStatus(null);
+    const result = buyStreakRestore();
+    setBalance(result.nextTotal);
+    setRestoreCandidate(getScoreSnapshot().streakRestore);
+    if (!result.ok) {
+      if (result.reason === "none") {
+        setError("No recent broken streak is available to restore.");
+      } else if (result.reason === "insufficient") {
+        setError(
+          `You need ${STREAK_RESTORE_COST - result.nextTotal} more points to restore it.`,
+        );
+      } else {
+        setError("Cannot restore a streak while points are disabled.");
+      }
+      return;
+    }
+    onScoreChange(
+      -STREAK_RESTORE_COST,
+      `Streak restored to ${result.restoredStreak}`,
+    );
+    setStatus(`Streak restored to ${result.restoredStreak}.`);
+    void pushLocalChangesNow();
+  }
+
   async function buyShopItem(item: ShopCatalogItem) {
     if (busy || busyItemId || !pointsOn) return;
     setError(null);
@@ -419,13 +476,12 @@ export function Shoppe({
             ? `${item.name} unlocked and equipped.`
             : `${item.name} unlocked.`,
       );
-      await pushLocalChangesNow();
+      void pushLocalChangesNow();
     } finally {
       setBusyItemId(null);
     }
   }
 
-  /** Documents `toggleEquip` in this module. */
   function toggleEquip(
     item: Extract<ShopCatalogItem, { type: EquippableType }>,
   ) {
@@ -483,11 +539,14 @@ export function Shoppe({
                 <div className="font-mono text-2xl font-bold">{balance}</div>
               </div>
             ) : null}
+            {pointsOn ? (
+              <StreakFreezeBadge count={freezeCount} variant="card" />
+            ) : null}
           </div>
         </div>
       </section>
 
-      <ShopWeeklyProgressBar />
+      <WeekTimelineCard />
 
       <section className="paper rounded-3xl p-6">
         <div className="flex flex-wrap items-center gap-3">
@@ -567,6 +626,73 @@ export function Shoppe({
           })}
         </div>
       </section>
+
+      <section className="paper rounded-3xl p-6">
+        <div className="rounded-3xl border border-[var(--paper-border)] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <StreakFreezeBadge count={freezeCount} />
+              <div>
+                <div className="font-medium">Streak freeze</div>
+                <div className="ink-muted text-sm">
+                  Saves a streak after exactly one missed day. Hold up to{" "}
+                  {STREAK_FREEZE_MAX}.
+                </div>
+              </div>
+            </div>
+            <div className="font-mono text-lg font-bold">
+              {STREAK_FREEZE_COST} pts
+            </div>
+          </div>
+
+          {!pointsOn ? (
+            <div className="ink-muted mt-4 rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm">
+              Points are turned off in Settings — enable the points system to
+              buy streak freezes.
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="btn-primary focus-ring mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
+              disabled={freezeCount >= STREAK_FREEZE_MAX}
+              onClick={buyFreeze}
+            >
+              {freezeCount >= STREAK_FREEZE_MAX
+                ? "Freezer full"
+                : "Buy streak freeze"}
+            </button>
+          )}
+        </div>
+      </section>
+
+      {restoreCandidate ? (
+        <section className="paper rounded-3xl p-6">
+          <div className="rounded-3xl border border-[var(--paper-border)] p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="font-medium">Restore streak</div>
+                <div className="ink-muted text-sm">
+                  Restore your recent streak to {restoreCandidate.restoreTo}{" "}
+                  after {restoreCandidate.missedDays} missed day
+                  {restoreCandidate.missedDays === 1 ? "" : "s"}.
+                </div>
+              </div>
+              <div className="font-mono text-lg font-bold">
+                {STREAK_RESTORE_COST} pts
+              </div>
+            </div>
+            <button
+              type="button"
+              className="focus-ring mt-4 rounded-2xl px-4 py-3 text-sm font-semibold"
+              style={{ background: "var(--success)", color: "rgba(0,0,0,0.9)" }}
+              disabled={!pointsOn}
+              onClick={buyRestore}
+            >
+              Restore streak
+            </button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="paper rounded-3xl p-6">
         <div className="rounded-3xl border border-[var(--paper-border)] p-5">

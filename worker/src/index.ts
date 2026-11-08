@@ -13,7 +13,6 @@ import {
 } from "./pushHandlers";
 import { runPushCron } from "./pushCron";
 import { handleProjectorSearch } from "./projectorSearch";
-import { handlePooledCrisisResources } from "./pooledCrisisResources";
 import { handleRiskAssessment } from "./riskAssessment";
 import { handleWeeklySummary } from "./weeklySummary";
 import {
@@ -27,11 +26,11 @@ import { handleEmailTest } from "./emailTestHandler";
 export type { Env } from "./env";
 
 export default {
-  fetch(
+  async fetch(
     request: Request,
     env: Env,
     ctx: ExecutionContext,
-  ): Promise<Response> | Response {
+  ): Promise<Response> {
     const url = new URL(request.url);
     const origin = request.headers.get("Origin");
 
@@ -52,8 +51,6 @@ export default {
         return handleProjectorSearch(request, env);
       case "/risk-assessment":
         return handleRiskAssessment(request, env);
-      case "/pooled-crisis-resources":
-        return handlePooledCrisisResources(request, env);
       case "/push/subscribe":
         return handlePushSubscribe(request, env);
       case "/push/unsubscribe":
@@ -73,7 +70,11 @@ export default {
     }
   },
 
-  scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+  async scheduled(
+    _controller: ScheduledController,
+    env: Env,
+    ctx: ExecutionContext,
+  ) {
     ctx.waitUntil(runPushCron(env));
   },
 };

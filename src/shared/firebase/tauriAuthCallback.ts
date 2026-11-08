@@ -34,7 +34,7 @@ export function localhostContinueUrl(
 }
 
 /** Wait for a single auth callback URL from the localhost server. */
-export function waitForAuthCallback(
+export async function waitForAuthCallback(
   port: number,
   timeoutMs = 300_000,
 ): Promise<string> {

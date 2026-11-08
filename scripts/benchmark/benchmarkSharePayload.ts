@@ -7,9 +7,9 @@ import { format, subDays } from "date-fns";
 // Mock localStorage
 global.localStorage = {
   getItem: () => null,
-  setItem: () => undefined,
-  removeItem: () => undefined,
-  clear: () => undefined,
+  setItem: () => {},
+  removeItem: () => {},
+  clear: () => {},
   length: 0,
   key: () => null,
 } as unknown as Storage;
@@ -24,20 +24,19 @@ async function runBenchmark() {
   const TOTAL_ENTRIES = 10000;
   const now = new Date();
 
-  for (let entryIndex = 0; entryIndex < TOTAL_ENTRIES; entryIndex++) {
-    const entryDate = subDays(now, entryIndex % 1000);
-    const isBulk = entryIndex % 10 === 0;
-    const dateKey = (isBulk ? "~" : "") + format(entryDate, "yyyy-MM-dd");
+  for (let i = 0; i < TOTAL_ENTRIES; i++) {
+    const d = subDays(now, i % 1000);
+    const isBulk = i % 10 === 0;
+    const dateKey = (isBulk ? "~" : "") + format(d, "yyyy-MM-dd");
 
     entries.push({
-      id: `entry-${entryIndex}`,
+      id: `entry-${i}`,
       dateKey,
-      createdAt: entryDate.getTime(),
-      updatedAt: entryDate.getTime(),
-      sentiment:
-        entryIndex % 3 === 0 ? "+" : entryIndex % 3 === 1 ? "-" : "neutral",
-      warningLevel: entryIndex % 100 === 0 ? "warn" : "none",
-      riskLevel: entryIndex % 100 === 0 ? "elevated" : "none",
+      createdAt: d.getTime(),
+      updatedAt: d.getTime(),
+      sentiment: i % 3 === 0 ? "+" : i % 3 === 1 ? "-" : "neutral",
+      warningLevel: i % 100 === 0 ? "warn" : "none",
+      riskLevel: i % 100 === 0 ? "elevated" : "none",
       emotion: "happy",
       emotionNote: "test",
       situation: "test",

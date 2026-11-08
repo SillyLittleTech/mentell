@@ -1,38 +1,39 @@
-import { useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
-import { scrollToElementId, scrollToTop } from '../../shared/motion/scroll'
-import { ContactForQuestions } from './contactEmails'
+import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
+import { scrollToElementId, scrollToTop } from "../../shared/motion/scroll";
+import { ContactForQuestions } from "./contactEmails";
 import {
   isFirebaseEnabled,
   isFirebaseSyncEnabled,
   isShareLinksEnabled,
-} from '../../shared/features/featureFlags'
+} from "../../shared/features/featureFlags";
 
-const SILLY_LITTLE_POLICY_URL = 'https://slt.ong/policy'
+const SILLY_LITTLE_POLICY_URL = "https://slt.ong/policy";
 
 export function PrivacyPolicyPage() {
-  const { pathname, hash } = useLocation()
-  const firebaseOn = isFirebaseEnabled()
-  const syncOn = isFirebaseSyncEnabled()
-  const shareOn = isShareLinksEnabled()
-  const weeklyAiOn = import.meta.env.VITE_ENABLE_WEEKLY_AI_SUMMARY === '1'
-  const projectorSearchOn = import.meta.env.VITE_ENABLE_PROJECTOR_AI_SEARCH === '1'
-  const emailNotifyOn = Boolean(import.meta.env.VITE_PUSH_API_BASE?.trim())
+  const { pathname, hash } = useLocation();
+  const firebaseOn = isFirebaseEnabled();
+  const syncOn = isFirebaseSyncEnabled();
+  const shareOn = isShareLinksEnabled();
+  const weeklyAiOn = import.meta.env.VITE_ENABLE_WEEKLY_AI_SUMMARY === "1";
+  const projectorSearchOn =
+    import.meta.env.VITE_ENABLE_PROJECTOR_AI_SEARCH === "1";
+  const emailNotifyOn = Boolean(import.meta.env.VITE_PUSH_API_BASE?.trim());
 
   useEffect(() => {
     if (hash) {
-      scrollToElementId(hash)
-      return
+      scrollToElementId(hash);
+      return;
     }
-    scrollToTop()
-  }, [pathname, hash])
+    scrollToTop();
+  }, [pathname, hash]);
 
   return (
     <div className="space-y-4">
       <section className="paper rounded-3xl p-6">
         <div className="font-paper text-2xl">Privacy</div>
         <p className="ink-muted mt-2 text-sm leading-relaxed">
-          Mentell is a personal journaling app by{' '}
+          Mentell is a personal journaling app by{" "}
           <a
             href="https://slt.ong"
             className="font-medium text-[var(--success)] underline-offset-2 hover:underline"
@@ -41,8 +42,8 @@ export function PrivacyPolicyPage() {
           >
             SillyLittleTech
           </a>
-          . This page describes how <em>this app</em> handles data. For SillyLittleTech’s general
-          site practices, see the{' '}
+          . This page describes how <em>this app</em> handles data. For
+          SillyLittleTech’s general site practices, see the{" "}
           <a
             href={SILLY_LITTLE_POLICY_URL}
             className="underline-offset-2 hover:underline"
@@ -54,10 +55,11 @@ export function PrivacyPolicyPage() {
           .
         </p>
         <p className="ink-muted mt-3 text-sm leading-relaxed">
-          For Mentell-specific questions (policy, technical help, or security), see{' '}
+          For Mentell-specific questions (policy, technical help, or security),
+          see{" "}
           <a href="#questions" className="underline-offset-2 hover:underline">
             For questions
-          </a>{' '}
+          </a>{" "}
           below.
         </p>
       </section>
@@ -65,60 +67,66 @@ export function PrivacyPolicyPage() {
       <section className="paper rounded-3xl p-6">
         <h2 className="font-paper text-xl">Who this app is for</h2>
         <p className="ink-muted mt-3 text-sm leading-relaxed">
-          Mentell is designed for <strong>individuals</strong> who sign up and use the journal for
-          themselves. It is <strong>not</strong> a HIPAA-compliant clinical record system and is{' '}
-          <strong>not</strong> intended for healthcare providers, therapists, schools, or other
-          organizations to collect or manage health information on behalf of patients, clients, or
-          students.
+          Mentell is designed for <strong>individuals</strong> who sign up and
+          use the journal for themselves. It is <strong>not</strong> a
+          HIPAA-compliant clinical record system and is <strong>not</strong>{" "}
+          intended for healthcare providers, therapists, schools, or other
+          organizations to collect or manage health information on behalf of
+          patients, clients, or students.
         </p>
         <p className="ink-muted mt-3 text-sm leading-relaxed">
-          If you are in crisis or need professional care, Mentell is not a substitute for emergency
-          services or licensed treatment. Use appropriate local emergency and mental-health
-          resources.
+          If you are in crisis or need professional care, Mentell is not a
+          substitute for emergency services or licensed treatment. Use
+          appropriate local emergency and mental-health resources.
         </p>
       </section>
 
       <section className="paper rounded-3xl p-6">
         <h2 className="font-paper text-xl">Local-first by default</h2>
         <p className="ink-muted mt-3 text-sm leading-relaxed">
-          Your journal entries, notes, score, character look, and most settings are stored on your
-          device (IndexedDB and browser storage). They are not sent to a server unless you turn on
-          optional cloud features below.
+          Your journal entries, notes, score, character look, and most settings
+          are stored on your device (IndexedDB and browser storage). They are
+          not sent to a server unless you turn on optional cloud features below.
         </p>
       </section>
 
       {firebaseOn ? (
         <section className="paper rounded-3xl p-6">
-          <h2 className="font-paper text-xl">Firebase Authentication &amp; cloud backup (optional)</h2>
+          <h2 className="font-paper text-xl">
+            Firebase Authentication &amp; cloud backup (optional)
+          </h2>
           <p className="ink-muted mt-3 text-sm leading-relaxed">
-            If cloud sync is enabled, you may sign in with Google, email and password,
-            or a passwordless email link. Authentication is provided by{' '}
-            <strong>Firebase Authentication</strong> (Google). We receive an account identifier and,
-            depending on how you sign in, your email address and display information from your
-            identity provider.
+            If cloud sync is enabled, you may sign in with Google, email and
+            password, or a passwordless email link. Authentication is provided
+            by <strong>Firebase Authentication</strong> (Google). We receive an
+            account identifier and, depending on how you sign in, your email
+            address and display information from your identity provider.
           </p>
           {syncOn ? (
             <p className="ink-muted mt-3 text-sm leading-relaxed">
-              With sync turned on, journal data and related settings you choose to back up are stored
-              in <strong>Cloud Firestore</strong> under your account, keyed to your Firebase user id.
-              This includes character customization and shop cosmetics you unlock/equip. You can sign
-              out, disable sync, delete local data, or delete your cloud account from Settings. Cloud
-              data is not intended for provider-managed or multi-patient use.
+              With sync turned on, journal data and related settings you choose
+              to back up are stored in <strong>Cloud Firestore</strong> under
+              your account, keyed to your Firebase user id. This includes
+              character customization and shop cosmetics you unlock/equip. You
+              can sign out, disable sync, delete local data, or delete your
+              cloud account from Settings. Cloud data is not intended for
+              provider-managed or multi-patient use.
             </p>
           ) : (
             <p className="ink-muted mt-3 text-sm leading-relaxed">
-              Sign-in may be available without sync depending on the application configuration; check Settings for what is
-              enabled.
+              Sign-in may be available without sync depending on the application
+              configuration; check Settings for what is enabled.
             </p>
           )}
           {shareOn ? (
             <p className="ink-muted mt-3 text-sm leading-relaxed">
-              Share links (if enabled) store a time-limited, sanitized snapshot of selected journal
-              content in Firestore for viewers who have the link. Treat share URLs like passwords.
+              Share links (if enabled) store a time-limited, sanitized snapshot
+              of selected journal content in Firestore for viewers who have the
+              link. Treat share URLs like passwords.
             </p>
           ) : null}
           <p className="ink-muted mt-3 text-sm leading-relaxed">
-            See Google’s{' '}
+            See Google’s{" "}
             <a
               href="https://firebase.google.com/support/privacy"
               className="underline-offset-2 hover:underline"
@@ -126,28 +134,35 @@ export function PrivacyPolicyPage() {
               rel="noopener noreferrer"
             >
               Firebase Privacy information
-            </a>{' '}
+            </a>{" "}
             for how Google processes data as a provider.
           </p>
         </section>
       ) : (
         <section className="paper rounded-3xl p-6">
-          <h2 className="font-paper text-xl">Cloud sign-in (currently unavailable)</h2>
+          <h2 className="font-paper text-xl">
+            Cloud sign-in (currently unavailable)
+          </h2>
           <p className="ink-muted mt-3 text-sm leading-relaxed">
-            This application does not load cloud synchronization. Journal data stays on your device only.
+            This application does not load cloud synchronization. Journal data
+            stays on your device only.
           </p>
         </section>
       )}
 
       <section className="paper rounded-3xl p-6">
-        <h2 className="font-paper text-xl">Offline device sync and crypt shares</h2>
+        <h2 className="font-paper text-xl">
+          Offline device sync and crypt shares
+        </h2>
         <p className="ink-muted mt-3 text-sm leading-relaxed">
-          Mentell can package a local journal snapshot on your device with in-browser encryption
-          (AES-GCM) and show it as a QR code, copyable crypto code, or{' '}
-          <code className="font-mono text-xs">/share/cryptl</code> link. These payloads are not
-          uploaded to Mentell or cloud backup. Anyone you give the code or link to can decrypt the
-          snapshot on their device. Treat them like passwords, and use the expiry option on crypt
-          shares when you do not want a lasting copy.
+          Mentell can package a local journal snapshot on your device with
+          in-browser encryption (AES-GCM) and show it as a QR code, copyable
+          crypto code, or{" "}
+          <code className="font-mono text-xs">/share/cryptl</code> link. These
+          payloads are not uploaded to Mentell or cloud backup. Anyone you give
+          the code or link to can decrypt the snapshot on their device. Treat
+          them like passwords, and use the expiry option on crypt shares when
+          you do not want a lasting copy.
         </p>
       </section>
 
@@ -155,30 +170,27 @@ export function PrivacyPolicyPage() {
         <section className="paper rounded-3xl p-6">
           <h2 className="font-paper text-xl">Weekly AI summaries (optional)</h2>
           <p className="ink-muted mt-3 text-sm leading-relaxed">
-            If weekly AI is enabled, generating a summary sends a bounded excerpt of your journal
-            (and optional profile fields you enter in AI preferences) to a{' '}
-            <strong>Cloudflare Worker</strong> using <strong>Workers AI</strong>. The request is
-            authenticated with a site token; it is not tied to your Firebase account unless you have
+            If weekly AI is enabled, generating a summary sends a bounded
+            excerpt of your journal (and optional profile fields you enter in AI
+            preferences) to a <strong>Cloudflare Worker</strong> using{" "}
+            <strong>Workers AI</strong>. The request is authenticated with a
+            site token; it is not tied to your Firebase account unless you have
             also enabled cloud sync separately.
           </p>
           <p className="ink-muted mt-3 text-sm leading-relaxed">
-            Do not include information in summaries you would not want processed by an AI service.
-            See Cloudflare’s privacy documentation for how they handle inference requests.
-          </p>
-          <p className="ink-muted mt-3 text-sm leading-relaxed">
-            The same optional Worker and Workers AI model may suggest extra local crisis resources when
-            you use <strong>Find local &amp; regional resources</strong> after a crisis or support
-            prompt. That request sends only coarse location fields (for example ZIP, county, city, and
-            state), names and phone numbers already shown from public directories, and topic tags — not
-            your journal text. Suggestions are labeled as pooled AI output; verify details before calling.
-            Turn off <strong>Disable AI summaries</strong> in Settings to skip this step.
+            Do not include information in summaries you would not want processed
+            by an AI service. See Cloudflare’s privacy documentation for how
+            they handle inference requests.
           </p>
         </section>
       ) : (
         <section className="paper rounded-3xl p-6">
-          <h2 className="font-paper text-xl">Weekly AI summaries (currently unavailable)</h2>
+          <h2 className="font-paper text-xl">
+            Weekly AI summaries (currently unavailable)
+          </h2>
           <p className="ink-muted mt-3 text-sm leading-relaxed">
-            This application does not call Cloudflare Workers AI for weekly summaries.
+            This application does not call Cloudflare Workers AI for weekly
+            summaries.
           </p>
         </section>
       )}
@@ -187,13 +199,16 @@ export function PrivacyPolicyPage() {
         <section className="paper rounded-3xl p-6">
           <h2 className="font-paper text-xl">Projector AI Search (optional)</h2>
           <p className="ink-muted mt-3 text-sm leading-relaxed">
-            When Projector search is enabled and you have not disabled AI in Settings, search queries
-            may upload journal text to Cloudflare <strong>AI Search</strong> for indexing and
-            retrieval, then return matching entries or a plain-text answer via the same Worker. Index
-            content is scoped to your search user id (signed-in account or a local anonymous id).
+            When Projector search is enabled and you have not disabled AI in
+            Settings, search queries may upload journal text to Cloudflare{" "}
+            <strong>AI Search</strong> for indexing and retrieval, then return
+            matching entries or a plain-text answer via the same Worker. Index
+            content is scoped to your search user id (signed-in account or a
+            local anonymous id).
           </p>
           <p className="ink-muted mt-3 text-sm leading-relaxed">
-            Prefer not to search content you would not want processed by an AI retrieval service.
+            Prefer not to search content you would not want processed by an AI
+            retrieval service.
           </p>
         </section>
       ) : null}
@@ -202,34 +217,23 @@ export function PrivacyPolicyPage() {
         <section className="paper rounded-3xl p-6">
           <h2 className="font-paper text-xl">Email reminders (optional)</h2>
           <p className="ink-muted mt-3 text-sm leading-relaxed">
-            If you opt in under Settings, Mentell can send daily writing reminders and weekly package
-            notices to an address you provide. Those messages are sent through the same{' '}
-            <strong>Cloudflare Worker</strong> using an email delivery provider. A verification link
-            is emailed before scheduled messages start. You can change or stop email notifications
-            in Settings at any time.
+            If you opt in under Settings, Mentell can send daily writing
+            reminders and weekly package notices to an address you provide.
+            Those messages are sent through the same{" "}
+            <strong>Cloudflare Worker</strong> using an email delivery provider.
+            A verification link is emailed before scheduled messages start. You
+            can change or stop email notifications in Settings at any time.
           </p>
         </section>
       ) : null}
 
       <section className="paper rounded-3xl p-6">
-        <h2 className="font-paper text-xl">Local crisis &amp; community resources (optional)</h2>
-        <p className="ink-muted mt-3 text-sm leading-relaxed">
-          When you choose to find local or regional help after a heavy journal entry, Mentell may ask
-          for device location (or use a debug-only test location in developer builds). Coordinates are
-          sent to public directories to list nearby options:{' '}
-          <strong>Global Helplines</strong>, <strong>Feed America (feedam.org)</strong>,{' '}
-          <strong>HUD Housing Counseling</strong>, and OpenStreetMap reverse geocoding for state/ZIP.
-          Mentell does not store your location in the journal database; requests go directly from your
-          browser to those services.
-        </p>
-      </section>
-
-      <section className="paper rounded-3xl p-6">
         <h2 className="font-paper text-xl">Hosting</h2>
         <p className="ink-muted mt-3 text-sm leading-relaxed">
-          The static app is served from GitHub Pages. Optional Firebase Hosting may serve a small
-          landing page on the auth domain. Standard request metadata (IP, user agent, URLs) may be
-          logged by those hosts for reliability and security.
+          The static app is served from GitHub Pages. Optional Firebase Hosting
+          may serve a small landing page on the auth domain. Standard request
+          metadata (IP, user agent, URLs) may be logged by those hosts for
+          reliability and security.
         </p>
       </section>
 
@@ -244,8 +248,8 @@ export function PrivacyPolicyPage() {
       <section className="paper rounded-3xl p-6">
         <h2 className="font-paper text-xl">SillyLittleTech site policy</h2>
         <p className="ink-muted mt-3 text-sm leading-relaxed">
-          Broader practices for the SillyLittleTech lander and organization (contact forms, hosting,
-          analytics) are in the{' '}
+          Broader practices for the SillyLittleTech lander and organization
+          (contact forms, hosting, analytics) are in the{" "}
           <a
             href={SILLY_LITTLE_POLICY_URL}
             className="underline-offset-2 hover:underline"
@@ -258,5 +262,5 @@ export function PrivacyPolicyPage() {
         </p>
       </section>
     </div>
-  )
+  );
 }
