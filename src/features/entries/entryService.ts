@@ -5,36 +5,36 @@ import {
   type EntrySentiment,
   type RiskLevel,
   type WarningLevel,
-} from '../../db/schema'
-import { makeId } from '../../shared/id'
-import { assertEntryFieldLimits } from '../../shared/limits/entryLimits'
-import { notifyLocalDataChanged } from '../../shared/sync/localDataEvents'
+} from "../../db/schema";
+import { makeId } from "../../shared/id";
+import { assertEntryFieldLimits } from "../../shared/limits/entryLimits";
+import { notifyLocalDataChanged } from "../../shared/sync/localDataEvents";
 
 export type EntryDraft = {
-  dateKey: string
-  sentiment: EntrySentiment
-  emotion: EntryEmotion
-  emotionNote: string
-  situation: string
-  details: string
-  behavioursNoted: string
-  reoccurringTheme: string
-  flaggedTerms: string[]
-  warningLevel: WarningLevel
-  riskScore: number
-  interventionScore: number
-  riskLevel: RiskLevel
-  scoreDelta: number
-  streakAtSubmit: number
-}
+  dateKey: string;
+  sentiment: EntrySentiment;
+  emotion: EntryEmotion;
+  emotionNote: string;
+  situation: string;
+  details: string;
+  behavioursNoted: string;
+  reoccurringTheme: string;
+  flaggedTerms: string[];
+  warningLevel: WarningLevel;
+  riskScore: number;
+  interventionScore: number;
+  riskLevel: RiskLevel;
+  scoreDelta: number;
+  streakAtSubmit: number;
+};
 
 export async function upsertEntryFromDraft(draft: EntryDraft) {
-  assertEntryFieldLimits(draft)
+  assertEntryFieldLimits(draft);
 
-  const now = Date.now()
+  const now = Date.now();
 
   const row: EntryRow = {
-    id: makeId('entry'),
+    id: makeId("entry"),
     createdAt: now,
     updatedAt: now,
     dateKey: draft.dateKey,
@@ -52,10 +52,10 @@ export async function upsertEntryFromDraft(draft: EntryDraft) {
     riskLevel: draft.riskLevel,
     scoreDelta: draft.scoreDelta,
     streakAtSubmit: draft.streakAtSubmit,
-  }
+  };
 
-  await getDb().entries.put(row)
-  notifyLocalDataChanged()
+  await getDb().entries.put(row);
+  notifyLocalDataChanged();
 
-  return row
+  return row;
 }
