@@ -35,7 +35,6 @@ import { publicUrl } from "./shared/publicUrl";
 import { SCORE_CHANGED_EVENT } from "./features/score/scoreEvents";
 import { ShareDashboardPage } from "./features/share/ShareDashboardPage";
 import { CryptSharePage } from "./features/share/CryptSharePage";
-import { SyncOnboardingBanner } from "./features/settings/SyncOnboardingBanner";
 import { VerifyEmailPage } from "./features/settings/VerifyEmailPage";
 import { AppLegalFooter } from "./components/AppLegalFooter";
 import { PrivacyPolicyPage } from "./features/legal/PrivacyPolicyPage";
@@ -70,6 +69,7 @@ import { RightRail } from "./components/shell/RightRail";
 import { DeskSpotlight } from "./components/shell/DeskSpotlight";
 import { ThemeToggleButton } from "./components/ThemeToggleButton";
 import { HomeGreeting } from "./features/home/HomeGreeting";
+import { ComposerLockShell } from "./features/compose/ComposerLockShell";
 import { QuickLogComposer } from "./features/compose/QuickLogComposer";
 import { CelebrationLayer } from "./features/celebrations/CelebrationLayer";
 import { runAfterJournalSubmit } from "./features/celebrations/clusterCelebration";
@@ -499,122 +499,111 @@ function HomePlaceholder({
       subtitle="Choose a quick sentiment log or a full letter entry."
     >
       <DeskCharacterLayout>
-        {composeMode !== "select" ? (
-          <div className="mb-4">
-            <button
-              type="button"
-              className="focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold"
-              onClick={() => setComposeMode("select")}
-            >
-              <MaterialIcon name="arrow_back" accent={false} size={18} />
-              Back
-            </button>
-          </div>
-        ) : null}
+        <ComposerLockShell
+          locked={composerLocked}
+          shakeKey={shakeBanner}
+          onBlockedInteraction={onBlockedComposerInteraction}
+        >
+          {composeMode !== "select" ? (
+            <div className="mb-4">
+              <button
+                type="button"
+                className="focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold"
+                onClick={() => setComposeMode("select")}
+              >
+                <MaterialIcon name="arrow_back" accent={false} size={18} />
+                Back
+              </button>
+            </div>
+          ) : null}
 
-        {composeMode === "select" ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            <button
-              type="button"
-              className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
-              onClick={() => setComposeMode("quick")}
+          {composeMode === "select" ? (
+            <div
+              className={`grid gap-4 md:grid-cols-2 ${composerLocked ? "opacity-50" : ""}`}
             >
-              <div className="flex items-center gap-3">
-                <MaterialIcon name="schedule" accent={false} size={28} />
-                <div className="font-paper text-xl">Quick log</div>
-              </div>
-              <p className="ink-muted mt-2 text-sm">
-                Sentiment only, optional short note — fast check-in.
-              </p>
-            </button>
-            <button
-              type="button"
-              className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
-              onClick={() => setComposeMode("entry")}
-            >
-              <div className="flex items-center gap-3">
-                <MaterialIcon name="edit_note" accent={false} size={28} />
-                <div className="font-paper text-xl">Entry</div>
-              </div>
-              <p className="ink-muted mt-2 text-sm">
-                Full letter flow — same as before, with review and AI search
-                indexing.
-              </p>
-            </button>
-          </div>
-        ) : null}
+              <button
+                type="button"
+                className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
+                onClick={() => setComposeMode("quick")}
+              >
+                <div className="flex items-center gap-3">
+                  <MaterialIcon name="schedule" accent={false} size={28} />
+                  <div className="font-paper text-xl">Quick log</div>
+                </div>
+                <p className="ink-muted mt-2 text-sm">
+                  Sentiment only, optional short note — fast check-in.
+                </p>
+              </button>
+              <button
+                type="button"
+                className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
+                onClick={() => setComposeMode("entry")}
+              >
+                <div className="flex items-center gap-3">
+                  <MaterialIcon name="edit_note" accent={false} size={28} />
+                  <div className="font-paper text-xl">Entry</div>
+                </div>
+                <p className="ink-muted mt-2 text-sm">
+                  Full letter flow — same as before, with review and AI search
+                  indexing.
+                </p>
+              </button>
+            </div>
+          ) : null}
 
-        {composeMode === "quick" ? (
-          <QuickLogComposer
-            disabled={composerLocked}
-            onSubmit={async (draft) => {
-              await waitForSync();
-              const submitDateKey = dateKeyForLocalDay(new Date());
-              const award = await awardForSubmission(submitDateKey);
-              const row = await upsertEntryFromDraft({
-                dateKey: submitDateKey,
-                entryType: "quick_log",
-                sentiment: draft.sentiment,
-                emotion: draft.emotion,
-                emotionNote: "",
-                situation: "Quick log",
-                details: "",
-                behavioursNoted: "",
-                reoccurringTheme: "",
-                quickLogNote: draft.quickLogNote,
-                flaggedTerms: draft.flaggedTerms,
-                warningLevel: draft.warningLevel,
-                riskScore: draft.riskScore,
-                interventionScore: draft.interventionScore,
-                riskLevel: draft.riskLevel,
-                scoreDelta: award.totalDelta,
-                streakAtSubmit: 0,
-                hbcmAtSubmit: award.hbcmDisplay,
-              });
-              await runPackageDeliveryAndNotify();
-              emitBackgroundActivity({
-                type: "start",
-                id: "sync",
-                message: "Syncing to cloud...",
-              });
-              ignorePromise(
-                pushLocalChangesNow().finally(() => {
-                  emitBackgroundActivity({
-                    type: "stop",
-                    id: "sync",
-                    message: "",
-                  });
-                }),
-              );
-              runAfterJournalSubmit(award);
-              onScoreChange(award.totalDelta, award.hint, {
-                deferOverlay: true,
-              });
-              setSubmitting(true);
-              return row.id;
-            }}
-          />
-        ) : null}
+          {composeMode === "quick" ? (
+            <QuickLogComposer
+              disabled={composerLocked}
+              onSubmit={async (draft) => {
+                await waitForSync();
+                const submitDateKey = dateKeyForLocalDay(new Date());
+                const award = await awardForSubmission(submitDateKey);
+                const row = await upsertEntryFromDraft({
+                  dateKey: submitDateKey,
+                  entryType: "quick_log",
+                  sentiment: draft.sentiment,
+                  emotion: draft.emotion,
+                  emotionNote: "",
+                  situation: "Quick log",
+                  details: "",
+                  behavioursNoted: "",
+                  reoccurringTheme: "",
+                  quickLogNote: draft.quickLogNote,
+                  flaggedTerms: draft.flaggedTerms,
+                  warningLevel: draft.warningLevel,
+                  riskScore: draft.riskScore,
+                  interventionScore: draft.interventionScore,
+                  riskLevel: draft.riskLevel,
+                  scoreDelta: award.totalDelta,
+                  streakAtSubmit: 0,
+                  hbcmAtSubmit: award.hbcmDisplay,
+                });
+                await runPackageDeliveryAndNotify();
+                emitBackgroundActivity({
+                  type: "start",
+                  id: "sync",
+                  message: "Syncing to cloud...",
+                });
+                ignorePromise(
+                  pushLocalChangesNow().finally(() => {
+                    emitBackgroundActivity({
+                      type: "stop",
+                      id: "sync",
+                      message: "",
+                    });
+                  }),
+                );
+                runAfterJournalSubmit(award);
+                onScoreChange(award.totalDelta, award.hint, {
+                  deferOverlay: true,
+                });
+                setSubmitting(true);
+                return row.id;
+              }}
+            />
+          ) : null}
 
-        {composeMode === "entry" ? (
-          <div
-            className="relative"
-            onPointerDownCapture={
-              composerLocked ? onBlockedComposerInteraction : undefined
-            }
-          >
-            {composerLocked ? (
-              <div className="absolute inset-x-0 top-32 z-20 sm:top-36">
-                <SyncOnboardingBanner shakeKey={shakeBanner} mode="overlay" />
-              </div>
-            ) : null}
-            {composerLocked ? (
-              <div
-                className="absolute inset-0 z-10 cursor-not-allowed"
-                aria-hidden
-                onFocus={onBlockedComposerInteraction}
-              />
-            ) : null}
+          {composeMode === "entry" ? (
             <LetterComposer
               disabled={composerLocked}
               onSubmit={async (drafts) => {
@@ -694,8 +683,8 @@ function HomePlaceholder({
                 setSubmitting(true);
               }}
             />
-          </div>
-        ) : null}
+          ) : null}
+        </ComposerLockShell>
 
         <SubmitAnimation
           key={submitting ? "submit-open" : "submit-closed"}
