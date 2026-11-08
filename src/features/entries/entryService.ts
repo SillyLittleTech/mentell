@@ -8,6 +8,7 @@ import {
   type RiskLevel,
   type WarningLevel,
 } from "../../db/schema";
+import type { RiskAssessment } from "../safety/riskAssessment";
 import { makeId } from "../../shared/id";
 import { assertEntryFieldLimits } from "../../shared/limits/entryLimits";
 import { notifyLocalDataChanged } from "../../shared/sync/localDataEvents";
@@ -71,4 +72,23 @@ export async function upsertEntryFromDraft(draft: EntryDraft) {
   notifyLocalDataChanged();
 
   return row;
+}
+
+/** Patch risk fields after a deferred quick-log safety review. */
+export async function applyRiskAssessmentToEntry(
+  entryId: string,
+  risk: RiskAssessment,
+) {
+  const row = await getDb().entries.get(entryId);
+  if (!row) return;
+  await getDb().entries.put({
+    ...row,
+    updatedAt: Date.now(),
+    flaggedTerms: risk.flaggedTerms,
+    warningLevel: risk.warningLevel,
+    riskScore: risk.riskScore,
+    interventionScore: risk.interventionScore,
+    riskLevel: risk.riskLevel,
+  });
+  notifyLocalDataChanged();
 }
