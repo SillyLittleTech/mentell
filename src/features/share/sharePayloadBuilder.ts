@@ -7,7 +7,6 @@ import type {
   SharePermissions,
 } from "./shareTypes";
 
-/** Async API: `buildSharePayload`. */
 export async function buildSharePayload(
   permissions: SharePermissions,
 ): Promise<ShareDashboardPayload> {
@@ -68,7 +67,7 @@ export async function buildSharePayload(
     mixed,
     warnings,
     entries,
-    ...(permissions.showStreak ? { streak: score.hbcmDisplay } : {}),
+    ...(permissions.showStreak ? { streak: score.streak } : {}),
     ...(permissions.showScore ? { score: score.total } : {}),
   };
 }
