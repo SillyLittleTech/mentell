@@ -544,84 +544,84 @@ function HomePlaceholder({
             <div
               className={`grid gap-4 md:grid-cols-2 ${composerLocked ? "opacity-50" : ""}`}
             >
-            <button
-              type="button"
-              className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
-              onClick={() => setComposeMode("quick")}
-            >
-              <div className="flex items-center gap-3">
-                <MaterialIcon name="schedule" accent={false} size={28} />
-                <div className="font-paper text-xl">Quick log</div>
-              </div>
-              <p className="ink-muted mt-2 text-sm">
-                Sentiment only, optional short note — fast check-in.
-              </p>
-            </button>
-            <button
-              type="button"
-              className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
-              onClick={() => setComposeMode("entry")}
-            >
-              <div className="flex items-center gap-3">
-                <MaterialIcon name="edit_note" accent={false} size={28} />
-                <div className="font-paper text-xl">Entry</div>
-              </div>
-              <p className="ink-muted mt-2 text-sm">
-                Full letter flow — same as before, with review and AI search
-                indexing.
-              </p>
-            </button>
+              <button
+                type="button"
+                className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
+                onClick={() => setComposeMode("quick")}
+              >
+                <div className="flex items-center gap-3">
+                  <MaterialIcon name="schedule" accent={false} size={28} />
+                  <div className="font-paper text-xl">Quick log</div>
+                </div>
+                <p className="ink-muted mt-2 text-sm">
+                  Sentiment only, optional short note — fast check-in.
+                </p>
+              </button>
+              <button
+                type="button"
+                className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
+                onClick={() => setComposeMode("entry")}
+              >
+                <div className="flex items-center gap-3">
+                  <MaterialIcon name="edit_note" accent={false} size={28} />
+                  <div className="font-paper text-xl">Entry</div>
+                </div>
+                <p className="ink-muted mt-2 text-sm">
+                  Full letter flow — same as before, with review and AI search
+                  indexing.
+                </p>
+              </button>
             </div>
           ) : null}
 
           {composeMode === "quick" ? (
             <QuickLogComposer
-            disabled={composerLocked}
-            onSubmit={async (draft) => {
-              await waitForSync();
-              const submitDateKey = dateKeyForLocalDay(new Date());
-              const award = await awardForSubmission(submitDateKey);
-              await upsertEntryFromDraft({
-                dateKey: submitDateKey,
-                entryType: "quick_log",
-                sentiment: draft.sentiment,
-                emotion: draft.emotion,
-                emotionNote: "",
-                situation: "Quick log",
-                details: "",
-                behavioursNoted: "",
-                reoccurringTheme: "",
-                quickLogNote: draft.quickLogNote,
-                flaggedTerms: draft.flaggedTerms,
-                warningLevel: draft.warningLevel,
-                riskScore: draft.riskScore,
-                interventionScore: draft.interventionScore,
-                riskLevel: draft.riskLevel,
-                scoreDelta: award.totalDelta,
-                streakAtSubmit: 0,
-                hbcmAtSubmit: award.hbcmDisplay,
-              });
-              await runPackageDeliveryAndNotify();
-              emitBackgroundActivity({
-                type: "start",
-                id: "sync",
-                message: "Syncing to cloud...",
-              });
-              ignorePromise(
-                pushLocalChangesNow().finally(() => {
-                  emitBackgroundActivity({
-                    type: "stop",
-                    id: "sync",
-                    message: "",
-                  });
-                }),
-              );
-              runAfterJournalSubmit(award);
-              onScoreChange(award.totalDelta, award.hint, {
-                deferOverlay: true,
-              });
-              setSubmitting(true);
-            }}
+              disabled={composerLocked}
+              onSubmit={async (draft) => {
+                await waitForSync();
+                const submitDateKey = dateKeyForLocalDay(new Date());
+                const award = await awardForSubmission(submitDateKey);
+                await upsertEntryFromDraft({
+                  dateKey: submitDateKey,
+                  entryType: "quick_log",
+                  sentiment: draft.sentiment,
+                  emotion: draft.emotion,
+                  emotionNote: "",
+                  situation: "Quick log",
+                  details: "",
+                  behavioursNoted: "",
+                  reoccurringTheme: "",
+                  quickLogNote: draft.quickLogNote,
+                  flaggedTerms: draft.flaggedTerms,
+                  warningLevel: draft.warningLevel,
+                  riskScore: draft.riskScore,
+                  interventionScore: draft.interventionScore,
+                  riskLevel: draft.riskLevel,
+                  scoreDelta: award.totalDelta,
+                  streakAtSubmit: 0,
+                  hbcmAtSubmit: award.hbcmDisplay,
+                });
+                await runPackageDeliveryAndNotify();
+                emitBackgroundActivity({
+                  type: "start",
+                  id: "sync",
+                  message: "Syncing to cloud...",
+                });
+                ignorePromise(
+                  pushLocalChangesNow().finally(() => {
+                    emitBackgroundActivity({
+                      type: "stop",
+                      id: "sync",
+                      message: "",
+                    });
+                  }),
+                );
+                runAfterJournalSubmit(award);
+                onScoreChange(award.totalDelta, award.hint, {
+                  deferOverlay: true,
+                });
+                setSubmitting(true);
+              }}
             />
           ) : null}
 
