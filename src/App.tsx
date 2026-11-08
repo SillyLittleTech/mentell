@@ -35,7 +35,6 @@ import { publicUrl } from "./shared/publicUrl";
 import { SCORE_CHANGED_EVENT } from "./features/score/scoreEvents";
 import { ShareDashboardPage } from "./features/share/ShareDashboardPage";
 import { CryptSharePage } from "./features/share/CryptSharePage";
-import { SyncOnboardingBanner } from "./features/settings/SyncOnboardingBanner";
 import { VerifyEmailPage } from "./features/settings/VerifyEmailPage";
 import { AppLegalFooter } from "./components/AppLegalFooter";
 import { PrivacyPolicyPage } from "./features/legal/PrivacyPolicyPage";
@@ -70,6 +69,7 @@ import { RightRail } from "./components/shell/RightRail";
 import { DeskSpotlight } from "./components/shell/DeskSpotlight";
 import { ThemeToggleButton } from "./components/ThemeToggleButton";
 import { HomeGreeting } from "./features/home/HomeGreeting";
+import { ComposerLockShell } from "./features/compose/ComposerLockShell";
 import { QuickLogComposer } from "./features/compose/QuickLogComposer";
 import { CelebrationLayer } from "./features/celebrations/CelebrationLayer";
 import { runAfterJournalSubmit } from "./features/celebrations/clusterCelebration";
@@ -499,44 +499,51 @@ function HomePlaceholder({
       subtitle="Choose a quick sentiment log or a full letter entry."
     >
       <DeskCharacterLayout>
-        <div
-          className="mb-6 flex flex-wrap gap-2"
-          role="tablist"
-          aria-label="Log type"
+        <ComposerLockShell
+          locked={composerLocked}
+          shakeKey={shakeBanner}
+          onBlockedInteraction={onBlockedComposerInteraction}
         >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={composeMode === "select"}
-            className={`focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold ${composeMode === "select" ? "bg-[var(--paper-bg)]" : ""}`}
-            onClick={() => setComposeMode("select")}
+          <div
+            className="mb-6 flex flex-wrap gap-2"
+            role="tablist"
+            aria-label="Log type"
           >
-            Choose
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={composeMode === "quick"}
-            className={`focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold ${composeMode === "quick" ? "bg-[var(--paper-bg)]" : ""}`}
-            onClick={() => setComposeMode("quick")}
-          >
-            <MaterialIcon name="schedule" accent={false} size={18} />
-            Quick log
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={composeMode === "entry"}
-            className={`focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold ${composeMode === "entry" ? "bg-[var(--paper-bg)]" : ""}`}
-            onClick={() => setComposeMode("entry")}
-          >
-            <MaterialIcon name="edit_note" accent={false} size={18} />
-            Entry
-          </button>
-        </div>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={composeMode === "select"}
+              className={`focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold ${composeMode === "select" ? "bg-[var(--paper-bg)]" : ""}`}
+              onClick={() => setComposeMode("select")}
+            >
+              Choose
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={composeMode === "quick"}
+              className={`focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold ${composeMode === "quick" ? "bg-[var(--paper-bg)]" : ""}`}
+              onClick={() => setComposeMode("quick")}
+            >
+              <MaterialIcon name="schedule" accent={false} size={18} />
+              Quick log
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={composeMode === "entry"}
+              className={`focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold ${composeMode === "entry" ? "bg-[var(--paper-bg)]" : ""}`}
+              onClick={() => setComposeMode("entry")}
+            >
+              <MaterialIcon name="edit_note" accent={false} size={18} />
+              Entry
+            </button>
+          </div>
 
-        {composeMode === "select" ? (
-          <div className="grid gap-4 md:grid-cols-2">
+          {composeMode === "select" ? (
+            <div
+              className={`grid gap-4 md:grid-cols-2 ${composerLocked ? "opacity-50" : ""}`}
+            >
             <button
               type="button"
               className="paper focus-ring rounded-3xl border border-[var(--paper-border)] p-6 text-left transition hover:-translate-y-0.5"
@@ -564,11 +571,11 @@ function HomePlaceholder({
                 indexing.
               </p>
             </button>
-          </div>
-        ) : null}
+            </div>
+          ) : null}
 
-        {composeMode === "quick" ? (
-          <QuickLogComposer
+          {composeMode === "quick" ? (
+            <QuickLogComposer
             disabled={composerLocked}
             onSubmit={async (draft) => {
               await waitForSync();
@@ -615,28 +622,10 @@ function HomePlaceholder({
               });
               setSubmitting(true);
             }}
-          />
-        ) : null}
+            />
+          ) : null}
 
-        {composeMode === "entry" ? (
-          <div
-            className="relative"
-            onPointerDownCapture={
-              composerLocked ? onBlockedComposerInteraction : undefined
-            }
-          >
-            {composerLocked ? (
-              <div className="absolute inset-x-0 top-32 z-20 sm:top-36">
-                <SyncOnboardingBanner shakeKey={shakeBanner} mode="overlay" />
-              </div>
-            ) : null}
-            {composerLocked ? (
-              <div
-                className="absolute inset-0 z-10 cursor-not-allowed"
-                aria-hidden
-                onFocus={onBlockedComposerInteraction}
-              />
-            ) : null}
+          {composeMode === "entry" ? (
             <LetterComposer
               disabled={composerLocked}
               onSubmit={async (drafts) => {
@@ -716,8 +705,8 @@ function HomePlaceholder({
                 setSubmitting(true);
               }}
             />
-          </div>
-        ) : null}
+          ) : null}
+        </ComposerLockShell>
 
         <SubmitAnimation
           key={submitting ? "submit-open" : "submit-closed"}

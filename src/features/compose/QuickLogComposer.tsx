@@ -81,7 +81,10 @@ export function QuickLogComposer(props: Readonly<QuickLogComposerProps>) {
   }
 
   return (
-    <section className="paper rounded-3xl p-6">
+    <section
+      className={`paper rounded-3xl p-6 ${disabled ? "pointer-events-none opacity-50" : ""}`}
+      aria-disabled={disabled || undefined}
+    >
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="font-paper text-2xl">Quick log</div>
@@ -100,7 +103,7 @@ export function QuickLogComposer(props: Readonly<QuickLogComposerProps>) {
       <div className="mt-6 space-y-4">
         <SentimentPills
           value={sentiment}
-          onChange={(v) => (disabled ? {} : setSentiment(v))}
+          onChange={disabled ? () => {} : setSentiment}
         />
         <div>
           <LimitedFieldLabel
