@@ -22,6 +22,10 @@ interface ImportMetaEnv {
   readonly VITE_ENABLE_WEEKLY_AI_SUMMARY?: string
   readonly VITE_WEEKLY_AI_ENDPOINT?: string
   readonly VITE_WEEKLY_AI_TOKEN?: string
+  /** When "1", enable AI pooled local crisis suggestions (same Worker as risk AI). Default: follows weekly AI flag. */
+  readonly VITE_ENABLE_POOLED_CRISIS?: string
+  /** Dev only: skip Worker and inject fixture pooled rows for UI testing. */
+  readonly VITE_POOLED_DEV_FIXTURE?: string
   readonly VITE_ENABLE_PROJECTOR_AI_SEARCH?: string
   readonly VITE_PROJECTOR_SEARCH_ENDPOINT?: string
   readonly VITE_PROJECTOR_SEARCH_TOKEN?: string

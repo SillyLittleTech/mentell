@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import {
   LimitedFieldLabel,
   LimitedInput,
@@ -26,20 +26,19 @@ import {
   ENTRY_SITUATION_MAX,
   isOverLimit,
 } from "../../shared/limits/entryLimits";
-import { useBodyScrollLock } from "../../shared/motion/useBodyScrollLock";
-import {
-  motionDuration,
-  shouldReduceMotion,
-} from "../../shared/motion/useMotionPrefs";
 import {
   assessDraftRisk,
   assessRisk,
   type RiskAssessment,
 } from "../safety/riskAssessment";
-import { CrisisResourcePanel } from "../safety/CrisisResourcePanel";
+import {
+  RiskResultModal,
+  shouldShowPostSubmitRiskModal,
+} from "../safety/RiskResultModal";
 import type { EntryEmotion, RiskLevel } from "../../db/schema";
 import { useComposeInsight } from "./utils/useComposeInsight";
 
+/** Public type `Draft` for Mentell 2.x. */
 export type Draft = {
   dateKey: string;
   sentiment: SentimentValue;
@@ -75,8 +74,10 @@ type DebugAiTestFill = {
   reoccurringTheme?: string;
 };
 
+/** Public type `Timeframe` for Mentell 2.x. */
 export type Timeframe = "just now" | "an hour ago" | "yesterday";
 
+/** Public type `DraftInputState` for Mentell 2.x. */
 export type DraftInputState = {
   id: string;
   sentiment: SentimentValue;
@@ -90,34 +91,34 @@ export type DraftInputState = {
   timeframe: Timeframe;
 };
 
+/** Documents `generateRandomId` in this module. */
 function generateRandomId() {
   return typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
     : Math.random().toString(36).slice(2);
 }
 
-function SkeletonInput({ className = '' }: { className?: string }) {
+/** Documents `SkeletonInput` in this module. */
+function SkeletonInput({ className = "" }: { className?: string }) {
   return (
     <div
       className={`skeleton-block skeleton-block--static w-full h-[60px] ${className}`.trim()}
       aria-hidden
     />
-  )
+  );
 }
 
-function SkeletonTextarea({
-  className = '',
-}: {
-  className?: string
-}) {
+/** Documents `SkeletonTextarea` in this module. */
+function SkeletonTextarea({ className = "" }: { className?: string }) {
   return (
     <div
       className={`skeleton-block skeleton-block--static w-full ${className}`.trim()}
       aria-hidden
     />
-  )
+  );
 }
 
+/** `LetterComposer` — see module for behavior. */
 export function LetterComposer({
   onSubmit,
   disabled = false,
@@ -247,6 +248,7 @@ export function LetterComposer({
     setDraftInputs((prev) => [...prev, createDraftInput()]);
   };
 
+  /** Documents `handleSubmit` in this module. */
   async function handleSubmit() {
     if (disabled || isSubmitting || anyDraftOverLimit) return;
     setIsSubmitting(true);
@@ -297,6 +299,11 @@ export function LetterComposer({
         } else if (!prevIsCrisis && hasMessage && !prevHasMessage) {
           highestRisk = finalRisk;
         } else if (
+          finalRisk.responseKind === "hypermania" &&
+          highestRisk?.responseKind !== "crisis"
+        ) {
+          highestRisk = finalRisk;
+        } else if (
           !prevIsCrisis &&
           !prevHasMessage &&
           finalRisk.riskScore > highestRisk.riskScore
@@ -329,12 +336,7 @@ export function LetterComposer({
       setIsBulkMode(false);
       setDraftRisk(null);
       setSubmitState("done");
-      if (
-        highestRisk &&
-        (highestRisk.responseKind === "crisis" ||
-          (highestRisk.responseKind !== "none" &&
-            highestRisk.supportiveMessage?.trim()))
-      ) {
+      if (highestRisk && shouldShowPostSubmitRiskModal(highestRisk)) {
         setSubmittedRisk(highestRisk);
       }
       window.setTimeout(() => setSubmitState("idle"), 2200);
@@ -504,43 +506,43 @@ export function LetterComposer({
                 <div className="font-paper text-xl">
                   Additional entry {index + 1}
                 </div>
-                  <Field
-                    label="Situation"
-                    overLimit={isOverLimit(draft.situation, ENTRY_SITUATION_MAX)}
-                  >
-                    {disabled ? (
-                      <SkeletonInput />
-                    ) : (
-                      <LimitedInput
-                        disabled={disabled}
-                        maxChars={ENTRY_SITUATION_MAX}
-                        value={draft.situation}
-                        onChange={(e) =>
-                          updateDraft(draft.id, { situation: e.target.value })
-                        }
-                        placeholder="What happened?"
-                      />
-                    )}
-                  </Field>
-                  <Field
-                    label="Details"
-                    overLimit={isOverLimit(draft.details, ENTRY_DETAILS_MAX)}
-                  >
-                    {disabled ? (
-                      <SkeletonTextarea className="min-h-[120px]" />
-                    ) : (
-                      <LimitedTextarea
-                        disabled={disabled}
-                        maxChars={ENTRY_DETAILS_MAX}
-                        className="min-h-[120px]"
-                        value={draft.details}
-                        onChange={(e) =>
-                          updateDraft(draft.id, { details: e.target.value })
-                        }
-                        placeholder="Details for this entry…"
-                      />
-                    )}
-                  </Field>
+                <Field
+                  label="Situation"
+                  overLimit={isOverLimit(draft.situation, ENTRY_SITUATION_MAX)}
+                >
+                  {disabled ? (
+                    <SkeletonInput />
+                  ) : (
+                    <LimitedInput
+                      disabled={disabled}
+                      maxChars={ENTRY_SITUATION_MAX}
+                      value={draft.situation}
+                      onChange={(e) =>
+                        updateDraft(draft.id, { situation: e.target.value })
+                      }
+                      placeholder="What happened?"
+                    />
+                  )}
+                </Field>
+                <Field
+                  label="Details"
+                  overLimit={isOverLimit(draft.details, ENTRY_DETAILS_MAX)}
+                >
+                  {disabled ? (
+                    <SkeletonTextarea className="min-h-[120px]" />
+                  ) : (
+                    <LimitedTextarea
+                      disabled={disabled}
+                      maxChars={ENTRY_DETAILS_MAX}
+                      className="min-h-[120px]"
+                      value={draft.details}
+                      onChange={(e) =>
+                        updateDraft(draft.id, { details: e.target.value })
+                      }
+                      placeholder="Details for this entry…"
+                    />
+                  )}
+                </Field>
                 <EntryExtrasFields
                   draft={draft}
                   disabled={disabled}
@@ -681,7 +683,7 @@ export function LetterComposer({
                     accent={false}
                     className="text-[rgba(0,0,0,0.92)]"
                   />
-                  {isSubmitting ? <Throbber label="Checking" /> : 'Submit'}
+                  {isSubmitting ? <Throbber label="Checking" /> : "Submit"}
                 </span>
               </button>
             )}
@@ -699,6 +701,7 @@ export function LetterComposer({
     </div>
   );
 }
+/** Documents `DraftRiskNotice` in this module. */
 function DraftRiskNotice({
   risk,
 }: {
@@ -722,122 +725,7 @@ function DraftRiskNotice({
   );
 }
 
-function SupportNotice({ risk }: { risk: RiskAssessment }) {
-  const celebration = risk.responseKind === "positive";
-  const message = risk.supportiveMessage?.trim();
-  return (
-    <div className="space-y-2">
-      <div className="font-medium" style={{ color: "var(--success)" }}>
-        {celebration
-          ? "This deserves a little confetti"
-          : "A small note for this moment"}
-      </div>
-      {message ? <div>{message}</div> : null}
-      {isDebugMode() ? <RiskSignalLine risk={risk} /> : null}
-    </div>
-  );
-}
-
-function RiskNotice({ risk }: { risk: RiskAssessment }) {
-  const crisis = risk.responseKind === "crisis";
-  return (
-    <div className="space-y-2">
-      <div className="font-medium" style={{ color: "var(--danger)" }}>
-        {crisis
-          ? "You matter, and you do not have to sit with this alone."
-          : "I noticed this feels heavy. You are cared about."}
-      </div>
-      {risk.supportiveMessage?.trim() ? (
-        <div>{risk.supportiveMessage}</div>
-      ) : null}
-      {isDebugMode() ? <RiskSignalLine risk={risk} /> : null}
-      {isDebugMode() && risk.reasons.length ? (
-        <div>Signals: {risk.reasons.join(", ")}</div>
-      ) : null}
-      {crisis ? <CrisisResourcePanel compact /> : null}
-    </div>
-  );
-}
-
-function RiskSignalLine({ risk }: { risk: RiskAssessment }) {
-  const guard =
-    risk.guardSafe === undefined
-      ? ""
-      : ` · guard ${risk.guardSafe ? "safe" : "unsafe"}`;
-  return (
-    <div className="font-mono text-[11px] uppercase opacity-70">
-      Literal {risk.literalSentimentLabel}{" "}
-      {risk.literalSentimentConfidence.toFixed(2)} (
-      {risk.literalSentimentScore.toFixed(2)}) · {risk.sentimentModelSource} ·{" "}
-      {risk.source}
-      {guard}
-    </div>
-  );
-}
-
-function RiskResultModal({
-  risk,
-  onClose,
-}: {
-  risk: RiskAssessment;
-  onClose: () => void;
-}) {
-  const crisis = risk.responseKind === "crisis";
-  const celebration = risk.responseKind === "positive";
-  const titleId = "risk-result-modal-title";
-  const reduced = shouldReduceMotion();
-  useBodyScrollLock(true);
-  return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/35 p-4"
-      initial={reduced ? false : { opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={reduced ? undefined : { opacity: 0 }}
-      transition={{ duration: motionDuration(0.2) || 0 }}
-    >
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="paper my-auto max-h-[min(90dvh,42rem)] w-full max-w-xl overflow-y-auto overscroll-contain rounded-3xl p-6 shadow-lg"
-        initial={reduced ? false : { scale: 0.96, y: 18 }}
-        animate={{ scale: 1, y: 0 }}
-        exit={reduced ? undefined : { scale: 0.98, y: 10 }}
-        transition={{ duration: motionDuration(0.25) || 0 }}
-      >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div id={titleId} className="font-paper text-2xl">
-              {crisis
-                ? "You are not alone"
-                : celebration
-                  ? "Look at you go"
-                  : "A note for you"}
-            </div>
-            <div className="ink-muted mt-1 text-sm">
-              {crisis
-                ? "Mentell noticed this entry may need extra care."
-                : celebration
-                  ? "Mentell noticed a bright patch worth celebrating."
-                  : "Mentell found a supportive note after reading your entry."}
-            </div>
-          </div>
-          <button
-            type="button"
-            className="focus-ring rounded-2xl border border-[var(--paper-border)] px-3 py-2 text-sm font-semibold"
-            onClick={onClose}
-          >
-            Close
-          </button>
-        </div>
-        <div className="mt-5 rounded-2xl border border-[var(--paper-border)] p-4">
-          {crisis ? <RiskNotice risk={risk} /> : <SupportNotice risk={risk} />}
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
+/** Documents `EntryExtrasFields` in this module. */
 function EntryExtrasFields({
   draft,
   disabled,
@@ -914,6 +802,7 @@ function EntryExtrasFields({
   );
 }
 
+/** Documents `Field` in this module. */
 function Field({
   label,
   children,
