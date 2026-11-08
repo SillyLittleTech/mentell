@@ -504,41 +504,18 @@ function HomePlaceholder({
           shakeKey={shakeBanner}
           onBlockedInteraction={onBlockedComposerInteraction}
         >
-          <div
-            className="mb-6 flex flex-wrap gap-2"
-            role="tablist"
-            aria-label="Log type"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={composeMode === "select"}
-              className={`focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold ${composeMode === "select" ? "bg-[var(--paper-bg)]" : ""}`}
-              onClick={() => setComposeMode("select")}
-            >
-              Choose
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={composeMode === "quick"}
-              className={`focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold ${composeMode === "quick" ? "bg-[var(--paper-bg)]" : ""}`}
-              onClick={() => setComposeMode("quick")}
-            >
-              <MaterialIcon name="schedule" accent={false} size={18} />
-              Quick log
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={composeMode === "entry"}
-              className={`focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold ${composeMode === "entry" ? "bg-[var(--paper-bg)]" : ""}`}
-              onClick={() => setComposeMode("entry")}
-            >
-              <MaterialIcon name="edit_note" accent={false} size={18} />
-              Entry
-            </button>
-          </div>
+          {composeMode !== "select" ? (
+            <div className="mb-4">
+              <button
+                type="button"
+                className="focus-ring flex items-center gap-2 rounded-2xl border border-[var(--paper-border)] px-4 py-2 text-sm font-semibold"
+                onClick={() => setComposeMode("select")}
+              >
+                <MaterialIcon name="arrow_back" accent={false} size={18} />
+                Back
+              </button>
+            </div>
+          ) : null}
 
           {composeMode === "select" ? (
             <div
@@ -581,7 +558,7 @@ function HomePlaceholder({
                 await waitForSync();
                 const submitDateKey = dateKeyForLocalDay(new Date());
                 const award = await awardForSubmission(submitDateKey);
-                await upsertEntryFromDraft({
+                const row = await upsertEntryFromDraft({
                   dateKey: submitDateKey,
                   entryType: "quick_log",
                   sentiment: draft.sentiment,
@@ -621,6 +598,7 @@ function HomePlaceholder({
                   deferOverlay: true,
                 });
                 setSubmitting(true);
+                return row.id;
               }}
             />
           ) : null}
