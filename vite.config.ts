@@ -15,7 +15,7 @@ const rootDir = path.dirname(fileURLToPath(import.meta.url))
 let commitSha = 'dev'
 try {
   commitSha = execSync('git rev-parse --short HEAD').toString().trim()
-} catch (e) {
+} catch {
   // ignore
 }
 const buildTime = new Date().toISOString()

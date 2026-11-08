@@ -54,7 +54,7 @@ function WebMessage() {
   )
 }
 
-function TauriUpdateUI({ update, onFail }: { update: any; onFail: () => void }) {
+function TauriUpdateUI({ update, onFail }: { update: unknown; onFail: () => void }) {
   const [status, setStatus] = useState<'idle' | 'downloading' | 'ready'>('idle')
   const [progress, setProgress] = useState(0)
 
@@ -66,8 +66,8 @@ function TauriUpdateUI({ update, onFail }: { update: any; onFail: () => void }) 
       let downloaded = 0
       let total = 0
 
-      await update.downloadAndInstall((event: any) => {
-        if (event.event === 'Started' && event.data.contentLength) {
+      await (update as { downloadAndInstall: (cb: (e: { event: string, data?: { contentLength?: number, chunkLength?: number } }) => void) => Promise<void> }).downloadAndInstall((event: { event: string, data?: { contentLength?: number, chunkLength?: number } }) => {
+        if (event.event === 'Started' && event.data?.contentLength) {
           total = event.data.contentLength
         } else if (event.event === 'Progress') {
           downloaded += event.data.chunkLength

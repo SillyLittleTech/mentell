@@ -108,7 +108,7 @@ export function VerifyEmailPage() {
     return () => {
       cancelled = true
     }
-  }, [token])
+  }, [token, updateSettings])
 
   return (
     <DeskCharacterLayout>

@@ -67,21 +67,24 @@ export function useComposeInsight(): string {
   const [insight, setInsight] = useState<string>("Draft a letter")
 
   useEffect(() => {
-    const now = new Date()
-    const currentTimeOfDay = timeOfDayAt(now)
-    let stored = getStoredPick()
+    const updateInsight = () => {
+      const now = new Date()
+      const currentTimeOfDay = timeOfDayAt(now)
+      let stored = getStoredPick()
 
-    if (!stored || stored.timeOfDay !== currentTimeOfDay) {
-      const timeCuesForPeriod = compInsightData.timeCues[currentTimeOfDay] || ["Note"]
-      stored = {
-        timeOfDay: currentTimeOfDay,
-        timeCue: pickRandomItem(timeCuesForPeriod),
-        nickname: pickRandomItem(compInsightData.letterNicknames),
+      if (!stored || stored.timeOfDay !== currentTimeOfDay) {
+        const timeCuesForPeriod = compInsightData.timeCues[currentTimeOfDay] || ["Note"]
+        stored = {
+          timeOfDay: currentTimeOfDay,
+          timeCue: pickRandomItem(timeCuesForPeriod),
+          nickname: pickRandomItem(compInsightData.letterNicknames),
+        }
+        writeStoredPick(stored)
       }
-      writeStoredPick(stored)
-    }
 
-    setInsight(`${stored.timeCue} ${stored.nickname}`)
+      setInsight(`${stored.timeCue} ${stored.nickname}`)
+    }
+    updateInsight()
   }, [])
 
   return insight

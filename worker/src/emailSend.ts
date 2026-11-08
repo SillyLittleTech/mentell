@@ -223,7 +223,7 @@ export async function generateWeeklySummary(
   _endKey: string,
   globalName?: string,
   disableAi?: boolean,
-  entries?: any[]
+  entries?: unknown[]
 ): Promise<string> {
   if (disableAi) {
     return 'AI Features are disabled, enable in the settings.'

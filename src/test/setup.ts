@@ -5,7 +5,7 @@ import { webcrypto } from 'node:crypto'
 Object.defineProperty(window, 'crypto', {
   value: {
     subtle: webcrypto.subtle,
-    getRandomValues: (arr: any) => webcrypto.getRandomValues(arr),
+    getRandomValues: (arr: NodeJS.ArrayBufferView) => webcrypto.getRandomValues(arr),
   },
   configurable: true,
 })
