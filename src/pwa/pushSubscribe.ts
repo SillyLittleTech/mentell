@@ -1,178 +1,203 @@
-import { isDebugMode } from '../shared/debug/debugFlags'
-import { getFirebaseAuth } from '../shared/firebase/firebaseApp'
-import { isFirebaseEnabled } from '../shared/features/featureFlags'
-import { loadAppSettings } from '../shared/settings/appSettings'
-import { scopedStorageKey } from '../shared/storage/storageScope'
+import { isDebugMode } from "../shared/debug/debugFlags";
+import { getFirebaseAuth } from "../shared/firebase/firebaseApp";
+import { isFirebaseEnabled } from "../shared/features/featureFlags";
+import { loadAppSettings } from "../shared/settings/appSettings";
+import { scopedStorageKey } from "../shared/storage/storageScope";
 
-const PUSH_CLIENT_ID_KEY = scopedStorageKey('mentell.pushClientId')
+const PUSH_CLIENT_ID_KEY = scopedStorageKey("mentell.pushClientId");
 
 function pushApiBase() {
-  const raw = import.meta.env.VITE_PUSH_API_BASE?.trim()
-  if (!raw) return ''
-  let base = raw.replace(/\/$/, '')
+  const raw = import.meta.env.VITE_PUSH_API_BASE?.trim();
+  if (!raw) return "";
+  let base = raw.replace(/\/$/, "");
   try {
-    const u = new URL(base)
+    const u = new URL(base);
     if (
-      (u.hostname === '127.0.0.1' || u.hostname === 'localhost') &&
-      u.protocol === 'https:'
+      (u.hostname === "127.0.0.1" || u.hostname === "localhost") &&
+      u.protocol === "https:"
     ) {
-      u.protocol = 'http:'
-      base = u.origin
+      u.protocol = "http:";
+      base = u.origin;
     }
   } catch {
     /* keep raw */
   }
-  return base
+  return base;
 }
 
 export function isWebPushConfigured() {
-  return Boolean(import.meta.env.VITE_VAPID_PUBLIC_KEY?.trim() && pushApiBase())
+  return Boolean(
+    import.meta.env.VITE_VAPID_PUBLIC_KEY?.trim() && pushApiBase(),
+  );
 }
 
 function urlBase64ToUint8Array(base64: string) {
-  const padding = '='.repeat((4 - (base64.length % 4)) % 4)
-  const base64Safe = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/')
-  const raw = atob(base64Safe)
-  const out = new Uint8Array(raw.length)
-  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i)
-  return out
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+  const base64Safe = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64Safe);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
 }
 
 export function getWorkerApiBase() {
-  return pushApiBase()
+  return pushApiBase();
 }
 
-export async function getWorkerAuthHeaders(): Promise<Record<string, string>> {
-  return authHeader()
+export function getWorkerAuthHeaders(): Promise<Record<string, string>> {
+  return authHeader();
 }
 
 export function getOrCreatePushClientId() {
-  let id = localStorage.getItem(PUSH_CLIENT_ID_KEY)
+  let id = localStorage.getItem(PUSH_CLIENT_ID_KEY);
   if (!id) {
-    id = crypto.randomUUID()
-    localStorage.setItem(PUSH_CLIENT_ID_KEY, id)
+    id = crypto.randomUUID();
+    localStorage.setItem(PUSH_CLIENT_ID_KEY, id);
   }
-  return id
+  return id;
 }
 
 function normalizeBearerToken(raw?: string) {
-  if (!raw) return ''
-  const t = raw.trim()
-  if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
-    return t.slice(1, -1)
+  if (!raw) return "";
+  const t = raw.trim();
+  if (
+    (t.startsWith('"') && t.endsWith('"')) ||
+    (t.startsWith("'") && t.endsWith("'"))
+  ) {
+    return t.slice(1, -1);
   }
-  return t
+  return t;
 }
 
 async function authHeader(): Promise<Record<string, string>> {
-  const weeklyToken = normalizeBearerToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
+  const weeklyToken = normalizeBearerToken(
+    import.meta.env.VITE_WEEKLY_AI_TOKEN,
+  );
   // Debug + local worker usually has no FIREBASE_SERVICE_ACCOUNT_JSON — use shared token + clientId.
   if (isDebugMode() && weeklyToken) {
-    return { Authorization: `Bearer ${weeklyToken}` }
+    return { Authorization: `Bearer ${weeklyToken}` };
   }
   if (isFirebaseEnabled()) {
-    const auth = getFirebaseAuth()
-    const user = auth?.currentUser
+    const auth = getFirebaseAuth();
+    const user = auth?.currentUser;
     if (user) {
-      const idToken = await user.getIdToken()
-      return { Authorization: `Bearer ${idToken}` }
+      const idToken = await user.getIdToken();
+      return { Authorization: `Bearer ${idToken}` };
     }
   }
-  if (weeklyToken) return { Authorization: `Bearer ${weeklyToken}` }
-  return {}
+  if (weeklyToken) return { Authorization: `Bearer ${weeklyToken}` };
+  return {};
 }
 
-const SW_READY_TIMEOUT_MS = 20_000
+const SW_READY_TIMEOUT_MS = 20_000;
 
 async function getReadyRegistration(): Promise<ServiceWorkerRegistration | null> {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return null
+  if (!("serviceWorker" in navigator) || !("PushManager" in window))
+    return null;
   try {
     const reg = await Promise.race([
       navigator.serviceWorker.ready,
       new Promise<never>((_, reject) => {
-        window.setTimeout(() => reject(new Error('timeout')), SW_READY_TIMEOUT_MS)
+        window.setTimeout(
+          () => reject(new Error("timeout")),
+          SW_READY_TIMEOUT_MS,
+        );
       }),
-    ])
-    return reg
+    ]);
+    return reg;
   } catch {
-    const regs = await navigator.serviceWorker.getRegistrations()
-    return regs.find((r) => r.active) ?? regs[0] ?? null
+    const regs = await navigator.serviceWorker.getRegistrations();
+    return regs.find((r) => r.active) ?? regs[0] ?? null;
   }
 }
 
 async function getPushSubscription(): Promise<PushSubscription | null> {
-  const reg = await getReadyRegistration()
-  if (!reg) return null
-  return reg.pushManager.getSubscription()
+  const reg = await getReadyRegistration();
+  if (!reg) return null;
+  return reg.pushManager.getSubscription();
 }
 
 function applicationServerKeysMatch(
   existing: ArrayBuffer | ArrayBufferView | null | undefined,
   expected: Uint8Array,
 ) {
-  if (!existing) return true
+  if (!existing) return true;
   const bytes =
     existing instanceof ArrayBuffer
       ? new Uint8Array(existing)
-      : new Uint8Array(existing.buffer, existing.byteOffset, existing.byteLength)
-  if (bytes.byteLength !== expected.byteLength) return false
-  return bytes.every((b, i) => b === expected[i])
+      : new Uint8Array(
+          existing.buffer,
+          existing.byteOffset,
+          existing.byteLength,
+        );
+  if (bytes.byteLength !== expected.byteLength) return false;
+  return bytes.every((b, i) => b === expected[i]);
 }
 
 function subscriptionExpired(sub: PushSubscription) {
-  return Boolean(sub.expirationTime && sub.expirationTime <= Date.now() + 60_000)
+  return Boolean(
+    sub.expirationTime && sub.expirationTime <= Date.now() + 60_000,
+  );
 }
 
 function vapidApplicationServerKey(base64: string): ArrayBuffer {
-  const u8 = urlBase64ToUint8Array(base64)
-  return u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength) as ArrayBuffer
+  const u8 = urlBase64ToUint8Array(base64);
+  return u8.buffer.slice(
+    u8.byteOffset,
+    u8.byteOffset + u8.byteLength,
+  ) as ArrayBuffer;
 }
 
 async function waitForActiveWorker(reg: ServiceWorkerRegistration) {
-  if (reg.active) return
-  const worker = reg.installing ?? reg.waiting
-  if (!worker) return
+  if (reg.active) return;
+  const worker = reg.installing ?? reg.waiting;
+  if (!worker) return;
   await new Promise<void>((resolve, reject) => {
     const timeout = window.setTimeout(
-      () => reject(new Error('Service worker did not activate')),
+      () => reject(new Error("Service worker did not activate")),
       SW_READY_TIMEOUT_MS,
-    )
+    );
     const onChange = () => {
-      if (worker.state === 'activated' || worker.state === 'redundant') {
-        window.clearTimeout(timeout)
-        resolve()
+      if (worker.state === "activated" || worker.state === "redundant") {
+        window.clearTimeout(timeout);
+        resolve();
       }
-    }
-    worker.addEventListener('statechange', onChange)
-    onChange()
-  })
+    };
+    worker.addEventListener("statechange", onChange);
+    onChange();
+  });
 }
 
 async function ensurePushSubscription(): Promise<PushSubscription | null> {
-  const vapid = import.meta.env.VITE_VAPID_PUBLIC_KEY?.trim()
-  if (!vapid) return null
-  const reg = await getReadyRegistration()
-  if (!reg) return null
+  const vapid = import.meta.env.VITE_VAPID_PUBLIC_KEY?.trim();
+  if (!vapid) return null;
+  const reg = await getReadyRegistration();
+  if (!reg) return null;
   try {
-    await waitForActiveWorker(reg)
+    await waitForActiveWorker(reg);
   } catch {
     /* subscribe may still work on a waiting worker */
   }
-  const key = vapidApplicationServerKey(vapid)
-  const expectedBytes = new Uint8Array(key)
-  const existing = await reg.pushManager.getSubscription()
+  const key = vapidApplicationServerKey(vapid);
+  const expectedBytes = new Uint8Array(key);
+  const existing = await reg.pushManager.getSubscription();
   if (existing && !subscriptionExpired(existing)) {
-    if (applicationServerKeysMatch(existing.options.applicationServerKey, expectedBytes)) {
-      return existing
+    if (
+      applicationServerKeysMatch(
+        existing.options.applicationServerKey,
+        expectedBytes,
+      )
+    ) {
+      return existing;
     }
     try {
-      await existing.unsubscribe()
+      await existing.unsubscribe();
     } catch {
       /* resubscribe below */
     }
   } else if (existing) {
     try {
-      await existing.unsubscribe()
+      await existing.unsubscribe();
     } catch {
       /* resubscribe below */
     }
@@ -180,49 +205,62 @@ async function ensurePushSubscription(): Promise<PushSubscription | null> {
   return reg.pushManager.subscribe({
     userVisibleOnly: true,
     applicationServerKey: key,
-  })
+  });
 }
 
 export type PushSubscribeResult = {
-  ok: boolean
-  status: number
-  detail: string
-  skipped?: boolean
-}
+  ok: boolean;
+  status: number;
+  detail: string;
+  skipped?: boolean;
+};
 
 export async function syncPushSubscriptionWithResult(): Promise<PushSubscribeResult> {
   if (!isWebPushConfigured()) {
-    return { ok: false, status: 0, detail: 'Push env not set (VITE_VAPID_PUBLIC_KEY, VITE_PUSH_API_BASE)', skipped: true }
+    return {
+      ok: false,
+      status: 0,
+      detail: "Push env not set (VITE_VAPID_PUBLIC_KEY, VITE_PUSH_API_BASE)",
+      skipped: true,
+    };
   }
-  const settings = loadAppSettings()
+  const settings = loadAppSettings();
 
-  if (settings.disableNotifications || Notification.permission !== 'granted') {
-    await unsubscribePush()
+  if (settings.disableNotifications || Notification.permission !== "granted") {
+    await unsubscribePush();
     return {
       ok: false,
       status: 0,
       detail: settings.disableNotifications
-        ? 'Notifications disabled in settings'
+        ? "Notifications disabled in settings"
         : `Permission is ${Notification.permission}`,
       skipped: true,
-    }
+    };
   }
 
-  let subscription: PushSubscription | null
+  let subscription: PushSubscription | null;
   try {
-    subscription = await ensurePushSubscription()
+    subscription = await ensurePushSubscription();
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'subscribe failed'
-    return { ok: false, status: 0, detail: `Push subscribe failed: ${message}` }
+    const message = err instanceof Error ? err.message : "subscribe failed";
+    return {
+      ok: false,
+      status: 0,
+      detail: `Push subscribe failed: ${message}`,
+    };
   }
   if (!subscription) {
-    return { ok: false, status: 0, detail: 'No push subscription (service worker not ready?)' }
+    return {
+      ok: false,
+      status: 0,
+      detail: "No push subscription (service worker not ready?)",
+    };
   }
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(await authHeader()),
-  }
+  };
 
   const body = {
     subscription: subscription.toJSON(),
@@ -231,24 +269,24 @@ export async function syncPushSubscriptionWithResult(): Promise<PushSubscribeRes
     deliveryWeekday: settings.deliveryWeekday,
     deliveryTimeLocal: settings.deliveryTimeLocal,
     timezone: settings.timezone,
-  }
+  };
 
   const res = await fetch(`${pushApiBase()}/push/subscribe`, {
-    method: 'POST',
+    method: "POST",
     headers,
     body: JSON.stringify(body),
-  })
-  const text = await res.text().catch(() => '')
+  });
+  const text = await res.text().catch(() => "");
   return {
     ok: res.ok,
     status: res.status,
-    detail: res.ok ? 'Subscribed' : text || res.statusText,
-  }
+    detail: res.ok ? "Subscribed" : text || res.statusText,
+  };
 }
 
 export async function syncPushSubscription() {
   try {
-    await syncPushSubscriptionWithResult()
+    await syncPushSubscriptionWithResult();
   } catch {
     /* permission / SW errors are reported via WithResult when called directly */
   }
@@ -256,85 +294,91 @@ export async function syncPushSubscription() {
 
 /** Safari / iOS often refuse PushManager.subscribe() until a user gesture. */
 export function syncPushSubscriptionOnGesture() {
-  if (typeof document === 'undefined') return
+  if (typeof document === "undefined") return;
   const run = () => {
     if (!loadAppSettings().disableNotifications && isWebPushConfigured()) {
-      void syncPushSubscription()
+      void syncPushSubscription();
     }
-  }
-  document.addEventListener('pointerdown', run, { once: true, passive: true })
+  };
+  document.addEventListener("pointerdown", run, { once: true, passive: true });
 }
 
 type PushTestPayload =
   | { ok: false; detail: string }
   | {
-      ok: true
-      token: string
-      endpoint: string
-      keys: { p256dh: string; auth: string }
-    }
+      ok: true;
+      token: string;
+      endpoint: string;
+      keys: { p256dh: string; auth: string };
+    };
 
 async function pushTestPayload(): Promise<PushTestPayload> {
-  const subscription = await getPushSubscription()
-  if (!subscription) return { ok: false, detail: 'Subscribe first (sync push to worker)' }
-  const json = subscription.toJSON()
+  const subscription = await getPushSubscription();
+  if (!subscription)
+    return { ok: false, detail: "Subscribe first (sync push to worker)" };
+  const json = subscription.toJSON();
   if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-    return { ok: false, detail: 'Subscription missing keys' }
+    return { ok: false, detail: "Subscription missing keys" };
   }
-  const token = normalizeBearerToken(import.meta.env.VITE_WEEKLY_AI_TOKEN)
+  const token = normalizeBearerToken(import.meta.env.VITE_WEEKLY_AI_TOKEN);
   if (!token) {
-    return { ok: false, detail: 'VITE_WEEKLY_AI_TOKEN not set (needed for push test routes)' }
+    return {
+      ok: false,
+      detail: "VITE_WEEKLY_AI_TOKEN not set (needed for push test routes)",
+    };
   }
   return {
     ok: true,
     token,
     endpoint: json.endpoint,
     keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-  }
+  };
 }
 
 export async function sendWorkerPushTest(): Promise<PushSubscribeResult> {
   if (!isWebPushConfigured()) {
-    return { ok: false, status: 0, detail: 'Push env not set', skipped: true }
+    return { ok: false, status: 0, detail: "Push env not set", skipped: true };
   }
-  const payload = await pushTestPayload()
+  const payload = await pushTestPayload();
   if (!payload.ok) {
-    return { ok: false, status: 0, detail: payload.detail }
+    return { ok: false, status: 0, detail: payload.detail };
   }
   const res = await fetch(`${pushApiBase()}/push/test`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${payload.token}`,
     },
     body: JSON.stringify({
       endpoint: payload.endpoint,
       keys: payload.keys,
     }),
-  })
-  const text = await res.text().catch(() => '')
+  });
+  const text = await res.text().catch(() => "");
   return {
     ok: res.ok,
     status: res.status,
-    detail: res.ok ? 'Test push sent — close tab to verify SW notification' : text || res.statusText,
-  }
+    detail: res.ok
+      ? "Test push sent — close tab to verify SW notification"
+      : text || res.statusText,
+  };
 }
 
 export async function sendWorkerPushTestDelayed(
   delaySeconds: number,
 ): Promise<PushSubscribeResult> {
   if (!isWebPushConfigured()) {
-    return { ok: false, status: 0, detail: 'Push env not set', skipped: true }
+    return { ok: false, status: 0, detail: "Push env not set", skipped: true };
   }
-  const payload = await pushTestPayload()
+  const payload = await pushTestPayload();
   if (!payload.ok) {
-    return { ok: false, status: 0, detail: payload.detail }
+    return { ok: false, status: 0, detail: payload.detail };
   }
-  const delay = Math.min(120, Math.max(3, Math.trunc(delaySeconds)))
+  const delay = Math.min(120, Math.max(3, Math.trunc(delaySeconds)));
   const res = await fetch(`${pushApiBase()}/push/test-delayed`, {
-    method: 'POST',
+    method: "POST",
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       Authorization: `Bearer ${payload.token}`,
     },
     body: JSON.stringify({
@@ -342,69 +386,71 @@ export async function sendWorkerPushTestDelayed(
       keys: payload.keys,
       delaySeconds: delay,
     }),
-  })
-  const text = await res.text().catch(() => '')
-  let scheduled = delay
+  });
+  const text = await res.text().catch(() => "");
+  let scheduled = delay;
   try {
-    const json = JSON.parse(text) as { scheduledInSeconds?: number }
-    if (json.scheduledInSeconds) scheduled = json.scheduledInSeconds
+    const json = JSON.parse(text) as { scheduledInSeconds?: number };
+    if (json.scheduledInSeconds) scheduled = json.scheduledInSeconds;
   } catch {
     /* ignore */
   }
   let detail = res.ok
     ? `Push scheduled in ${scheduled}s — close this tab or switch away now (Safari-friendly).`
-    : text || res.statusText
-  if (!res.ok && text.includes('VAPID keys not configured')) {
+    : text || res.statusText;
+  if (!res.ok && text.includes("VAPID keys not configured")) {
     detail =
-      'Worker missing VAPID — add VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY to worker/.dev.vars (not only wrangler secret), restart wrangler dev.'
+      "Worker missing VAPID — add VAPID_PUBLIC_KEY + VAPID_PRIVATE_KEY to worker/.dev.vars (not only wrangler secret), restart wrangler dev.";
   }
   return {
     ok: res.ok,
     status: res.status,
     detail,
-  }
+  };
 }
 
-export async function fetchWorkerPushStatus(): Promise<{ vapidConfigured: boolean } | null> {
-  if (!isWebPushConfigured()) return null
+export async function fetchWorkerPushStatus(): Promise<{
+  vapidConfigured: boolean;
+} | null> {
+  if (!isWebPushConfigured()) return null;
   try {
-    const res = await fetch(`${pushApiBase()}/push/status`)
-    if (!res.ok) return { vapidConfigured: false }
-    return (await res.json()) as { vapidConfigured: boolean }
+    const res = await fetch(`${pushApiBase()}/push/status`);
+    if (!res.ok) return { vapidConfigured: false };
+    return (await res.json()) as { vapidConfigured: boolean };
   } catch {
-    return { vapidConfigured: false }
+    return { vapidConfigured: false };
   }
 }
 
 export function getPushClientId() {
-  return localStorage.getItem(PUSH_CLIENT_ID_KEY)
+  return localStorage.getItem(PUSH_CLIENT_ID_KEY);
 }
 
 export async function unsubscribePush() {
-  if (!isWebPushConfigured()) return
-  const subscription = await getPushSubscription()
-  if (!subscription) return
+  if (!isWebPushConfigured()) return;
+  const subscription = await getPushSubscription();
+  if (!subscription) return;
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(await authHeader()),
-  }
+  };
 
   try {
     await fetch(`${pushApiBase()}/push/unsubscribe`, {
-      method: 'POST',
+      method: "POST",
       headers,
       body: JSON.stringify({
         endpoint: subscription.endpoint,
         clientId: getOrCreatePushClientId(),
       }),
-    })
+    });
   } catch {
     /* best effort */
   }
 
   try {
-    await subscription.unsubscribe()
+    await subscription.unsubscribe();
   } catch {
     /* best effort */
   }
