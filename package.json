@@ -35,7 +35,7 @@
     "cargo": "^0.8.0",
     "date-fns": "^4.4.0",
     "dexie": "^4.4.6",
-    "firebase": "^12.19.0",
+    "firebase": "^13.1.0",
     "framer-motion": "^13.4.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.3.1",
