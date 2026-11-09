@@ -128,7 +128,7 @@ If the user mentions something positive, encourage holding on to the feeling whe
 import type { WeeklyAiSummaryEntry } from "../features/compilation/weeklyAiTypes";
 import type { EntryRow } from "../db/schema";
 
-export async function customWeeklyAiSummary(
+export function customWeeklyAiSummary(
   entries: (WeeklyAiSummaryEntry | EntryRow)[],
   mode: AiSummaryMode,
   profile: AiProfile,
@@ -245,7 +245,7 @@ export async function customProjectorSearchAnalytical(
   }
 }
 
-export async function customProjectorSearchChat(
+export function customProjectorSearchChat(
   query: string,
   messages: ProjectorSearchMessage[] | undefined,
   contextEntries: ProjectorSearchEntry[],

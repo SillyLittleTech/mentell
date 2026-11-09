@@ -98,8 +98,6 @@ jobs:
           # Commit and push directly to the current PR branch
           git add "(ee)/"
           git commit -m "Update screenshots for PR ${{ github.event.pull_request.number }}" || echo "No changes to commit"
-          # Rebase to integrate remote changes before pushing
-          git pull --rebase origin ${{ github.head_ref }}
           git push origin HEAD:${{ github.head_ref }}
 
       - name: Comment PR

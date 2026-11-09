@@ -5,7 +5,7 @@ import type { Env } from "./env";
  * Rate limits / spend limits should be configured on that gateway in the dashboard.
  * Do not put rate limits on any gateway used by AI Search indexing.
  */
-export async function runWorkersAi(
+export function runWorkersAi(
   env: Env,
   model: string,
   input: Record<string, unknown>,

@@ -1,26 +1,27 @@
 import { isDebugMode } from "../debug/debugFlags";
 import { isTauri } from "../platform/runtime";
 
+/** Documents `envFlag` in this module. */
 function envFlag(name: string) {
   return import.meta.env[name] === "1";
 }
 
+/** Documents `hasFirebaseConfig` in this module. */
 function hasFirebaseConfig() {
   return Boolean(import.meta.env.VITE_FIREBASE_PROJECT_ID?.trim());
 }
 
+/** Documents `hasDebugFirebaseToken` in this module. */
 function hasDebugFirebaseToken() {
   return Boolean(import.meta.env.VITE_DEBUG_FIREBASE_CUSTOM_TOKEN?.trim());
 }
 
 /** Debug builds normally use DebugAuthProvider; Tauri/auth-testing uses real AuthProvider. */
 export function shouldUseDebugAuthProvider(): boolean {
-  if (!isDebugMode()) return false;
-  if (isTauri()) return false;
-  if (envFlag("VITE_DEBUG_ENABLE_AUTH")) return false;
-  return true;
+  return isDebugMode() && !isTauri() && !envFlag("VITE_DEBUG_ENABLE_AUTH");
 }
 
+/** `isFirebaseEnabled` — see module for behavior. */
 export function isFirebaseEnabled() {
   if (!envFlag("VITE_ENABLE_FIREBASE")) return false;
   if (shouldUseDebugAuthProvider() && !hasDebugFirebaseToken()) {
@@ -43,10 +44,12 @@ export function isFirebaseEnabled() {
   return true;
 }
 
+/** `isFirebaseSyncEnabled` — see module for behavior. */
 export function isFirebaseSyncEnabled() {
   return isFirebaseEnabled() && envFlag("VITE_ENABLE_FIREBASE_SYNC");
 }
 
+/** `isShareLinksEnabled` — see module for behavior. */
 export function isShareLinksEnabled() {
   return isFirebaseEnabled() && envFlag("VITE_ENABLE_SHARE_LINKS");
 }
@@ -54,6 +57,11 @@ export function isShareLinksEnabled() {
 /** Offline ↔ web account linking via one-time codes (requires Worker + service account). */
 export function isAuthHandoffEnabled() {
   return isFirebaseEnabled() && envFlag("VITE_ENABLE_AUTH_HANDOFF");
+}
+
+/** 2.x sustained-risk (ema_rma_heat) + hypermania feedback; set `VITE_DISABLE_RISK_HEAT_V2=1` to disable. */
+export function isRiskHeatV2Enabled() {
+  return import.meta.env.VITE_DISABLE_RISK_HEAT_V2 !== "1";
 }
 
 /** Settings / dev tools: show the auth diagnostics panel. */
