@@ -1,49 +1,51 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
-import { splitHelplineResources } from './localResources/rankHelplines'
-import { shouldReduceMotion } from '../../shared/motion/useMotionPrefs'
-import type { RiskAssessment } from './riskAssessment'
-import { fetchResourcesForTopics } from './localResources/fetchResources'
-import { appendPooledScrapeResources } from './localResources/pooledScrape'
-import { isDebugMode } from '../../shared/debug/debugFlags'
-import { referencesForeignCounty } from './localResources/geoFilter'
-import { formatPublicPlaceLabel } from './localResources/formatPlace'
-import { emergencyBannerCopy } from './localResources/nationalResources'
-import { partitionHospitalHelplines } from './localResources/hospitalHelplines'
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { splitHelplineResources } from "./localResources/rankHelplines";
+import { shouldReduceMotion } from "../../shared/motion/useMotionPrefs";
+import type { RiskAssessment } from "./riskAssessment";
+import { fetchResourcesForTopics } from "./localResources/fetchResources";
+import { appendPooledScrapeResources } from "./localResources/pooledScrape";
+import { isDebugMode } from "../../shared/debug/debugFlags";
+import { referencesForeignCounty } from "./localResources/geoFilter";
+import { formatPublicPlaceLabel } from "./localResources/formatPlace";
+import { emergencyBannerCopy } from "./localResources/nationalResources";
+import { partitionHospitalHelplines } from "./localResources/hospitalHelplines";
 import {
   ALL_RESOURCE_TOPICS,
   inferResourceTopics,
   topicLabel,
-} from './localResources/inferTopics'
-import { resolveCoordinates } from './localResources/geocode'
+} from "./localResources/inferTopics";
+import { resolveCoordinates } from "./localResources/geocode";
 import type {
   ContactMethodPreference,
   GeoPlace,
   LocalResource,
   LocalResourceFetchResult,
   ResourceTopic,
-} from './localResources/types'
+} from "./localResources/types";
 import {
   COMMON_COUNTRY_OPTIONS,
   placeFromManual,
   type ManualLocationFields,
-} from './localResources/manualPlace'
+} from "./localResources/manualPlace";
 
-type PanelPhase = 'idle' | 'loading' | 'adjust' | 'results' | 'error'
+type PanelPhase = "idle" | "loading" | "adjust" | "results" | "error";
 
 const CONTACT_OPTIONS: { id: ContactMethodPreference; label: string }[] = [
-  { id: 'any', label: 'Any (phone, text, chat, or web)' },
-  { id: 'phone', label: 'Phone call' },
-  { id: 'sms', label: 'Text message' },
-  { id: 'chat', label: 'Online chat' },
-]
+  { id: "any", label: "Any (phone, text, chat, or web)" },
+  { id: "phone", label: "Phone call" },
+  { id: "sms", label: "Text message" },
+  { id: "chat", label: "Online chat" },
+];
 
+/** Documents `telHref` in this module. */
 function telHref(value: string) {
-  const digits = value.replace(/[^\d+]/g, '')
-  return digits ? `tel:${digits}` : undefined
+  const digits = value.replace(/[^\d+]/g, "");
+  return digits ? `tel:${digits}` : undefined;
 }
 
+/** Documents `ResourceActions` in this module. */
 function ResourceActions({ resource }: { resource: LocalResource }) {
-  const phoneHref = resource.phone ? telHref(resource.phone) : undefined
+  const phoneHref = resource.phone ? telHref(resource.phone) : undefined;
   return (
     <div className="flex flex-wrap gap-2">
       {phoneHref ? (
@@ -57,7 +59,7 @@ function ResourceActions({ resource }: { resource: LocalResource }) {
       {resource.sms ? (
         <a
           className="focus-ring rounded-xl border border-[var(--paper-border)] px-3 py-1.5 font-semibold"
-          href={`sms:${resource.sms.replace(/\s+/g, '')}`}
+          href={`sms:${resource.sms.replace(/\s+/g, "")}`}
         >
           Text
         </a>
@@ -83,46 +85,57 @@ function ResourceActions({ resource }: { resource: LocalResource }) {
         </a>
       ) : null}
     </div>
-  )
+  );
 }
 
+/** Documents `ResourceCard` in this module. */
 function ResourceCard({ resource }: { resource: LocalResource }) {
   return (
     <article className="rounded-2xl border border-[var(--paper-border)] bg-[var(--paper-bg)] p-3">
       <p className="font-semibold">{resource.name}</p>
-      {resource.description ? <p className="ink-muted mt-1">{resource.description}</p> : null}
-      {resource.address ? <p className="mt-1 text-sm">{resource.address}</p> : null}
-      {resource.hours ? <p className="ink-muted mt-1 text-xs">Hours: {resource.hours}</p> : null}
+      {resource.description ? (
+        <p className="ink-muted mt-1">{resource.description}</p>
+      ) : null}
+      {resource.address ? (
+        <p className="mt-1 text-sm">{resource.address}</p>
+      ) : null}
+      {resource.hours ? (
+        <p className="ink-muted mt-1 text-xs">Hours: {resource.hours}</p>
+      ) : null}
       <div className="mt-2">
         <ResourceActions resource={resource} />
       </div>
-      <p className="ink-muted mt-2 text-[11px]">Source: {resource.sourceLabel}</p>
+      <p className="ink-muted mt-2 text-[11px]">
+        Source: {resource.sourceLabel}
+      </p>
     </article>
-  )
+  );
 }
 
+/** Documents `partitionPooled` in this module. */
 function partitionPooled(resources: LocalResource[]) {
-  const pooled: LocalResource[] = []
-  const rest: LocalResource[] = []
+  const pooled: LocalResource[] = [];
+  const rest: LocalResource[] = [];
   for (const resource of resources) {
-    if (resource.kind === 'pooled') pooled.push(resource)
-    else rest.push(resource)
+    if (resource.kind === "pooled") pooled.push(resource);
+    else rest.push(resource);
   }
-  return { pooled, rest }
+  return { pooled, rest };
 }
 
+/** Documents `HelplineResourceGroups` in this module. */
 function HelplineResourceGroups({
   resources,
   place,
 }: {
-  resources: LocalResource[]
-  place: GeoPlace
+  resources: LocalResource[];
+  place: GeoPlace;
 }) {
-  const { pooled, rest } = partitionPooled(resources)
-  const { hospital, other } = partitionHospitalHelplines(rest)
-  const grouped = splitHelplineResources(other, place)
-  const local = grouped.local
-  const broader = grouped.broader
+  const { pooled, rest } = partitionPooled(resources);
+  const { hospital, other } = partitionHospitalHelplines(rest);
+  const grouped = splitHelplineResources(other, place);
+  const local = grouped.local;
+  const broader = grouped.broader;
 
   return (
     <>
@@ -136,7 +149,9 @@ function HelplineResourceGroups({
       ) : null}
       {hospital.length ? (
         <div className="grid gap-2">
-          <p className="text-xs font-semibold">Hospital &amp; emergency crisis lines</p>
+          <p className="text-xs font-semibold">
+            Hospital &amp; emergency crisis lines
+          </p>
           {hospital.map((resource) => (
             <ResourceCard key={resource.id} resource={resource} />
           ))}
@@ -144,7 +159,9 @@ function HelplineResourceGroups({
       ) : null}
       {broader.length ? (
         <div className="grid gap-2">
-          <p className="ink-muted text-xs font-semibold">Statewide &amp; national</p>
+          <p className="ink-muted text-xs font-semibold">
+            Statewide &amp; national
+          </p>
           {broader.map((resource) => (
             <ResourceCard key={resource.id} resource={resource} />
           ))}
@@ -152,44 +169,59 @@ function HelplineResourceGroups({
       ) : null}
       {pooled.length ? (
         <div className="grid gap-2">
-          <p className="text-xs font-semibold">Additional local suggestions (AI)</p>
+          <p className="text-xs font-semibold">
+            Additional local suggestions (AI)
+          </p>
           <p className="ink-muted text-[11px]">
-            From the same AI service as crisis notes, using your area (ZIP/county). Verify phone numbers and
-            hours before you rely on them.
+            From the same AI service as crisis notes, using your area
+            (ZIP/county). Verify phone numbers and hours before you rely on
+            them.
           </p>
           {pooled.map((resource) => (
             <ResourceCard key={resource.id} resource={resource} />
           ))}
         </div>
       ) : null}
-      {!hospital.length && !local.length && !broader.length && !pooled.length ? (
-        <p className="ink-muted text-sm">No matches in this area. Try Find A Helpline below.</p>
+      {!hospital.length &&
+      !local.length &&
+      !broader.length &&
+      !pooled.length ? (
+        <p className="ink-muted text-sm">
+          No matches in this area. Try Find A Helpline below.
+        </p>
       ) : null}
       {!hospital.length ? (
         <p className="ink-muted text-[11px]">
-          Some hospital crisis lines are not in public directories. If you need immediate help, call your local
-          emergency number or go to the nearest emergency department.
+          Some hospital crisis lines are not in public directories. If you need
+          immediate help, call your local emergency number or go to the nearest
+          emergency department.
         </p>
       ) : null}
     </>
-  )
+  );
 }
 
+/** Documents `ResultSection` in this module. */
 function ResultSection({
   result,
   place,
 }: {
-  result: LocalResourceFetchResult
-  place: GeoPlace | null
+  result: LocalResourceFetchResult;
+  place: GeoPlace | null;
 }) {
-  const isHelplineTopic = result.topic === 'suicide' || result.topic === 'mental_health'
+  const isHelplineTopic =
+    result.topic === "suicide" || result.topic === "mental_health";
   const heading =
-    result.topic === 'suicide' ? 'Crisis & mental health lines' : topicLabel(result.topic)
+    result.topic === "suicide"
+      ? "Crisis & mental health lines"
+      : topicLabel(result.topic);
 
   return (
     <section className="grid gap-2" aria-label={heading}>
       <h4 className="text-sm font-semibold">{heading}</h4>
-      {result.error ? <p className="ink-muted text-sm">{result.error}</p> : null}
+      {result.error ? (
+        <p className="ink-muted text-sm">{result.error}</p>
+      ) : null}
       {isHelplineTopic && place && result.resources.length ? (
         <HelplineResourceGroups resources={result.resources} place={place} />
       ) : result.resources.length && place ? (
@@ -198,7 +230,7 @@ function ResultSection({
             .filter(
               (resource) =>
                 !referencesForeignCounty(
-                  `${resource.name} ${resource.description ?? ''} ${resource.address ?? ''}`,
+                  `${resource.name} ${resource.description ?? ""} ${resource.address ?? ""}`,
                   place,
                 ),
             )
@@ -213,24 +245,28 @@ function ResultSection({
           ))}
         </div>
       ) : !result.error ? (
-        <p className="ink-muted text-sm">No matches in this area. Try Find A Helpline below.</p>
+        <p className="ink-muted text-sm">
+          No matches in this area. Try Find A Helpline below.
+        </p>
       ) : null}
     </section>
-  )
+  );
 }
 
+/** Documents `actionButtonClass` in this module. */
 function actionButtonClass(compact: boolean) {
   return `focus-ring rounded-xl border border-[var(--paper-border)] px-3 font-semibold ${
-    compact ? 'py-1.5 text-xs' : 'py-2 text-sm'
-  }`
+    compact ? "py-1.5 text-xs" : "py-2 text-sm"
+  }`;
 }
 
+/** `CrisisResourcePanel` — see module for behavior. */
 export function CrisisResourcePanel({
   compact = false,
   risk,
 }: {
-  compact?: boolean
-  risk?: Pick<RiskAssessment, 'reasons' | 'flaggedTerms' | 'responseKind'>
+  compact?: boolean;
+  risk?: Pick<RiskAssessment, "reasons" | "flaggedTerms" | "responseKind">;
 }) {
   const inferredTopics = useMemo(
     () =>
@@ -240,189 +276,226 @@ export function CrisisResourcePanel({
         responseKind: risk?.responseKind,
       }),
     [risk?.reasons, risk?.flaggedTerms, risk?.responseKind],
-  )
+  );
 
-  const actionsHeadingId = useId()
-  const flowAnchorRef = useRef<HTMLDivElement>(null)
+  const actionsHeadingId = useId();
+  const flowAnchorRef = useRef<HTMLDivElement>(null);
 
-  const [phase, setPhase] = useState<PanelPhase>('idle')
-  const [activeTopics, setActiveTopics] = useState<ResourceTopic[]>(inferredTopics)
-  const [contactMethod, setContactMethod] = useState<ContactMethodPreference>('any')
-  const [place, setPlace] = useState<GeoPlace | null>(null)
-  const [results, setResults] = useState<LocalResourceFetchResult[]>([])
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [locationHint, setLocationHint] = useState<string | null>(null)
-  const [pooledMeta, setPooledMeta] = useState<string | null>(null)
-  const fetchAbortRef = useRef<AbortController | null>(null)
+  const [phase, setPhase] = useState<PanelPhase>("idle");
+  const [activeTopics, setActiveTopics] =
+    useState<ResourceTopic[]>(inferredTopics);
+  const [contactMethod, setContactMethod] =
+    useState<ContactMethodPreference>("any");
+  const [place, setPlace] = useState<GeoPlace | null>(null);
+  const [results, setResults] = useState<LocalResourceFetchResult[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [locationHint, setLocationHint] = useState<string | null>(null);
+  const [pooledMeta, setPooledMeta] = useState<string | null>(null);
+  const fetchAbortRef = useRef<AbortController | null>(null);
 
-  const [countryPick, setCountryPick] = useState('US')
-  const [countryOther, setCountryOther] = useState('')
-  const [regionCode, setRegionCode] = useState('')
-  const [zip, setZip] = useState('')
-  const [placeLabel, setPlaceLabel] = useState('')
-  const [homeCountry, setHomeCountry] = useState<string | null>(null)
-  const [locating, setLocating] = useState(false)
+  const [countryPick, setCountryPick] = useState("US");
+  const [countryOther, setCountryOther] = useState("");
+  const [regionCode, setRegionCode] = useState("");
+  const [zip, setZip] = useState("");
+  const [placeLabel, setPlaceLabel] = useState("");
+  const [homeCountry, setHomeCountry] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
 
-  const loading = phase === 'loading'
-  const audienceCountry = (homeCountry ?? place?.countryCode ?? 'US').toUpperCase()
+  const loading = phase === "loading";
+  const audienceCountry = (
+    homeCountry ??
+    place?.countryCode ??
+    "US"
+  ).toUpperCase();
 
+  /** Documents `resolvedCountryCode` in this module. */
   function resolvedCountryCode() {
-    if (countryPick === 'OTHER') return countryOther.trim().toUpperCase()
-    return countryPick
+    if (countryPick === "OTHER") return countryOther.trim().toUpperCase();
+    return countryPick;
   }
 
+  /** Documents `manualFields` in this module. */
   function manualFields(): ManualLocationFields {
     return {
       countryCode: resolvedCountryCode(),
       regionCode: regionCode.trim() || undefined,
       zip: zip.trim() || undefined,
       placeLabel: placeLabel.trim() || undefined,
-    }
+    };
   }
 
+  /** Documents `syncAdjustFormFromPlace` in this module. */
   function syncAdjustFormFromPlace(resolved: GeoPlace) {
-    const code = resolved.countryCode.toUpperCase()
-    const known = COMMON_COUNTRY_OPTIONS.some((option) => option.code === code)
-    setCountryPick(known ? code : 'OTHER')
-    setCountryOther(known ? '' : code)
-    setRegionCode(resolved.regionCode ?? '')
-    setZip(resolved.zip ?? '')
-    setPlaceLabel(resolved.city ?? '')
+    const code = resolved.countryCode.toUpperCase();
+    const known = COMMON_COUNTRY_OPTIONS.some((option) => option.code === code);
+    setCountryPick(known ? code : "OTHER");
+    setCountryOther(known ? "" : code);
+    setRegionCode(resolved.regionCode ?? "");
+    setZip(resolved.zip ?? "");
+    setPlaceLabel(resolved.city ?? "");
   }
 
+  /** Documents `topicsForSearch` in this module. */
   function topicsForSearch() {
-    return activeTopics.length ? activeTopics : inferredTopics
+    return activeTopics.length ? activeTopics : inferredTopics;
   }
 
+  /** Documents `runFetch` in this module. */
   async function runFetch(
     resolvedPlace: GeoPlace,
     method: ContactMethodPreference,
     topics: ResourceTopic[],
   ) {
-    setContactMethod(method)
-    fetchAbortRef.current?.abort()
-    const controller = new AbortController()
-    fetchAbortRef.current = controller
+    setContactMethod(method);
+    fetchAbortRef.current?.abort();
+    const controller = new AbortController();
+    fetchAbortRef.current = controller;
 
-    setPhase('loading')
-    setLocating(false)
-    setErrorMessage(null)
-    setPooledMeta(null)
-    setResults([])
-    setPlace(resolvedPlace)
-    setHomeCountry(resolvedPlace.countryCode)
+    setPhase("loading");
+    setLocating(false);
+    setErrorMessage(null);
+    setPooledMeta(null);
+    setResults([]);
+    setPlace(resolvedPlace);
+    setHomeCountry(resolvedPlace.countryCode);
     try {
       const fetched = await fetchResourcesForTopics({
         place: resolvedPlace,
         topics,
         contactMethod: method,
         signal: controller.signal,
-      })
-      if (controller.signal.aborted) return
+      });
+      if (controller.signal.aborted) return;
       const { results: withPooled, meta } = await appendPooledScrapeResources(
         fetched,
         resolvedPlace,
         topics,
         controller.signal,
-      )
-      if (controller.signal.aborted) return
-      if (isDebugMode() && meta.status !== 'ok' && meta.status !== 'skipped_ai_off') {
+      );
+      if (controller.signal.aborted) return;
+      if (
+        isDebugMode() &&
+        meta.status !== "ok" &&
+        meta.status !== "skipped_ai_off"
+      ) {
         setPooledMeta(
-          meta.detail ? `AI suggestions: ${meta.status} (${meta.detail})` : `AI suggestions: ${meta.status}`,
-        )
+          meta.detail
+            ? `AI suggestions: ${meta.status} (${meta.detail})`
+            : `AI suggestions: ${meta.status}`,
+        );
       }
-      setResults(withPooled)
-      setPhase('results')
+      setResults(withPooled);
+      setPhase("results");
     } catch (err) {
-      if (controller.signal.aborted) return
-      setErrorMessage(err instanceof Error ? err.message : 'Something went wrong.')
-      setPhase('error')
+      if (controller.signal.aborted) return;
+      setErrorMessage(
+        err instanceof Error ? err.message : "Something went wrong.",
+      );
+      setPhase("error");
     }
   }
 
+  /** Documents `openAdjust` in this module. */
   function openAdjust(hint?: string) {
-    setLocationHint(hint ?? null)
-    setActiveTopics((prev) => (prev.length ? prev : inferredTopics))
-    if (place) syncAdjustFormFromPlace(place)
-    setPhase('adjust')
+    setLocationHint(hint ?? null);
+    setActiveTopics((prev) => (prev.length ? prev : inferredTopics));
+    if (place) syncAdjustFormFromPlace(place);
+    setPhase("adjust");
   }
 
+  /** Documents `submitAdjust` in this module. */
   async function submitAdjust() {
     try {
-      const resolvedPlace = await placeFromManual(manualFields())
-      setPlace(resolvedPlace)
+      const resolvedPlace = await placeFromManual(manualFields());
+      setPlace(resolvedPlace);
       const topics =
-        resolvedPlace.countryCode === 'US'
+        resolvedPlace.countryCode === "US"
           ? topicsForSearch()
-          : topicsForSearch().filter((t) => t === 'suicide' || t === 'mental_health')
-      if (resolvedPlace.countryCode !== 'US' && !topics.length) {
-        setActiveTopics(['mental_health', 'suicide'])
+          : topicsForSearch().filter(
+              (t) => t === "suicide" || t === "mental_health",
+            );
+      if (resolvedPlace.countryCode !== "US" && !topics.length) {
+        setActiveTopics(["mental_health", "suicide"]);
       }
-      await runFetch(resolvedPlace, contactMethod, topics.length ? topics : ['mental_health'])
+      await runFetch(
+        resolvedPlace,
+        contactMethod,
+        topics.length ? topics : ["mental_health"],
+      );
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Could not use that location.')
-      setPhase('error')
+      setErrorMessage(
+        err instanceof Error ? err.message : "Could not use that location.",
+      );
+      setPhase("error");
     }
   }
 
+  /** Documents `beginLocalSearch` in this module. */
   function beginLocalSearch() {
     void (async () => {
-      setActiveTopics(inferredTopics)
-      setPhase('loading')
-      setLocating(true)
-      setErrorMessage(null)
-      setLocationHint(null)
+      setActiveTopics(inferredTopics);
+      setPhase("loading");
+      setLocating(true);
+      setErrorMessage(null);
+      setLocationHint(null);
       try {
-        const resolvedPlace = await resolveCoordinates()
-        setPlace(resolvedPlace)
-        syncAdjustFormFromPlace(resolvedPlace)
+        const resolvedPlace = await resolveCoordinates();
+        setPlace(resolvedPlace);
+        syncAdjustFormFromPlace(resolvedPlace);
         const topics =
-          resolvedPlace.countryCode === 'US'
+          resolvedPlace.countryCode === "US"
             ? inferredTopics
-            : ['mental_health', 'suicide'] as ResourceTopic[]
-        await runFetch(resolvedPlace, 'any', topics)
+            : (["mental_health", "suicide"] as ResourceTopic[]);
+        await runFetch(resolvedPlace, "any", topics);
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Could not read your location.'
-        setErrorMessage(message)
-        openAdjust(message)
+        const message =
+          err instanceof Error ? err.message : "Could not read your location.";
+        setErrorMessage(message);
+        openAdjust(message);
       } finally {
-        setLocating(false)
+        setLocating(false);
       }
-    })()
+    })();
   }
 
+  /** Documents `toggleTopic` in this module. */
   function toggleTopic(topic: ResourceTopic) {
     setActiveTopics((prev) =>
       prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic],
-    )
+    );
   }
 
-  const publicPlaceLabel = formatPublicPlaceLabel(place)
-  const emergency = emergencyBannerCopy(audienceCountry)
+  const publicPlaceLabel = formatPublicPlaceLabel(place);
+  const emergency = emergencyBannerCopy(audienceCountry);
 
-  const showFlowPanel = phase !== 'idle'
+  const showFlowPanel = phase !== "idle";
 
   useEffect(() => {
-    if (!showFlowPanel) return
+    if (!showFlowPanel) return;
     flowAnchorRef.current?.scrollIntoView({
-      behavior: shouldReduceMotion() ? 'auto' : 'smooth',
-      block: 'start',
-    })
-  }, [phase, showFlowPanel])
+      behavior: shouldReduceMotion() ? "auto" : "smooth",
+      block: "start",
+    });
+  }, [phase, showFlowPanel]);
 
   return (
-    <div className={`grid gap-3 ${compact ? 'text-xs' : 'text-sm'}`}>
+    <div className={`grid gap-3 ${compact ? "text-xs" : "text-sm"}`}>
       <p>
         {emergency.lead}
         {emergency.hotline ? (
           <>
-            {' '}
-            <strong>{emergency.hotline}</strong>, or chat at{' '}
+            {" "}
+            <strong>{emergency.hotline}</strong>, or chat at{" "}
           </>
         ) : (
-          ' '
+          " "
         )}
-        <a className="underline" href={emergency.href} target="_blank" rel="noreferrer">
+        <a
+          className="underline"
+          href={emergency.href}
+          target="_blank"
+          rel="noreferrer"
+        >
           {emergency.linkLabel}
         </a>
         .
@@ -453,27 +526,35 @@ export function CrisisResourcePanel({
       </section>
 
       {showFlowPanel ? (
-        <div id="local-resources-flow" ref={flowAnchorRef} className="grid gap-3">
-          {phase === 'adjust' ? (
+        <div
+          id="local-resources-flow"
+          ref={flowAnchorRef}
+          className="grid gap-3"
+        >
+          {phase === "adjust" ? (
             <section
               className="grid gap-2 rounded-2xl border border-[var(--paper-border)] p-3"
               aria-label="Adjust search settings"
             >
               <h4 className="text-sm font-semibold">Adjust your search</h4>
               {locationHint ? (
-                <p className="text-sm" style={{ color: 'var(--danger)' }}>
+                <p className="text-sm" style={{ color: "var(--danger)" }}>
                   {locationHint}
                 </p>
               ) : (
                 <p className="ink-muted text-xs">
-                  Update your country, area, topics, or how you prefer to connect. US searches can include food
-                  pantries and housing counseling.
+                  Update your country, area, topics, or how you prefer to
+                  connect. US searches can include food pantries and housing
+                  counseling.
                 </p>
               )}
               <fieldset className="grid gap-2">
                 <legend className="text-xs font-semibold">Topics</legend>
                 {ALL_RESOURCE_TOPICS.map((topic) => (
-                  <label key={topic} className="flex items-center gap-2 text-xs">
+                  <label
+                    key={topic}
+                    className="flex items-center gap-2 text-xs"
+                  >
                     <input
                       type="checkbox"
                       checked={activeTopics.includes(topic)}
@@ -497,7 +578,7 @@ export function CrisisResourcePanel({
                   ))}
                 </select>
               </label>
-              {countryPick === 'OTHER' ? (
+              {countryPick === "OTHER" ? (
                 <label className="grid gap-1 text-xs">
                   Country code (two letters)
                   <input
@@ -538,7 +619,9 @@ export function CrisisResourcePanel({
                 <select
                   className="focus-ring rounded-xl border border-[var(--paper-border)] bg-transparent px-2 py-1.5"
                   value={contactMethod}
-                  onChange={(e) => setContactMethod(e.target.value as ContactMethodPreference)}
+                  onChange={(e) =>
+                    setContactMethod(e.target.value as ContactMethodPreference)
+                  }
                 >
                   {CONTACT_OPTIONS.map((option) => (
                     <option key={option.id} value={option.id}>
@@ -562,16 +645,18 @@ export function CrisisResourcePanel({
                   onClick={() => {
                     void (async () => {
                       try {
-                        const resolved = await resolveCoordinates()
-                        setPlace(resolved)
-                        syncAdjustFormFromPlace(resolved)
-                        setHomeCountry(resolved.countryCode)
+                        const resolved = await resolveCoordinates();
+                        setPlace(resolved);
+                        syncAdjustFormFromPlace(resolved);
+                        setHomeCountry(resolved.countryCode);
                       } catch (err) {
                         setLocationHint(
-                          err instanceof Error ? err.message : 'Could not read your location.',
-                        )
+                          err instanceof Error
+                            ? err.message
+                            : "Could not read your location.",
+                        );
                       }
-                    })()
+                    })();
                   }}
                 >
                   Use my location
@@ -579,7 +664,7 @@ export function CrisisResourcePanel({
                 <button
                   type="button"
                   className="focus-ring ink-muted text-xs underline"
-                  onClick={() => setPhase(results.length ? 'results' : 'idle')}
+                  onClick={() => setPhase(results.length ? "results" : "idle")}
                 >
                   Cancel
                 </button>
@@ -587,31 +672,42 @@ export function CrisisResourcePanel({
             </section>
           ) : null}
 
-          {phase === 'loading' ? (
-            <div className="rounded-2xl border border-[var(--paper-border)] p-3" role="status" aria-live="polite">
+          {phase === "loading" ? (
+            <div
+              className="rounded-2xl border border-[var(--paper-border)] p-3"
+              role="status"
+              aria-live="polite"
+            >
               <p className="font-semibold">
-                {locating ? 'Getting your location…' : 'Loading resources near you…'}
+                {locating
+                  ? "Getting your location…"
+                  : "Loading resources near you…"}
               </p>
               <p className="ink-muted mt-1">
                 {locating
-                  ? 'Mentell uses your location to find nearby crisis and community resources.'
-                  : 'Contacting regional directories.'}
+                  ? "Mentell uses your location to find nearby crisis and community resources."
+                  : "Contacting regional directories."}
               </p>
             </div>
           ) : null}
 
-          {phase === 'error' ? (
+          {phase === "error" ? (
             <div className="grid gap-2 rounded-2xl border border-[var(--danger)]/40 p-3">
-              <p className="font-semibold" style={{ color: 'var(--danger)' }}>
+              <p className="font-semibold" style={{ color: "var(--danger)" }}>
                 {errorMessage}
               </p>
-          <p className="ink-muted">
-            You can still use{' '}
-            <a className="underline" href="https://findahelpline.com/" target="_blank" rel="noreferrer">
-              Find A Helpline
-            </a>{' '}
-            worldwide.
-          </p>
+              <p className="ink-muted">
+                You can still use{" "}
+                <a
+                  className="underline"
+                  href="https://findahelpline.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Find A Helpline
+                </a>{" "}
+                worldwide.
+              </p>
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
@@ -633,18 +729,26 @@ export function CrisisResourcePanel({
             </div>
           ) : null}
 
-          {phase === 'results' ? (
+          {phase === "results" ? (
             <section
               className="grid gap-3 rounded-2xl border border-[var(--paper-border)] p-3"
               aria-label="Resources near you"
             >
-              {pooledMeta ? <p className="font-mono text-[10px] opacity-70">{pooledMeta}</p> : null}
+              {pooledMeta ? (
+                <p className="font-mono text-[10px] opacity-70">{pooledMeta}</p>
+              ) : null}
               <div>
                 <h4 className="text-sm font-semibold">Resources near you</h4>
-                {publicPlaceLabel ? <p className="ink-muted mt-1 text-xs">{publicPlaceLabel}</p> : null}
+                {publicPlaceLabel ? (
+                  <p className="ink-muted mt-1 text-xs">{publicPlaceLabel}</p>
+                ) : null}
               </div>
-              {results.map((result, index) => (
-                <ResultSection key={`${result.topic}-${index}`} result={result} place={place} />
+              {results.map((result) => (
+                <ResultSection
+                  key={result.topic}
+                  result={result}
+                  place={place}
+                />
               ))}
               <button
                 type="button"
@@ -660,15 +764,25 @@ export function CrisisResourcePanel({
       ) : null}
 
       <div className="flex flex-wrap gap-3">
-        <a className="underline" href="https://findahelpline.com/" target="_blank" rel="noreferrer">
+        <a
+          className="underline"
+          href="https://findahelpline.com/"
+          target="_blank"
+          rel="noreferrer"
+        >
           Find A Helpline (worldwide)
         </a>
-        {audienceCountry === 'US' ? (
-          <a className="underline" href="https://www.usa.gov/mental-health" target="_blank" rel="noreferrer">
+        {audienceCountry === "US" ? (
+          <a
+            className="underline"
+            href="https://www.usa.gov/mental-health"
+            target="_blank"
+            rel="noreferrer"
+          >
             USAGov mental health
           </a>
         ) : null}
       </div>
     </div>
-  )
+  );
 }
