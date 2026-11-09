@@ -57,7 +57,6 @@ import {
 } from "./scoreMerge";
 import { stripUndefined } from "../utils/stripUndefined";
 
-
 const PUSH_DEBOUNCE_MS = 1200;
 
 let currentUid: string | null = null;
@@ -301,7 +300,9 @@ async function pushCollection<
   options?: { deleteRemoteMissing?: boolean },
 ) {
   const writes = rows.map((row) =>
-    setDoc(userRef(uid, name, row.id), stripUndefined(row) as DocumentData, { merge: true }),
+    setDoc(userRef(uid, name, row.id), stripUndefined(row) as DocumentData, {
+      merge: true,
+    }),
   );
   if (!options?.deleteRemoteMissing) {
     await Promise.all(writes);
