@@ -11,19 +11,23 @@ import {
 import { scopedStorageKey } from "../../shared/storage/storageScope";
 import { getSkipSearchRateLimit } from "../../shared/debug/debugFlags";
 import { normalizeEndpointUrl } from "./weeklyAiSummary";
+import { getFeelingsOverTimeSeries } from "./feelingsOverTimeData";
 
 const HOUR_LIMIT = 12;
 const DAY_LIMIT = 40;
 const RATE_KEY = scopedStorageKey("mentell.ai.projectorSearch.rate");
 const ANON_ID_KEY = scopedStorageKey("mentell.ai.projectorSearch.anonId");
 
+/** Public type `ProjectorSearchMode` for Mentell 2.x. */
 export type ProjectorSearchMode = "search" | "chat" | "index";
 
+/** Public type `ProjectorSearchMessage` for Mentell 2.x. */
 export type ProjectorSearchMessage = {
   role: "user" | "assistant" | "system";
   content: string;
 };
 
+/** Public type `ProjectorSearchEntry` for Mentell 2.x. */
 export type ProjectorSearchEntry = Pick<
   EntryRow,
   | "id"
@@ -46,8 +50,10 @@ export type ProjectorSearchEntry = Pick<
   | "streakAtSubmit"
 >;
 
+/** Public type `ProjectorIndexStatus` for Mentell 2.x. */
 export type ProjectorIndexStatus = "synced" | "skipped" | "failed" | "idle";
 
+/** Public type `ProjectorSearchResult` for Mentell 2.x. */
 export type ProjectorSearchResult =
   | {
       type: "entries";
@@ -61,6 +67,7 @@ export type ProjectorSearchResult =
 
 type RateState = { timestamps: number[] };
 
+/** Documents `normalizeEnvToken` in this module. */
 function normalizeEnvToken(raw: string | undefined) {
   if (!raw) return undefined;
   const t = raw.trim();
@@ -73,6 +80,7 @@ function normalizeEnvToken(raw: string | undefined) {
   return t;
 }
 
+/** `projectorSearchEnabled` — see module for behavior. */
 export function projectorSearchEnabled() {
   const settings = loadAppSettings();
   if (settings.aiProvider === "custom") {
@@ -86,6 +94,7 @@ export function projectorSearchEnabled() {
   );
 }
 
+/** Documents `localMatchEntries` in this module. */
 function localMatchEntries(entries: ProjectorSearchEntry[], query: string) {
   const q = query.toLowerCase();
   return entries.filter(
@@ -97,17 +106,19 @@ function localMatchEntries(entries: ProjectorSearchEntry[], query: string) {
   );
 }
 
+/** `getProjectorSearchEndpoint` — see module for behavior. */
 export function getProjectorSearchEndpoint() {
   const raw = import.meta.env.VITE_PROJECTOR_SEARCH_ENDPOINT as
     string | undefined;
   return raw ? normalizeEndpointUrl(raw) : "";
 }
 
+/** `getOrCreateAnonSearchUserId` — see module for behavior. */
 export function getOrCreateAnonSearchUserId() {
   try {
     const existing = localStorage.getItem(ANON_ID_KEY);
     if (existing) return existing;
-    const id = `anon_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+    const id = `anon_${crypto.randomUUID().replaceAll("-", "").slice(0, 16)}`;
     localStorage.setItem(ANON_ID_KEY, id);
     return id;
   } catch {
@@ -115,6 +126,7 @@ export function getOrCreateAnonSearchUserId() {
   }
 }
 
+/** `buildIndexDigest` — see module for behavior. */
 export function buildIndexDigest(
   entries: Array<{ id: string; updatedAt?: number; createdAt?: number }>,
 ) {
@@ -124,11 +136,15 @@ export function buildIndexDigest(
     .join("|");
   let hash = 0;
   for (let i = 0; i < parts.length; i++) {
-    hash = (hash * 31 + parts.charCodeAt(i)) >>> 0;
+    const code = parts.codePointAt(i);
+    if (code === undefined) continue;
+    hash = (hash * 31 + code) >>> 0;
+    if (code > 0xffff) i += 1;
   }
   return `${entries.length}:${hash.toString(16)}`;
 }
 
+/** `toSearchSnapshot` — see module for behavior. */
 export function toSearchSnapshot(entry: EntryRow): ProjectorSearchEntry {
   return {
     id: entry.id,
@@ -152,13 +168,21 @@ export function toSearchSnapshot(entry: EntryRow): ProjectorSearchEntry {
   };
 }
 
+/** Async API: `loadAllEntriesForSearch`. */
 export async function loadAllEntriesForSearch(): Promise<
   ProjectorSearchEntry[]
 > {
   const rows = await getDb().entries.toArray();
-  return rows.map(toSearchSnapshot);
+  return rows.filter((r) => r.entryType !== "quick_log").map(toSearchSnapshot);
 }
 
+/** Compact digest for AI search / worker — `feelings_over_time` internal id. */
+export async function buildFeelingsOverTimeSearchDigest() {
+  const { points } = await getFeelingsOverTimeSeries("month");
+  return points.map((p) => ({ dateKey: p.dateKey, class: p.class }));
+}
+
+/** Documents `readRateState` in this module. */
 function readRateState(): RateState {
   try {
     const raw = localStorage.getItem(RATE_KEY);
@@ -175,10 +199,12 @@ function readRateState(): RateState {
   }
 }
 
+/** Documents `writeRateState` in this module. */
 function writeRateState(state: RateState) {
   localStorage.setItem(RATE_KEY, JSON.stringify(state));
 }
 
+/** Documents `consumeRateAllowance` in this module. */
 function consumeRateAllowance(now: number) {
   if (getSkipSearchRateLimit()) return { ok: true as const };
   const state = readRateState();
@@ -206,6 +232,7 @@ function consumeRateAllowance(now: number) {
   return { ok: true as const };
 }
 
+/** Async API: `requestProjectorSearch`. */
 export async function requestProjectorSearch(options: {
   query: string;
   mode?: ProjectorSearchMode;
@@ -309,6 +336,7 @@ export async function requestProjectorSearch(options: {
       indexDigest,
       entries,
       forceIndex: options.forceIndex,
+      feelings_over_time: await buildFeelingsOverTimeSearchDigest(),
     }),
   });
 
@@ -340,6 +368,7 @@ export async function requestProjectorSearch(options: {
   return { type: "error", message: "Unexpected search response." };
 }
 
+/** Async API: `probeProjectorSearchEndpoint`. */
 export async function probeProjectorSearchEndpoint(): Promise<string> {
   const endpoint = getProjectorSearchEndpoint();
   if (!endpoint) return "No VITE_PROJECTOR_SEARCH_ENDPOINT configured.";

@@ -4,6 +4,11 @@ import { getDb } from "../../db/schema";
 import { clearCharacterAppearance } from "../../features/character/characterAppearanceService";
 import { clearShopInventory } from "../../features/shop/shopInventory";
 import { shareDocIdCandidates } from "../../features/share/shareLinkUrl";
+import {
+  HBCM_LAST_SCORE_DAY_KEY,
+  HBCM_MIGRATED_FROM_STREAK_KEY,
+  HBCM_RAW_STORAGE_KEY,
+} from "../../features/score/scoreService";
 import { SCORE_CHANGED_EVENT } from "../../features/score/scoreEvents";
 import { getFirebaseAuth, getFirebaseFirestore } from "../firebase/firebaseApp";
 import { scopedStorageKey } from "../storage/storageScope";
@@ -14,19 +19,27 @@ const SCORE_KEYS = [
   scopedStorageKey("mentell.score.total"),
   scopedStorageKey("mentell.score.streak"),
   scopedStorageKey("mentell.score.lastDay"),
+  scopedStorageKey("mentell.score.streakFreezes"),
+  scopedStorageKey("mentell.score.streakRestore"),
+  HBCM_RAW_STORAGE_KEY,
+  HBCM_LAST_SCORE_DAY_KEY,
+  HBCM_MIGRATED_FROM_STREAK_KEY,
 ] as const;
 
+/** Documents `fs` in this module. */
 function fs() {
   const f = getFirebaseFirestore();
   if (!f) throw new Error("Cloud backup is not available");
   return f;
 }
 
+/** Documents `deleteSubcollection` in this module. */
 async function deleteSubcollection(uid: string, name: string) {
   const snap = await getDocs(collection(fs(), "users", uid, name));
   await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
 }
 
+/** Async API: `clearLocalJournalData`. */
 export async function clearLocalJournalData() {
   await Promise.all([
     getDb().entries.clear(),
@@ -40,6 +53,7 @@ export async function clearLocalJournalData() {
   window.dispatchEvent(new CustomEvent(SCORE_CHANGED_EVENT));
 }
 
+/** Async API: `deleteCloudAccount`. */
 export async function deleteCloudAccount(uid: string) {
   const linkSnap = await getDocs(collection(fs(), "users", uid, "shareLinks"));
   await Promise.all(
@@ -77,6 +91,7 @@ export async function deleteCloudAccount(uid: string) {
   );
 }
 
+/** Async API: `deleteAccount`. */
 export async function deleteAccount(uid: string) {
   await deleteCloudAccount(uid);
   await clearLocalJournalData();
@@ -88,7 +103,7 @@ export async function deleteAccount(uid: string) {
 
   const auth = getFirebaseAuth();
   const user = auth?.currentUser;
-  if (!user || user.uid !== uid) return;
+  if (user?.uid !== uid) return;
 
   try {
     await deleteUser(user);

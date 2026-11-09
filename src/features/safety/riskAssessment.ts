@@ -8,6 +8,7 @@ import {
   type RiskLevel,
 } from "../../db/schema";
 import { isDebugMode } from "../../shared/debug/debugFlags";
+import { isRiskHeatV2Enabled } from "../../shared/features/featureFlags";
 import { isAiEnabledLocally } from "../../shared/settings/appSettings";
 import { scopedStorageKey } from "../../shared/storage/storageScope";
 import { normalizeEndpointUrl } from "../compilation/weeklyAiSummary";
@@ -20,6 +21,13 @@ import {
   scoreSemanticRisk,
   type SemanticRiskScore,
 } from "./semanticRiskScorer";
+import {
+  normalizedRiskInput,
+  rmaFromWindow,
+  sustainedElevatedHeat,
+  updateEmaRmaState,
+  type EmaRmaHeatState,
+} from "./emaRmaHeat";
 
 const CRISIS_TERMS = [
   "suicide",
@@ -503,8 +511,10 @@ const EXCE_PATTERNS = [
 
 const NEGATIVE_SUPPORT_THRESHOLD = 0.85;
 const SEMANTIC_SUPPORT_THRESHOLD = 0.9;
+/** Constant `EXCE_AI_THRESHOLD` used by the app. */
 export const EXCE_AI_THRESHOLD = 4;
 
+/** Public type `RiskAssessmentInput` for Mentell 2.x. */
 export type RiskAssessmentInput = {
   sentiment: EntrySentiment;
   emotion: EntryEmotion;
@@ -516,16 +526,20 @@ export type RiskAssessmentInput = {
 const DEBUG_SENTINEL_PATTERN =
   /\bSENT_TRIGGER_(CRISIS|SUPPORT|EXEC|EXCE)(?:\(([^)]*)\))?/i;
 
+/** Public type `RiskAssessment` for Mentell 2.x. */
 export type RiskAssessment = {
   riskScore: number;
   interventionScore: number;
   exceScore: number;
+  /** EMA/RMA heat (normalized -1..1) after this assessment — for audit/debug. */
+  emaRmaHeatEma?: number;
+  emaRmaHeatRma?: number;
   riskLevel: RiskLevel;
   warningLevel: "none" | "warn";
   flaggedTerms: string[];
   reasons: string[];
   supportiveMessage?: string;
-  responseKind: "none" | "positive" | "support" | "crisis";
+  responseKind: "none" | "positive" | "support" | "crisis" | "hypermania";
   crisisConfirmed?: boolean;
   literalSentimentLabel: LiteralSentimentLabel;
   literalSentimentConfidence: number;
@@ -593,6 +607,13 @@ type SupportMemory = {
 const USED_SUPPORT_MEMORY_KEY = scopedStorageKey(
   "mentell.ai.supportMemory.used",
 );
+const EMA_RMA_STATE_KEY = scopedStorageKey("mentell.v2.ema_rma_heat.state");
+const EXCE_RECENT_KEY = scopedStorageKey("mentell.v2.hypermania.exceRecent");
+
+const EMA_CRISIS_SUPPORT_FLOOR = 0.9;
+const HYPERMANIA_EXCE_THRESHOLD = 5;
+const HYPERMANIA_RECENT_WINDOW = 6;
+const HYPERMANIA_REPEAT_MIN = 3;
 const MEMORY_STOP_WORDS = new Set([
   "about",
   "after",
@@ -613,10 +634,12 @@ const MEMORY_STOP_WORDS = new Set([
   "would",
 ]);
 
+/** Documents `normalize` in this module. */
 function normalize(s: string) {
   return s.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
+/** Documents `expandDebugRiskInput` in this module. */
 function expandDebugRiskInput<T extends RiskAssessmentInput>(input: T): T {
   if (!isDebugMode()) return input;
   const rawText = `${input.situation}\n${input.details}\n${input.emotionNote}`;
@@ -661,10 +684,12 @@ function expandDebugRiskInput<T extends RiskAssessmentInput>(input: T): T {
   };
 }
 
+/** Documents `unique` in this module. */
 function unique(values: string[]) {
   return Array.from(new Set(values));
 }
 
+/** Documents `memoryTokens` in this module. */
 function memoryTokens(value: string) {
   return unique(
     normalize(value)
@@ -673,6 +698,7 @@ function memoryTokens(value: string) {
   );
 }
 
+/** Documents `loadUsedSupportMemoryIds` in this module. */
 function loadUsedSupportMemoryIds() {
   try {
     const raw = localStorage.getItem(USED_SUPPORT_MEMORY_KEY);
@@ -685,6 +711,7 @@ function loadUsedSupportMemoryIds() {
   }
 }
 
+/** Documents `saveUsedSupportMemoryId` in this module. */
 function saveUsedSupportMemoryId(id: string) {
   const next = [
     id,
@@ -693,14 +720,74 @@ function saveUsedSupportMemoryId(id: string) {
   localStorage.setItem(USED_SUPPORT_MEMORY_KEY, JSON.stringify(next));
 }
 
+/** Documents `loadEmaRmaState` in this module. */
+function loadEmaRmaState(): EmaRmaHeatState | null {
+  try {
+    const raw = localStorage.getItem(EMA_RMA_STATE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<EmaRmaHeatState>;
+    if (typeof parsed.ema !== "number" || !Array.isArray(parsed.rmaWindow))
+      return null;
+    return {
+      ema: parsed.ema,
+      rmaWindow: parsed.rmaWindow.filter((n) => typeof n === "number"),
+      lastUpdatedAt:
+        typeof parsed.lastUpdatedAt === "number"
+          ? parsed.lastUpdatedAt
+          : Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Documents `saveEmaRmaState` in this module. */
+function saveEmaRmaState(state: EmaRmaHeatState) {
+  localStorage.setItem(EMA_RMA_STATE_KEY, JSON.stringify(state));
+}
+
+/** Documents `pushExceMilestoneScore` in this module. */
+function pushExceMilestoneScore(exceScore: number): number[] {
+  try {
+    const raw = localStorage.getItem(EXCE_RECENT_KEY);
+    const prev = raw ? (JSON.parse(raw) as unknown) : [];
+    const list = Array.isArray(prev)
+      ? prev.filter((n): n is number => typeof n === "number")
+      : [];
+    list.push(exceScore);
+    const next = list.slice(-HYPERMANIA_RECENT_WINDOW);
+    localStorage.setItem(EXCE_RECENT_KEY, JSON.stringify(next));
+    return next;
+  } catch {
+    return [exceScore];
+  }
+}
+
+/** Documents `detectHypermania` in this module. */
+function detectHypermania(
+  crisisConfirmed: boolean,
+  exceScore: number,
+  preliminaryKind: RiskAssessment["responseKind"],
+): boolean {
+  if (crisisConfirmed) return false;
+  if (exceScore < HYPERMANIA_EXCE_THRESHOLD) return false;
+  if (preliminaryKind !== "positive") return false;
+  const recent = pushExceMilestoneScore(exceScore);
+  const strong = recent.filter((s) => s >= HYPERMANIA_EXCE_THRESHOLD).length;
+  return strong >= HYPERMANIA_REPEAT_MIN;
+}
+
+/** Documents `clamp01` in this module. */
 function clamp01(n: number) {
   return Math.min(1, Math.max(0, Number.isFinite(n) ? n : 0));
 }
 
+/** Documents `clampInterventionScore` in this module. */
 function clampInterventionScore(n: number) {
   return Math.min(3, Math.max(-3, Number.isFinite(n) ? n : 0));
 }
 
+/** Documents `responseKindForIntervention` in this module. */
 function responseKindForIntervention(
   score: number,
 ): RiskAssessment["responseKind"] {
@@ -710,15 +797,18 @@ function responseKindForIntervention(
   return "none";
 }
 
+/** Documents `riskScoreForIntervention` in this module. */
 function riskScoreForIntervention(score: number) {
   return score >= 2 ? clamp01(score / 2) : 0;
 }
 
+/** Documents `riskLevelForIntervention` in this module. */
 function riskLevelForIntervention(score: number): RiskLevel {
   if (score >= 2) return "crisis";
   return riskLevelForScore(riskScoreForIntervention(score));
 }
 
+/** `riskLevelForScore` — see module for behavior. */
 export function riskLevelForScore(score: number): RiskLevel {
   if (score >= 0.75) return "crisis";
   if (score >= 0.35) return "elevated";
@@ -726,10 +816,12 @@ export function riskLevelForScore(score: number): RiskLevel {
   return "none";
 }
 
+/** Documents `escapeRegExp` in this module. */
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+/** Documents `termMatches` in this module. */
 function termMatches(normalized: string, term: string) {
   const cleanTerm = normalize(term);
   if (!cleanTerm) return false;
@@ -741,6 +833,7 @@ function termMatches(normalized: string, term: string) {
   return normalized.includes(cleanTerm);
 }
 
+/** Documents `scoreTerms` in this module. */
 function scoreTerms(normalized: string, terms: string[], weight: number) {
   const hits = terms.filter((term) => termMatches(normalized, term));
   return {
@@ -749,6 +842,7 @@ function scoreTerms(normalized: string, terms: string[], weight: number) {
   };
 }
 
+/** Documents `scorePatterns` in this module. */
 function scorePatterns(
   normalized: string,
   patterns: RegExp[],
@@ -761,16 +855,19 @@ function scorePatterns(
   return { hits, score: hits.length ? weight : 0 };
 }
 
+/** Documents `textForSentiment` in this module. */
 function textForSentiment(input: RiskAssessmentInput) {
   return `${input.situation}\n${input.details}\n${input.emotionNote}`;
 }
 
+/** Documents `hasConcreteDangerContext` in this module. */
 function hasConcreteDangerContext(text: string) {
   return /\b(?:kill|murder|hurt|harm|attack|stab|shoot|beat|weapon|gun|knife|blood|dead|die|death|last\s+breath|final\s+breath|(?:his|her|their|this)\s+breath\s+(?:will\s+be\s+)?(?:(?:his|her|their)\s+|the\s+)?(?:last|final)|won't\s+see\s+tomorrow|wont\s+see\s+tomorrow|will\s+not\s+see\s+tomorrow|suicide|suicidal|overdose|self-?harm|cant\s+stay\s+safe|can't\s+stay\s+safe|not\s+safe)\b/.test(
     text,
   );
 }
 
+/** Documents `isBenignRoutineOrIdiom` in this module. */
 function isBenignRoutineOrIdiom(text: string) {
   const householdTask =
     /\b(?:take|taking|took)\s+out\s+(?:the\s+)?(?:trash|garbage|recycling|compost)\b/.test(
@@ -792,6 +889,7 @@ function isBenignRoutineOrIdiom(text: string) {
   return (householdTask || takeOutIdiom) && !hasConcreteDangerContext(text);
 }
 
+/** Documents `isBenignLowSignalMood` in this module. */
 function isBenignLowSignalMood(text: string) {
   if (hasConcreteDangerContext(text)) return false;
   const words = text.match(/[a-z']+/g) ?? [];
@@ -847,6 +945,7 @@ function isBenignLowSignalMood(text: string) {
   return words.every((word) => allowed.has(word));
 }
 
+/** Documents `hasExplicitDangerIntent` in this module. */
 function hasExplicitDangerIntent(text: string) {
   return (
     /\b(?:suicide|suicidal|want\s+to\s+die|wish\s+i\s+(?:was|were)\s+dead|end\s+(?:my\s+life|myself|it\s+all)|can't\s+stay\s+safe|cant\s+stay\s+safe|cannot\s+stay\s+safe|not\s+safe\s+(?:alone|with\s+myself)|deserve\s+(?:pain|to\s+hurt|to\s+bleed)|punish\s+myself|make\s+myself\s+pay|want\s+to\s+see\s+blood|need\s+to\s+see\s+blood)\b/.test(
@@ -858,6 +957,7 @@ function hasExplicitDangerIntent(text: string) {
   );
 }
 
+/** Documents `isBenignAccidentalInjury` in this module. */
 function isBenignAccidentalInjury(text: string) {
   const injury =
     /\b(?:cut|cuts|cutting|sliced|slice|nicked|nick|burned|burnt|burn|scraped|scratched|scratch|stabbed|poked)\s+(?:myself|me|my\s+(?:finger|thumb|hand|arm|skin))\b/.test(
@@ -873,6 +973,7 @@ function isBenignAccidentalInjury(text: string) {
   return injury && accidentContext && !hasExplicitDangerIntent(text);
 }
 
+/** Documents `shouldSuppressSemanticRisk` in this module. */
 function shouldSuppressSemanticRisk(
   text: string,
   message: ReturnType<typeof messageRisk>,
@@ -883,11 +984,13 @@ function shouldSuppressSemanticRisk(
   );
 }
 
+/** Documents `hasMeaningfulAssessmentText` in this module. */
 function hasMeaningfulAssessmentText(text: string) {
   const words = text.match(/[a-z0-9']+/g) ?? [];
   return words.length >= 2 || (words[0]?.length ?? 0) >= 4;
 }
 
+/** Documents `scoreExce` in this module. */
 function scoreExce(input: RiskAssessmentInput) {
   const text = normalize(
     `${input.situation}\n${input.details}\n${input.emotionNote}`,
@@ -919,6 +1022,7 @@ function scoreExce(input: RiskAssessmentInput) {
   };
 }
 
+/** Documents `scoreSupport` in this module. */
 function scoreSupport(input: RiskAssessmentInput) {
   const text = normalize(textForSentiment(input));
   const terms = scoreTerms(text, SUPPORT_TERMS, 0.92);
@@ -937,6 +1041,7 @@ function scoreSupport(input: RiskAssessmentInput) {
   };
 }
 
+/** Documents `messageRisk` in this module. */
 function messageRisk(input: RiskAssessmentInput) {
   const text = normalize(textForSentiment(input));
   if (!text) {
@@ -1028,6 +1133,7 @@ function messageRisk(input: RiskAssessmentInput) {
   };
 }
 
+/** `debugAssessLocalMessageRisk` — see module for behavior. */
 export function debugAssessLocalMessageRisk(text: string) {
   return messageRisk({
     sentiment: "=",
@@ -1038,6 +1144,7 @@ export function debugAssessLocalMessageRisk(text: string) {
   });
 }
 
+/** Documents `applyLiteralSentiment` in this module. */
 function applyLiteralSentiment(
   message: ReturnType<typeof messageRisk>,
   literalSentiment: LiteralSentimentScore,
@@ -1070,6 +1177,7 @@ function applyLiteralSentiment(
   return 0;
 }
 
+/** Documents `localSelfHarmActionPhrase` in this module. */
 function localSelfHarmActionPhrase(text: string) {
   if (/\b(?:razor|blade|knife)\b/.test(text))
     return "using a sharp object to hurt yourself";
@@ -1088,6 +1196,7 @@ function localSelfHarmActionPhrase(text: string) {
   return "hurting yourself";
 }
 
+/** Documents `localCrisisFallbackMessage` in this module. */
 function localCrisisFallbackMessage(
   input: RiskAssessmentInput,
   message: ReturnType<typeof messageRisk>,
@@ -1117,6 +1226,7 @@ function localCrisisFallbackMessage(
   return `${anchor}This sounds like a moment that needs support before action. Pause, get near someone safe, put distance between you and anything risky, and contact emergency services or 988 if anyone could be in danger.`;
 }
 
+/** Documents `shouldLockLocalCrisis` in this module. */
 function shouldLockLocalCrisis(
   local: RiskAssessment,
   input: RiskAssessmentInput,
@@ -1143,6 +1253,7 @@ function shouldLockLocalCrisis(
   return false;
 }
 
+/** Documents `recentEntries` in this module. */
 async function recentEntries(dateKey: string) {
   const end = parseISO(stripDateKey(dateKey));
   const startKey = format(subDays(end, 7), "yyyy-MM-dd");
@@ -1157,6 +1268,7 @@ async function recentEntries(dateKey: string) {
   return [...entriesNorm, ...entriesBulk];
 }
 
+/** Documents `recentSupportMemories` in this module. */
 async function recentSupportMemories(
   dateKey: string | undefined,
   input: RiskAssessmentInput,
@@ -1223,6 +1335,7 @@ async function recentSupportMemories(
     }));
 }
 
+/** Documents `trendRisk` in this module. */
 function trendRisk(entries: EntryRow[]) {
   if (entries.length === 0) return { score: 0, reasons: [] as string[] };
 
@@ -1257,6 +1370,7 @@ function trendRisk(entries: EntryRow[]) {
   return { score: clamp01(score), reasons: unique(reasons) };
 }
 
+/** Documents `trendHeat` in this module. */
 function trendHeat(entries: EntryRow[]) {
   const recent = entries.slice(-14);
   let heat = 0;
@@ -1288,6 +1402,56 @@ function trendHeat(entries: EntryRow[]) {
   return { heat: clamp01(heat / 5), reasons };
 }
 
+/** Documents `applyEmaRmaToLocalIntervention` in this module. */
+function applyEmaRmaToLocalIntervention(
+  interventionScore: number,
+  input: RiskAssessmentInput,
+  message: ReturnType<typeof messageRisk>,
+  supportScore: number,
+): {
+  interventionScore: number;
+  emaNext: EmaRmaHeatState | null;
+  emaRmaEma: number;
+  emaRmaRma: number;
+} {
+  if (!isRiskHeatV2Enabled()) {
+    return {
+      interventionScore,
+      emaNext: null,
+      emaRmaEma: 0,
+      emaRmaRma: 0,
+    };
+  }
+  const emaPrev = loadEmaRmaState();
+  const normSignal = normalizedRiskInput({
+    riskScore: riskScoreForIntervention(interventionScore),
+    riskLevel: riskLevelForIntervention(interventionScore),
+    warningLevel:
+      responseKindForIntervention(interventionScore) === "crisis"
+        ? "warn"
+        : "none",
+    sentiment: input.sentiment,
+  });
+  const emaNext = updateEmaRmaState(emaPrev, normSignal, Date.now());
+  saveEmaRmaState(emaNext);
+  let nextIntervention = interventionScore;
+  if (
+    sustainedElevatedHeat(emaNext) &&
+    !message.crisisConfirmed &&
+    supportScore < EMA_CRISIS_SUPPORT_FLOOR &&
+    responseKindForIntervention(interventionScore) !== "crisis"
+  ) {
+    nextIntervention = Math.max(interventionScore, 0.92);
+  }
+  return {
+    interventionScore: nextIntervention,
+    emaNext,
+    emaRmaEma: emaNext.ema,
+    emaRmaRma: rmaFromWindow(emaNext.rmaWindow),
+  };
+}
+
+/** Async API: `assessLocalRisk`. */
 export async function assessLocalRisk(
   input: RiskAssessmentInput & { dateKey: string },
 ): Promise<RiskAssessment> {
@@ -1308,7 +1472,7 @@ export async function assessLocalRisk(
     scoreLiteralSentiment(assessmentText),
     scoreSemanticRisk(assessmentText),
   ]);
-  const interventionScore = applyLiteralSentiment(
+  let interventionScore = applyLiteralSentiment(
     message,
     literalSentiment,
     semanticRisk,
@@ -1317,14 +1481,37 @@ export async function assessLocalRisk(
     exce.score,
     suppressSemanticRisk,
   );
-  const responseKind = responseKindForIntervention(interventionScore);
+
+  const emaApplied = applyEmaRmaToLocalIntervention(
+    interventionScore,
+    input,
+    message,
+    support.score,
+  );
+  interventionScore = emaApplied.interventionScore;
+  const { emaNext, emaRmaEma, emaRmaRma } = emaApplied;
+
+  let responseKind = responseKindForIntervention(interventionScore);
+  if (
+    isRiskHeatV2Enabled() &&
+    detectHypermania(message.crisisConfirmed, exce.score, responseKind)
+  ) {
+    responseKind = "hypermania";
+  }
+
   const riskScore = riskScoreForIntervention(interventionScore);
   const riskLevel = riskLevelForIntervention(interventionScore);
   const warningLevel = responseKind === "crisis" ? "warn" : "none";
+
+  const hypermaniaMessage =
+    "Your words have a lot of energy and momentum. If sleep, spending, or risk-taking are also speeding up, consider slowing down with a glass of water, a short walk, and a check-in with someone you trust — or a clinician if this pattern lasts.";
+
   return {
     riskScore,
     interventionScore,
     exceScore: exce.score,
+    emaRmaHeatEma: emaRmaEma,
+    emaRmaHeatRma: emaRmaRma,
     riskLevel,
     warningLevel,
     flaggedTerms: message.flaggedTerms,
@@ -1347,11 +1534,16 @@ export async function assessLocalRisk(
       ...heat.reasons,
       ...support.hits.map((hit) => `support: ${hit}`),
       ...exce.hits.map((hit) => `positive: ${hit}`),
+      ...(emaNext && sustainedElevatedHeat(emaNext)
+        ? ["ema_rma_heat: sustained elevated trend"]
+        : []),
     ]),
     supportiveMessage:
       responseKind === "crisis"
         ? localCrisisFallbackMessage(input, message)
-        : undefined,
+        : responseKind === "hypermania"
+          ? hypermaniaMessage
+          : undefined,
     responseKind,
     crisisConfirmed: message.crisisConfirmed,
     literalSentimentLabel: literalSentiment.label,
@@ -1365,6 +1557,7 @@ export async function assessLocalRisk(
   };
 }
 
+/** `assessDraftRisk` — see module for behavior. */
 export function assessDraftRisk(
   input: RiskAssessmentInput,
 ): Pick<
@@ -1383,6 +1576,7 @@ export function assessDraftRisk(
   };
 }
 
+/** Documents `normalizeEnvToken` in this module. */
 function normalizeEnvToken(raw: string | undefined) {
   if (!raw) return undefined;
   const t = raw.trim();
@@ -1395,6 +1589,7 @@ function normalizeEnvToken(raw: string | undefined) {
   return t;
 }
 
+/** Documents `riskEndpoint` in this module. */
 function riskEndpoint() {
   const weeklyEndpoint = import.meta.env.VITE_WEEKLY_AI_ENDPOINT;
   if (typeof weeklyEndpoint !== "string" || !weeklyEndpoint.trim()) return null;
@@ -1404,6 +1599,7 @@ function riskEndpoint() {
   );
 }
 
+/** Documents `parseWorkerRisk` in this module. */
 function parseWorkerRisk(
   body: WorkerRiskResponse,
 ): Pick<
@@ -1478,6 +1674,7 @@ function parseWorkerRisk(
   };
 }
 
+/** Async API: `refineRiskWithWorker`. */
 export async function refineRiskWithWorker(
   local: RiskAssessment,
   input: RiskAssessmentInput & { dateKey?: string },
@@ -1601,6 +1798,7 @@ export async function refineRiskWithWorker(
   }
 }
 
+/** Async API: `assessRisk`. */
 export async function assessRisk(
   input: RiskAssessmentInput & { dateKey: string },
   options: RiskAssessmentOptions = {},
@@ -1610,6 +1808,7 @@ export async function assessRisk(
   return refineRiskWithWorker(local, input, options);
 }
 
+/** `shouldRequestAiRiskReview` — see module for behavior. */
 export function shouldRequestAiRiskReview(
   local: RiskAssessment,
   input: RiskAssessmentInput,
@@ -1617,6 +1816,7 @@ export function shouldRequestAiRiskReview(
   return shouldRequestLlamaGuard(local, input);
 }
 
+/** `shouldRequestLlamaGuard` — see module for behavior. */
 export function shouldRequestLlamaGuard(
   local: RiskAssessment,
   input: RiskAssessmentInput,
@@ -1652,10 +1852,10 @@ export function shouldRequestLlamaGuard(
     return true;
   if (local.responseKind === "support" || local.responseKind === "positive")
     return true;
-  if (AI_REVIEW_TERMS.some((term) => termMatches(text, term))) return true;
-  return false;
+  return AI_REVIEW_TERMS.some((term) => termMatches(text, term));
 }
 
+/** `flagConcerningLanguage` — see module for behavior. */
 export function flagConcerningLanguage(text: string) {
   const message = messageRisk({
     sentiment: "=",

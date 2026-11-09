@@ -16,19 +16,19 @@ An **optional** Cloudflare Worker (`worker/`) provides weekly AI summaries via W
 
 All commands are defined in `package.json` scripts:
 
-| Task                             | Command                                                                                       |
-| -------------------------------- | --------------------------------------------------------------------------------------------- |
-| Install deps                     | `npm install`                                                                                 |
-| Sync UI assets                   | `npm run sync:assets` (`asset/` → `public/asset/`)                                            |
-| Dev server                       | `npm run dev` (Vite on port 5173)                                                             |
-| Debug dev server                 | `npm run dev:debug` (isolated `mentell-debug` IndexedDB + scoped localStorage)                |
-| Lint                             | `npm run lint` (ESLint)                                                                       |
-| Type check                       | `npx tsc -b`                                                                                  |
+| Task | Command |
+|---|---|
+| Install deps | `npm install` |
+| Sync UI assets | `npm run sync:assets` (`asset/` → `public/asset/`) |
+| Dev server | `npm run dev` (Vite on port 5173) |
+| Debug dev server | `npm run dev:debug` (isolated `mentell-debug` IndexedDB + scoped localStorage) |
+| Lint | `npm run lint` (ESLint) |
+| Type check | `npx tsc -b` |
 | Build (production, includes PWA) | `npm run build` (tsc + vite build; **~30s after** `✓ built` while PWA generates — looks hung) |
-| Build (fast, no PWA)             | `npm run build:check` (use for agent/CI typecheck verification)                               |
-| Preview prod build               | `npm run preview`                                                                             |
-| Worker dev                       | `npm run worker:dev` (port 8787)                                                              |
-| Worker deploy                    | `npm run worker:deploy`                                                                       |
+| Build (fast, no PWA) | `npm run build:check` (use for agent/CI typecheck verification) |
+| Preview prod build | `npm run preview` |
+| Worker dev | `npm run worker:dev` (port 8787) |
+| Worker deploy | `npm run worker:deploy` |
 
 ### Weekly AI (Cloudflare Workers)
 
@@ -50,6 +50,8 @@ All commands are defined in `package.json` scripts:
 The AI card on `/week` only appears when env flags are set **and** a weekly package has been delivered. Users can set local AI preferences (name, age range, context), choose reflection vs narrative overview mode, cache summaries when data unchanged, and download RAW HTML reports (week / last 4 weeks / all time).
 
 Worker POST body also accepts optional `mode` (`reflection` | `overview`) and `profile` (`displayName`, `ageRange`, `about`).
+
+**Crisis risk + pooled local resources:** Same Worker and token as weekly AI. `POST /risk-assessment` adjudicates crisis/support messages; `POST /pooled-crisis-resources` sends coarse location (ZIP, county, city, state) plus names/phones already loaded from public directories so Workers AI (Llama 4 Scout) can suggest extra crisis lines without journal text. Gated by `VITE_ENABLE_WEEKLY_AI_SUMMARY=1` and Settings → **Disable AI summaries** off.
 
 ### Projector AI Search (Cloudflare AI Search)
 
@@ -95,11 +97,11 @@ Canonical app version lives in [`VERSION`](VERSION) (semver `MAJOR.MINOR.PATCH`)
 
 **Default to a PATCH / sub-minor bump** (`1.18.14` → `1.18.15`). That includes most new features, UI additions, copy, styling, bug fixes, docs, and dependency patches.
 
-| Bump                           | When                                                                                                                         | Example           |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| **PATCH** (sub-minor, default) | Almost every change: features, fixes, copy, styling, docs, small UX additions                                                | `1.4.2` → `1.4.3` |
-| **MINOR**                      | Only unusually large product changes (a whole new area of the app, a major UX overhaul)                                      | `1.4.2` → `1.5.0` |
-| **MAJOR**                      | Almost never. Only when the owner **explicitly asks** for a major bump (or an incompatible migration they call out as major) | `1.4.2` → `2.0.0` |
+| Bump | When | Example |
+|------|------|---------|
+| **PATCH** (sub-minor, default) | Almost every change: features, fixes, copy, styling, docs, small UX additions | `1.4.2` → `1.4.3` |
+| **MINOR** | Only unusually large product changes (a whole new area of the app, a major UX overhaul) | `1.4.2` → `1.5.0` |
+| **MAJOR** | Almost never. Only when the owner **explicitly asks** for a major bump (or an incompatible migration they call out as major) | `1.4.2` → `2.0.0` |
 
 Do not choose MAJOR on your own. Prefer PATCH unless the change is clearly a large product expansion.
 

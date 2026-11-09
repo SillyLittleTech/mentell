@@ -51,7 +51,7 @@ async function deriveWrappingKey(passphrase: string, salt: ArrayBuffer) {
   );
 }
 
-async function importDataKey(rawKey: ArrayBuffer) {
+function importDataKey(rawKey: ArrayBuffer) {
   return crypto.subtle.importKey("raw", rawKey, "AES-GCM", false, [
     "encrypt",
     "decrypt",
